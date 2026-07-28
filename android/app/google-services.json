@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "801846557581",
+    "project_id": "orderapp-bcea2",
+    "storage_bucket": "orderapp-bcea2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:801846557581:android:7706abe24f2dde40725bc4",
+        "android_client_info": {
+          "package_name": "com.example.order_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_Zxf_uWrwC2IufNIit4h94c7goYSOpHw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

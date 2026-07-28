@@ -1,0 +1,1322 @@
+import 'package:flutter/material.dart';
+import 'package:order_app/core/utils/route_transitions.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
+import '../../../core/utils/nepali_date_formatter.dart';
+import '../../../domain/entities/attendance_entity.dart';
+import '../../../domain/entities/leave_request_entity.dart';
+import '../../../domain/entities/notification_entity.dart';
+import '../../../domain/entities/order_entity.dart';
+import '../../../domain/entities/user_entity.dart';
+import '../../providers/attendance_providers.dart';
+import '../../providers/employee_profile_providers.dart';
+import '../../providers/hr_providers.dart';
+import '../../providers/notification_notifier.dart';
+import '../../providers/order_providers.dart';
+import 'employee_detail_screen.dart';
+import 'add_employee_screen.dart';
+import '../../widgets/admin_manual_attendance_dialog.dart';
+import '../../../core/services/fcm_sender.dart';
+
+class HrManagementScreen extends ConsumerStatefulWidget {
+  const HrManagementScreen({super.key});
+
+  @override
+  ConsumerState<HrManagementScreen> createState() => _HrManagementScreenState();
+}
+
+class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  String _staffSearchQuery = '';
+  String _roleFilter = 'all';
+
+  // Leave Requests state
+  String _leaveSearchQuery = '';
+  DateTime? _leaveStartDate;
+  DateTime? _leaveEndDate;
+  int _leaveLimit = 10;
+  final ScrollController _leaveScrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _leaveScrollController.addListener(() {
+      if (_leaveScrollController.position.pixels >=
+          _leaveScrollController.position.maxScrollExtent - 200) {
+        if (mounted) {
+          setState(() {
+            _leaveLimit += 10;
+          });
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _leaveScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final labelColor = colorScheme.onSurfaceVariant;
+
+    final usersAsync = ref.watch(usersStreamProvider);
+    final attendanceAsync = ref.watch(todayAttendanceStreamProvider);
+    final leaveRequestsAsync = ref.watch(leaveRequestsStreamProvider);
+    final ordersAsync = ref.watch(ordersStreamProvider);
+
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        title: const Text(
+          'HR Management Hub',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        actions: [
+          isMobile
+              ? IconButton(
+                  icon: const Icon(Icons.person_add_alt_1),
+                  tooltip: 'New Employee Record',
+                  onPressed: () {
+                    context.pushPage(const AddEmployeeScreen(
+                        userId: '',
+                        userName: '',
+                        isNewUser: true));
+                  },
+                )
+              : ElevatedButton.icon(
+                  icon: const Icon(Icons.person_add_alt_1, size: 16),
+                  label: const Text('New Employee Record'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  onPressed: () {
+                    context.pushPage(const AddEmployeeScreen(
+                        userId: '',
+                        userName: '',
+                        isNewUser: true));
+                  },
+                ),
+          const SizedBox(width: 12),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          labelColor: colorScheme.primary,
+          unselectedLabelColor: labelColor,
+          indicatorColor: colorScheme.primary,
+          tabs: const [
+            Tab(icon: Icon(Icons.people_alt_outlined), text: 'Staff Directory'),
+            Tab(icon: Icon(Icons.access_time), text: 'Live Attendance'),
+            Tab(icon: Icon(Icons.event_busy_outlined), text: 'Leave Requests'),
+            Tab(
+              icon: Icon(Icons.analytics_outlined),
+              text: 'Payroll & Metrics',
+            ),
+          ],
+        ),
+      ),
+      body: usersAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error loading users: $e')),
+        data: (users) {
+          final staffUsers = users
+              .where((u) => u.role == UserRole.staff)
+              .toList();
+          final allUsers = users;
+
+          final todayAttendance = attendanceAsync.maybeWhen(
+            data: (list) => list,
+            orElse: () => <AttendanceEntity>[],
+          );
+
+          final leaveRequests = leaveRequestsAsync.maybeWhen(
+            data: (list) => list,
+            orElse: () => <LeaveRequestEntity>[],
+          );
+
+          final orders = ordersAsync.maybeWhen(
+            data: (list) => list.cast<OrderEntity>(),
+            orElse: () => <OrderEntity>[],
+          );
+
+          final pendingLeaves = leaveRequests
+              .where((l) => l.status == LeaveStatus.pending)
+              .toList();
+
+          final checkedInCount = todayAttendance
+              .where((a) => a.checkInTime.day == DateTime.now().day)
+              .length;
+
+          final onLeaveToday = leaveRequests.where((l) {
+            final now = DateTime.now();
+            return l.status == LeaveStatus.approved &&
+                l.startDate.isBefore(now.add(const Duration(days: 1))) &&
+                l.endDate.isAfter(now.subtract(const Duration(days: 1)));
+          }).length;
+
+          return Column(
+            children: [
+              // Top Metric Banner
+              _buildMetricsBanner(
+                context,
+                totalStaff: staffUsers.length,
+                checkedIn: checkedInCount,
+                onLeave: onLeaveToday,
+                pendingLeaves: pendingLeaves.length,
+              ),
+
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // Tab 1: Staff Directory
+                    _buildStaffDirectoryTab(context, allUsers, orders),
+
+                    // Tab 2: Live Attendance
+                    _buildAttendanceTab(context, todayAttendance),
+
+                    // Tab 3: Leave Requests
+                    _buildLeaveRequestsTab(context, leaveRequests),
+
+                    // Tab 4: Payroll & Metrics
+                    _buildPayrollMetricsTab(
+                      context,
+                      staffUsers,
+                      orders,
+                      todayAttendance,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMetricsBanner(
+    BuildContext context, {
+    required int totalStaff,
+    required int checkedIn,
+    required int onLeave,
+    required int pendingLeaves,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    final card1 = _buildMetricCard(
+      context,
+      title: 'Total Staff',
+      value: '$totalStaff',
+      icon: Icons.badge_outlined,
+      color: colorScheme.primary,
+    );
+    final card2 = _buildMetricCard(
+      context,
+      title: 'Checked In',
+      value: '$checkedIn',
+      icon: Icons.check_circle_outline,
+      color: Colors.green,
+    );
+    final card3 = _buildMetricCard(
+      context,
+      title: 'On Leave',
+      value: '$onLeave',
+      icon: Icons.beach_access_outlined,
+      color: Colors.orange,
+    );
+    final card4 = _buildMetricCard(
+      context,
+      title: 'Pending Leaves',
+      value: '$pendingLeaves',
+      icon: Icons.pending_actions_outlined,
+      color: pendingLeaves > 0 ? Colors.red : colorScheme.onSurfaceVariant,
+    );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        border: Border(
+          bottom: BorderSide(color: colorScheme.outline.withValues(alpha: 0.2)),
+        ),
+      ),
+      child: isMobile
+          ? Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: card1),
+                    const SizedBox(width: 8),
+                    Expanded(child: card2),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: card3),
+                    const SizedBox(width: 8),
+                    Expanded(child: card4),
+                  ],
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Expanded(child: card1),
+                const SizedBox(width: 8),
+                Expanded(child: card2),
+                const SizedBox(width: 8),
+                Expanded(child: card3),
+                const SizedBox(width: 8),
+                Expanded(child: card4),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildMetricCard(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 1: Staff Directory
+  Widget _buildStaffDirectoryTab(
+    BuildContext context,
+    List<UserEntity> users,
+    List<OrderEntity> orders,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final labelColor = colorScheme.onSurfaceVariant;
+
+    final filtered = users.where((u) {
+      final matchesSearch =
+          u.name.toLowerCase().contains(_staffSearchQuery.toLowerCase()) ||
+          u.email.toLowerCase().contains(_staffSearchQuery.toLowerCase());
+      final matchesRole = _roleFilter == 'all' || u.role.name == _roleFilter;
+      return matchesSearch && matchesRole;
+    }).toList();
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  onChanged: (val) => setState(() => _staffSearchQuery = val),
+                  decoration: InputDecoration(
+                    hintText: 'Search staff by name or email...',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              DropdownButton<String>(
+                value: _roleFilter,
+                onChanged: (val) {
+                  if (val != null) setState(() => _roleFilter = val);
+                },
+                items: const [
+                  DropdownMenuItem(value: 'all', child: Text('All Roles')),
+                  DropdownMenuItem(value: 'staff', child: Text('Staff')),
+                  DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                  DropdownMenuItem(value: 'founder', child: Text('Founder')),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: Text(
+                      'No staff members found',
+                      style: TextStyle(color: labelColor),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final u = filtered[index];
+                      final assignedCount = orders
+                          .where((o) => o.assignedStaffIds.contains(u.id))
+                          .length;
+
+                      final isMobile = MediaQuery.of(context).size.width < 600;
+
+                      final roleBadge = Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: u.role == UserRole.admin
+                              ? Colors.purple.withValues(alpha: 0.1)
+                              : u.role == UserRole.founder
+                              ? Colors.blue.withValues(alpha: 0.1)
+                              : Colors.green.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          u.role.name.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: u.role == UserRole.admin
+                                ? Colors.purple
+                                : u.role == UserRole.founder
+                                ? Colors.blue
+                                : Colors.green,
+                          ),
+                        ),
+                      );
+
+                      if (isMobile) {
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(
+                              color: colorScheme.outline.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () {
+                              context.pushPage(EmployeeDetailScreen(user: u));
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        backgroundColor: colorScheme.primaryContainer,
+                                        child: Text(
+                                          u.name.isNotEmpty
+                                              ? u.name[0].toUpperCase()
+                                              : 'U',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: colorScheme.onPrimaryContainer,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Flexible(
+                                                  child: Text(
+                                                    u.name,
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 15,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                roleBadge,
+                                              ],
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              u.email,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: labelColor,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Switch(
+                                        value: u.isActive,
+                                        onChanged: (val) async {
+                                          await ref
+                                              .read(
+                                                leaveRequestNotifierProvider
+                                                    .notifier,
+                                              )
+                                              .toggleUserActive(u.id, val);
+                                          ref.invalidate(usersStreamProvider);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const Divider(height: 16),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '$assignedCount Events Assigned',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: labelColor,
+                                        ),
+                                      ),
+                                      TextButton.icon(
+                                        icon: const Icon(
+                                          Icons.badge_outlined,
+                                          size: 14,
+                                        ),
+                                        label: const Text('View HR File'),
+                                        onPressed: () {
+                                          context.pushPage(EmployeeDetailScreen(user: u));
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: colorScheme.outline.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: colorScheme.primaryContainer,
+                            child: Text(
+                              u.name.isNotEmpty ? u.name[0].toUpperCase() : 'U',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                          title: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  u.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              roleBadge,
+                            ],
+                          ),
+                          subtitle: Text(
+                            '${u.email} • $assignedCount Events Assigned',
+                            style: TextStyle(fontSize: 12, color: labelColor),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              OutlinedButton.icon(
+                                icon: const Icon(
+                                  Icons.badge_outlined,
+                                  size: 14,
+                                ),
+                                label: const Text('HR File'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  context.pushPage(EmployeeDetailScreen(user: u));
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              Switch(
+                                value: u.isActive,
+                                onChanged: (val) async {
+                                  await ref
+                                      .read(
+                                        leaveRequestNotifierProvider.notifier,
+                                      )
+                                      .toggleUserActive(u.id, val);
+                                  ref.invalidate(usersStreamProvider);
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 2: Attendance & Shifts
+  Widget _buildAttendanceTab(
+    BuildContext context,
+    List<AttendanceEntity> attendance,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final labelColor = colorScheme.onSurfaceVariant;
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Today\'s Check-in Log (${attendance.length})',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  // Prompt manual attendance dialog
+                  _showManualAttendanceDialog(context);
+                },
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Manual Entry'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: attendance.isEmpty
+                ? Center(
+                    child: Text(
+                      'No attendance records for today',
+                      style: TextStyle(color: labelColor),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: attendance.length,
+                    itemBuilder: (context, index) {
+                      final item = attendance[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: colorScheme.outline.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor:
+                                item.status == AttendanceStatus.present
+                                ? Colors.green.withValues(alpha: 0.1)
+                                : item.status == AttendanceStatus.late
+                                ? Colors.orange.withValues(alpha: 0.1)
+                                : Colors.red.withValues(alpha: 0.1),
+                            child: Icon(
+                              item.status == AttendanceStatus.present
+                                  ? Icons.check
+                                  : item.status == AttendanceStatus.late
+                                  ? Icons.schedule
+                                  : Icons.close,
+                              color: item.status == AttendanceStatus.present
+                                  ? Colors.green
+                                  : item.status == AttendanceStatus.late
+                                  ? Colors.orange
+                                  : Colors.red,
+                            ),
+                          ),
+                          title: Text(
+                            item.staffName,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            'Event: ${item.eventTitle}\nCheck-in: ${formatNepaliDate(item.checkInTime, 'hh:mm a')}${item.checkOutTime != null ? ' | Out: ${formatNepaliDate(item.checkOutTime!, 'hh:mm a')}' : ''}',
+                            style: TextStyle(fontSize: 12, color: labelColor),
+                          ),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: item.isWithinGeofence
+                                      ? Colors.green.withValues(alpha: 0.1)
+                                      : Colors.red.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  item.isWithinGeofence
+                                      ? 'Geofence OK'
+                                      : 'Out of Geofence',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: item.isWithinGeofence
+                                        ? Colors.green
+                                        : Colors.red,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 3: Leave Requests
+  Widget _buildLeaveRequestsTab(
+    BuildContext context,
+    List<LeaveRequestEntity> requests,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final labelColor = colorScheme.onSurfaceVariant;
+
+    // Filter requests
+    final filtered = requests.where((l) {
+      final matchesSearch =
+          l.staffName.toLowerCase().contains(_leaveSearchQuery.toLowerCase());
+
+      if (!matchesSearch) return false;
+
+      if (_leaveStartDate != null && _leaveEndDate != null) {
+        // Normalizing date ranges to only check date parts
+        final startL = DateTime(l.startDate.year, l.startDate.month, l.startDate.day);
+        final endL = DateTime(l.endDate.year, l.endDate.month, l.endDate.day);
+        final startQ = DateTime(_leaveStartDate!.year, _leaveStartDate!.month, _leaveStartDate!.day);
+        final endQ = DateTime(_leaveEndDate!.year, _leaveEndDate!.month, _leaveEndDate!.day);
+
+        // Standard overlap: !(l.startDate > Q.end || l.endDate < Q.start)
+        final overlaps = !(startL.isAfter(endQ) || endL.isBefore(startQ));
+        return overlaps;
+      }
+      return true;
+    }).toList();
+
+    // Calculate total approved leave days in the selected date range
+    int totalLeaveDays = 0;
+    if (_leaveStartDate != null && _leaveEndDate != null) {
+      for (final l in filtered) {
+        if (l.status == LeaveStatus.approved) {
+          final startL = DateTime(l.startDate.year, l.startDate.month, l.startDate.day);
+          final endL = DateTime(l.endDate.year, l.endDate.month, l.endDate.day);
+          final startQ = DateTime(_leaveStartDate!.year, _leaveStartDate!.month, _leaveStartDate!.day);
+          final endQ = DateTime(_leaveEndDate!.year, _leaveEndDate!.month, _leaveEndDate!.day);
+
+          final overlapStart = startL.isAfter(startQ) ? startL : startQ;
+          final overlapEnd = endL.isBefore(endQ) ? endL : endQ;
+
+          if (!overlapStart.isAfter(overlapEnd)) {
+            totalLeaveDays += overlapEnd.difference(overlapStart).inDays + 1;
+          }
+        }
+      }
+    }
+
+    final paginatedList = filtered.take(_leaveLimit).toList();
+    final hasMore = filtered.length > _leaveLimit;
+
+    Future<void> selectDateRange() async {
+      final DateTimeRange? picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(2020),
+        lastDate: DateTime(2100),
+        initialDateRange: _leaveStartDate != null && _leaveEndDate != null
+            ? DateTimeRange(start: _leaveStartDate!, end: _leaveEndDate!)
+            : null,
+      );
+      if (picked != null) {
+        setState(() {
+          _leaveStartDate = picked.start;
+          _leaveEndDate = picked.end;
+        });
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Filter Row
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  onChanged: (val) => setState(() {
+                    _leaveSearchQuery = val;
+                    _leaveLimit = 10; // Reset limit on search
+                  }),
+                  decoration: InputDecoration(
+                    hintText: 'Search by staff name...',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: selectDateRange,
+                icon: const Icon(Icons.date_range, size: 16),
+                label: Text(
+                  _leaveStartDate != null && _leaveEndDate != null
+                      ? '${formatNepaliDate(_leaveStartDate!, "dd MMM")} - ${formatNepaliDate(_leaveEndDate!, "dd MMM")}'
+                      : 'Date Range',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                ),
+              ),
+              if (_leaveSearchQuery.isNotEmpty || _leaveStartDate != null) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.clear_all),
+                  tooltip: 'Clear filters',
+                  onPressed: () => setState(() {
+                    _leaveSearchQuery = '';
+                    _leaveStartDate = null;
+                    _leaveEndDate = null;
+                    _leaveLimit = 10;
+                  }),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Leave Summary Card (Only if date range is selected)
+          if (_leaveStartDate != null && _leaveEndDate != null) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: colorScheme.primaryContainer.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.summarize_outlined, color: colorScheme.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _leaveSearchQuery.isNotEmpty
+                              ? 'Approved leaves for "$_leaveSearchQuery"'
+                              : 'Total Approved Leaves (All Staff)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Period: ${formatNepaliDate(_leaveStartDate!, "dd MMM yyyy")} to ${formatNepaliDate(_leaveEndDate!, "dd MMM yyyy")}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: labelColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '$totalLeaveDays days',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          Text(
+            'Leave & Absence Requests (${filtered.length})',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(
+                    child: Text(
+                      'No matching leave requests found',
+                      style: TextStyle(color: labelColor),
+                    ),
+                  )
+                : ListView.builder(
+                    controller: _leaveScrollController,
+                    itemCount: paginatedList.length + (hasMore ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == paginatedList.length) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      }
+                      final l = paginatedList[index];
+                      final isPending = l.status == LeaveStatus.pending;
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: BorderSide(
+                            color: colorScheme.outline.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(14.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    l.staffName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isPending
+                                          ? Colors.orange.withValues(alpha: 0.1)
+                                          : l.status == LeaveStatus.approved
+                                          ? Colors.green.withValues(alpha: 0.1)
+                                          : Colors.red.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      l.status.displayName,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: isPending
+                                            ? Colors.orange
+                                            : l.status == LeaveStatus.approved
+                                            ? Colors.green
+                                            : Colors.red,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Type: ${l.leaveType} | Period: ${formatNepaliDate(l.startDate, 'dd MMM yyyy')} - ${formatNepaliDate(l.endDate, 'dd MMM yyyy')}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: labelColor,
+                                ),
+                              ),
+                              if (l.reason.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Reason: "${l.reason}"',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontStyle: FontStyle.italic,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                              ],
+                              if (isPending) ...[
+                                const SizedBox(height: 12),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    OutlinedButton(
+                                      onPressed: () =>
+                                          _reviewLeave(l, LeaveStatus.rejected),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                        side: const BorderSide(
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                      child: const Text('Reject'),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ElevatedButton(
+                                      onPressed: () =>
+                                          _reviewLeave(l, LeaveStatus.approved),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: const Text('Approve'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // TAB 4: Payroll & Metrics
+  Widget _buildPayrollMetricsTab(
+    BuildContext context,
+    List<UserEntity> staffUsers,
+    List<OrderEntity> orders,
+    List<AttendanceEntity> todayAttendance,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final labelColor = colorScheme.onSurfaceVariant;
+
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Staff Performance & Work Hours',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              IconButton(
+                icon: const Icon(Icons.download),
+                tooltip: 'Export Payroll Report',
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('HR Payroll summary prepared for export.'),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: ListView.builder(
+              itemCount: staffUsers.length,
+              itemBuilder: (context, index) {
+                final u = staffUsers[index];
+                final assignedOrders = orders
+                    .where((o) => o.assignedStaffIds.contains(u.id))
+                    .toList();
+
+                // Retrieve profile if available
+                final profilesAsync = ref.watch(employeeProfilesStreamProvider);
+                final profile = profilesAsync.maybeWhen(
+                  data: (list) {
+                    final matching = list.where((p) => p.userId == u.id);
+                    return matching.isNotEmpty ? matching.first : null;
+                  },
+                  orElse: () => null,
+                );
+
+                final basic = profile?.basicSalary ?? 0.0;
+                final da = profile?.dearnessAllowance ?? 0.0;
+                final bonus = profile?.bonus ?? 0.0;
+                final gross = profile?.grossSalary ?? (basic + da + bonus);
+                final tds = profile?.tds ?? 0.0;
+                final net = profile?.netSalary ?? (gross - (profile?.totalDeductions ?? 0.0));
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(
+                      color: colorScheme.outline.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                u.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${assignedOrders.length} Events Assigned',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Email: ${u.email}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: labelColor,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: u.isActive
+                                    ? Colors.green.withValues(alpha: 0.1)
+                                    : Colors.red.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                u.isActive ? 'Active' : 'Inactive',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: u.isActive ? Colors.green : Colors.red,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        const Divider(height: 10),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Gross: NPR ${gross.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurface,
+                              ),
+                            ),
+                            if (tds > 0)
+                              Text(
+                                'TDS: NPR ${tds.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            Text(
+                              'Net: NPR ${net.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reviewLeave(LeaveRequestEntity l, LeaveStatus status) async {
+    try {
+      await ref
+          .read(leaveRequestNotifierProvider.notifier)
+          .reviewLeave(requestId: l.id, status: status);
+
+      // Dispatch targeted notification to staff member
+      final isApproved = status == LeaveStatus.approved;
+      final notifTitle = isApproved
+          ? 'Leave Approved'
+          : 'Leave Request Rejected';
+      final notifBody = isApproved
+          ? 'Your leave request for ${formatNepaliDate(l.startDate, 'dd MMM')} to ${formatNepaliDate(l.endDate, 'dd MMM')} has been approved.'
+          : 'Your leave request for ${formatNepaliDate(l.startDate, 'dd MMM')} was rejected.';
+
+      await ref
+          .read(notificationNotifierProvider.notifier)
+          .addNotification(
+            NotificationEntity(
+              id: const Uuid().v4(),
+              title: notifTitle,
+              description: notifBody,
+              timestamp: DateTime.now(),
+              type: 'system',
+              targetRole: 'staff',
+              targetUserId: l.staffId,
+            ),
+          );
+
+      FcmSender.sendToUser(
+        userId: l.staffId,
+        title: notifTitle,
+        body: notifBody,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Leave request ${status.name} successfully.'),
+            backgroundColor: isApproved ? Colors.green : Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showManualAttendanceDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const AdminManualAttendanceDialog(),
+    );
+  }
+}

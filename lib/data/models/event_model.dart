@@ -1,0 +1,62 @@
+import 'package:flutter/material.dart';
+import '../../domain/entities/event_entity.dart';
+
+class EventModel extends EventEntity {
+  const EventModel({
+    required super.id,
+    required super.orderId,
+    required super.title,
+    required super.date,
+    required super.location,
+    required super.role,
+    required super.status,
+    required super.completion,
+    super.assignedStaffId,
+    super.color,
+  });
+
+  factory EventModel.fromJson(Map<String, dynamic> json) {
+    return EventModel(
+      id: json['id'] as String,
+      orderId: json['orderId'] as String,
+      title: json['title'] as String,
+      date: DateTime.parse(json['date'] as String),
+      location: json['location'] as String,
+      role: json['role'] as String,
+      status: json['status'] as String,
+      completion: (json['completion'] as num).toDouble(),
+      assignedStaffId: json['assignedStaffId'] as String?,
+      color: json['color'] != null ? Color(json['color'] as int) : null,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'orderId': orderId,
+      'title': title,
+      'date': date.toIso8601String(),
+      'location': location,
+      'role': role,
+      'status': status,
+      'completion': completion,
+      'assignedStaffId': assignedStaffId,
+      'color': color?.toARGB32(),
+    };
+  }
+
+  factory EventModel.fromEntity(EventEntity entity) {
+    return EventModel(
+      id: entity.id,
+      orderId: entity.orderId,
+      title: entity.title,
+      date: entity.date,
+      location: entity.location,
+      role: entity.role,
+      status: entity.status,
+      completion: entity.completion,
+      assignedStaffId: entity.assignedStaffId,
+      color: entity.color,
+    );
+  }
+}
