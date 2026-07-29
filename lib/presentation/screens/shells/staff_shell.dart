@@ -5,6 +5,7 @@ import '../staff/tasks_screen.dart';
 import '../common/calendar_screen.dart';
 import '../staff/staff_attendance_screen.dart';
 import '../staff/staff_profile_screen.dart';
+import '../admin/synology_company_pdf_screen.dart';
 import '../../widgets/app_drawer.dart';
 import '../../providers/auth_provider.dart';
 
@@ -24,6 +25,7 @@ class _StaffShellState extends ConsumerState<StaffShell> {
     CalendarScreen(),
     StaffAttendanceScreen(),
     StaffProfileScreen(),
+    SynologyCompanyPdfScreen(),
   ];
 
   @override
@@ -109,6 +111,7 @@ class _StaffShellState extends ConsumerState<StaffShell> {
                         _buildNavItem(2, Icons.calendar_month_outlined, Icons.calendar_month, 'CALENDAR', primaryColor, unselectedColor),
                         _buildNavItem(3, Icons.access_time_outlined, Icons.access_time_filled, 'MY ATTENDANCE', primaryColor, unselectedColor),
                         _buildNavItem(4, Icons.person_outline, Icons.person, 'MY PROFILE', primaryColor, unselectedColor),
+                        _buildNavItem(5, Icons.picture_as_pdf_outlined, Icons.picture_as_pdf, 'COMPANY PROFILE SHARE', primaryColor, unselectedColor),
                       ],
                     ),
                   ),

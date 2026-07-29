@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart';
-import 'dart:io';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import '../../../data/services/synology_service.dart';
 import '../../../domain/entities/company_document_entity.dart';
 import '../../providers/company_document_provider.dart';
-import '../../providers/client_provider.dart';
 import '../../../core/utils/company_pdf_generator.dart';
 
 class SynologyCompanyPdfScreen extends ConsumerStatefulWidget {
@@ -63,65 +60,7 @@ class _SynologyCompanyPdfScreenState
               // Synology Connection Status Card
               _buildSynologyStatusCard(context, synologyConfig),
 
-              const SizedBox(height: 20),
-
-              // Action buttons section
-              Text(
-                'ACTIONS & UPLOADS',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: colorScheme.onSurfaceVariant,
-                  letterSpacing: 1.1,
-                ),
-              ),
-              const SizedBox(height: 10),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: docState.isLoading
-                          ? null
-                          : () => _onGenerateCompanyPdf(context),
-                      icon: const Icon(Icons.auto_awesome, size: 18),
-                      label: const Text(
-                        'Generate & Upload PDF',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: docState.isLoading
-                          ? null
-                          : () => _showUploadCustomDialog(context),
-                      icon: const Icon(Icons.upload_file, size: 18),
-                      label: const Text(
-                        'Upload PDF File',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
               // Uploaded Documents Section Header
               Row(
@@ -182,7 +121,7 @@ class _SynologyCompanyPdfScreenState
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Click "Generate & Upload PDF" to create an official profile PDF and store it in Synology NAS.',
+                        'Company profile files in Synology NAS will appear here for sharing.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,
@@ -379,7 +318,7 @@ class _SynologyCompanyPdfScreenState
                   onPressed: () => _showShareToClientDialog(context, doc),
                   icon: const Icon(Icons.share_rounded, size: 16),
                   label: const Text(
-                    'SHARE TO CLIENT',
+                    'SHARE VIA APPS / WHATSAPP',
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -527,264 +466,203 @@ class _SynologyCompanyPdfScreenState
     );
   }
 
-  Future<void> _onGenerateCompanyPdf(BuildContext context) async {
-    final titleController = TextEditingController(
-        text: 'ES Workspace Official Company Profile & Services');
-    final descController = TextEditingController(
-        text: 'Comprehensive corporate overview, technical event services & banking details');
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Generate & Upload Company PDF'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: 'Document Title',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Generate & Upload'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm == true && mounted) {
-      final success = await ref
-          .read(companyDocumentNotifierProvider.notifier)
-          .generateAndUploadCompanyPdf(
-            title: titleController.text.trim(),
-            description: descController.text.trim(),
-          );
-
-      if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Company details PDF uploaded to Synology NAS!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to upload PDF to Synology'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    }
-  }
-
-  void _showUploadCustomDialog(BuildContext context) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-      withData: true,
-    );
-
-    if (result == null || result.files.isEmpty) return;
-
-    final pickedFile = result.files.first;
-    Uint8List? fileBytes = pickedFile.bytes;
-    if (fileBytes == null && pickedFile.path != null) {
-      fileBytes = await File(pickedFile.path!).readAsBytes();
-    }
-
-    if (fileBytes == null || !context.mounted) return;
-
-    final filename = pickedFile.name.isNotEmpty ? pickedFile.name : 'Company_Document.pdf';
-    final titleController = TextEditingController(text: filename.replaceAll('.pdf', '').replaceAll('_', ' '));
-    final descController = TextEditingController(text: 'Official company PDF document');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Upload PDF to Synology NAS'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: 'Document Title',
-                hintText: 'e.g. Company Details 2026',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(
-                labelText: 'Description & Scope',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final success = await ref
-                  .read(companyDocumentNotifierProvider.notifier)
-                  .uploadCustomPdf(
-                    fileBytes: fileBytes!,
-                    filename: filename,
-                    title: titleController.text.trim().isEmpty
-                        ? filename
-                        : titleController.text.trim(),
-                    description: descController.text.trim(),
-                  );
-              if (mounted) {
-                if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Uploaded to Synology NAS successfully!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Failed to upload PDF to Synology'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Upload to Synology'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showShareToClientDialog(
       BuildContext context, CompanyDocumentEntity doc) {
-    final clientState = ref.read(clientNotifierProvider);
-    final clients = clientState.clients;
-
-    String selectedClientName = clients.isNotEmpty ? clients.first.name : 'Valued Client';
+    final nameController = TextEditingController();
     final customNoteController = TextEditingController();
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.share, color: Colors.blue),
-                SizedBox(width: 8),
-                Text('Share PDF to Client', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              ],
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.share_rounded, color: Colors.green, size: 22),
             ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Select Client:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: 6),
-                  if (clients.isNotEmpty)
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedClientName,
-                      decoration: const InputDecoration(border: OutlineInputBorder()),
-                      items: clients
-                          .map((c) => DropdownMenuItem(value: c.name, child: Text(c.name)))
-                          .toList(),
-                      onChanged: (val) {
-                        if (val != null) setModalState(() => selectedClientName = val);
-                      },
-                    )
-                  else
-                    TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Enter Client / Contact Name',
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (val) => selectedClientName = val,
-                    ),
-
-                  const SizedBox(height: 14),
-
-                  Text('Document to Share:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.picture_as_pdf, color: Colors.red, size: 20),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            doc.title,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                        ),
-                      ],
-                    ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Share Company Profile',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Document Info Card
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
                   ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.picture_as_pdf_rounded, color: Colors.red, size: 28),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              doc.title,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Synology PDF • ${(doc.fileSize / 1024).toStringAsFixed(1)} KB',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-                  const SizedBox(height: 14),
-                  Text('Synology Share Link:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: 4),
-                  SelectableText(
+                const SizedBox(height: 16),
+
+                // Optional Recipient Name
+                Text(
+                  'RECIPIENT NAME (OPTIONAL)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Client Name / Company Name',
+                    prefixIcon: const Icon(Icons.person_outline, size: 18),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.all(10),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Custom Message / Note
+                Text(
+                  'CUSTOM MESSAGE / NOTE (OPTIONAL)',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: customNoteController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Please check our updated event service details and package rates.',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.all(10),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Synology Link Box
+                Text(
+                  'SYNOLOGY DOWNLOAD & SHARE LINK',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                  ),
+                  child: SelectableText(
                     doc.shareUrl,
                     style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w600),
                   ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.send_rounded, size: 16),
-                label: const Text('SHARE NOW'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
                 ),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  ref
-                      .read(companyDocumentNotifierProvider.notifier)
-                      .shareDocumentToClient(
-                        doc: doc,
-                        clientName: selectedClientName,
-                        customNote: customNoteController.text.trim(),
-                      );
-                },
-              ),
-            ],
-          );
-        },
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.copy_rounded, size: 16),
+            label: const Text('Copy Link'),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: doc.shareUrl));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Synology link copied to clipboard!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+          ),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.send_rounded, size: 16),
+            label: const Text(
+              'SHARE VIA APPS / WHATSAPP',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade700,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref
+                  .read(companyDocumentNotifierProvider.notifier)
+                  .shareDocumentToClient(
+                    doc: doc,
+                    clientName: nameController.text.trim(),
+                    customNote: customNoteController.text.trim(),
+                  );
+            },
+          ),
+        ],
       ),
     );
   }

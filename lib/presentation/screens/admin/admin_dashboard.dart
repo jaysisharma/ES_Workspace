@@ -11,6 +11,7 @@ import '../../widgets/dashboard/admin_summary_card.dart';
 import '../../widgets/dashboard/order_card.dart';
 import '../common/notifications_screen.dart';
 import '../common/calendar_screen.dart';
+import 'synology_company_pdf_screen.dart';
 import '../../providers/notification_notifier.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -123,45 +124,70 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                     ),
                   ],
                 ),
-                GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    SlidePageRoute(page: const NotificationsScreen()),
-                  ),
-                  child: Stack(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surface,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: colorScheme.outline),
-                        ),
-                        child: Icon(
-                          Icons.notifications_none_rounded,
-                          color: colorScheme.onSurface,
-                          size: 24,
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const SynologyCompanyPdfScreen()),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        side: BorderSide(color: colorScheme.primary),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: Icon(Icons.picture_as_pdf_outlined, size: 16, color: colorScheme.primary),
+                      label: Text(
+                        'Company PDF',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
                         ),
                       ),
-                      if (unreadCount > 0)
-                        Positioned(
-                          right: 8,
-                          top: 8,
-                          child: Container(
-                            width: 10,
-                            height: 10,
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const NotificationsScreen()),
+                      ),
+                      child: Stack(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: Colors.red,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: colorScheme.surface,
-                                width: 2,
-                              ),
+                              color: colorScheme.surface,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: colorScheme.outline),
+                            ),
+                            child: Icon(
+                              Icons.notifications_none_rounded,
+                              color: colorScheme.onSurface,
+                              size: 24,
                             ),
                           ),
-                        ),
-                    ],
-                  ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: 8,
+                              top: 8,
+                              child: Container(
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: colorScheme.surface,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

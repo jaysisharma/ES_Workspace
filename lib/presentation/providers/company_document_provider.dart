@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../domain/entities/company_document_entity.dart';
 import '../../data/repositories/firestore_company_document_repository.dart';
@@ -183,26 +184,36 @@ class CompanyDocumentNotifier extends Notifier<CompanyDocumentState> {
 
   Future<void> shareDocumentToClient({
     required CompanyDocumentEntity doc,
-    required String clientName,
+    String? clientName,
     String? customNote,
   }) async {
+    final greeting = (clientName != null && clientName.trim().isNotEmpty)
+        ? 'Hello ${clientName.trim()},\n\n'
+        : 'Namaste!\n\n';
+    final note = (customNote != null && customNote.trim().isNotEmpty)
+        ? '\n\nNote: ${customNote.trim()}'
+        : '';
     final message = '''
-Hello ${clientName.isNotEmpty ? clientName : 'Client'},
+${greeting}Please find our official Company Profile & Details document from ES Workspace:
 
-Please find attached our official Company Profile & Details document from ES Workspace:
-
-📄 Document: ${doc.title}
-${doc.description.isNotEmpty ? '📝 Details: ${doc.description}\n' : ''}
+📄 ${doc.title}
+${doc.description.isNotEmpty ? '📝 ${doc.description}\n' : ''}
 🔗 Synology NAS Download & Sharing Link:
-${doc.shareUrl}
-
-If you have any questions or require custom event quotations, please let us know!
+${doc.shareUrl}$note
 
 Best Regards,
-ES Workspace Management Team
+Event Solution / ES Workspace Team
 ''';
 
-    await Share.share(message, subject: 'Company Profile & Details - ES Workspace');
+    try {
+      await Share.share(message, subject: 'Company Profile - Event Solution');
+    } catch (e) {
+      // Fallback for Windows desktop if share DLL is missing or unsupported
+      await Clipboard.setData(ClipboardData(text: message));
+      state = state.copyWith(
+        successMessage: 'Share text and Synology link copied to clipboard!',
+      );
+    }
   }
 }
 

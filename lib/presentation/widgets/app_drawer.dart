@@ -87,18 +87,14 @@ class AppDrawer extends ConsumerWidget {
                     context.pushPage(const InventoryManagementScreen());
                   },
                 ),
-                if (ref.watch(authNotifierProvider).user?.role ==
-                        UserRole.admin ||
-                    ref.watch(authNotifierProvider).user?.role ==
-                        UserRole.founder)
-                  _DrawerTile(
-                    icon: Icons.cloud_upload_outlined,
-                    label: 'Company PDF (Synology)',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.pushPage(const SynologyCompanyPdfScreen());
-                    },
-                  ),
+                _DrawerTile(
+                  icon: Icons.picture_as_pdf_outlined,
+                  label: 'Company Profile & Share (Synology)',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.pushPage(const SynologyCompanyPdfScreen());
+                  },
+                ),
                 _DrawerTile(
                   icon: Icons.description_outlined,
                   label: 'Purchase Orders',

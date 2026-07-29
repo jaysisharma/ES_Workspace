@@ -11,6 +11,7 @@ import '../../providers/notification_notifier.dart';
 import '../common/event_task_detail_screen.dart';
 import '../../widgets/common/shimmer_loading.dart';
 import '../../widgets/leave_request_sheet.dart';
+import '../admin/synology_company_pdf_screen.dart';
 
 class StaffDashboard extends ConsumerStatefulWidget {
   const StaffDashboard({super.key});
@@ -76,6 +77,27 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
                 ),
                 Row(
                   children: [
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const SynologyCompanyPdfScreen()),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        side: BorderSide(color: colorScheme.primary),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: Icon(Icons.picture_as_pdf_outlined, size: 16, color: colorScheme.primary),
+                      label: Text(
+                        'Company PDF',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     OutlinedButton.icon(
                       onPressed: () => showStaffLeaveRequestSheet(context, ref),
                       style: OutlinedButton.styleFrom(

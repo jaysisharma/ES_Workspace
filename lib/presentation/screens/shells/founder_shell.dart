@@ -9,6 +9,7 @@ import '../admin/admin_attendance_dashboard.dart';
 import '../common/revenue_summary_screen.dart';
 import '../common/financial_ledger_screen.dart';
 import '../common/event_financial_report_screen.dart';
+import '../admin/synology_company_pdf_screen.dart';
 import '../common/settings_screen.dart';
 
 class FounderShell extends ConsumerWidget {
@@ -25,6 +26,7 @@ class FounderShell extends ConsumerWidget {
       RevenueSummaryScreen(),
       FinancialLedgerScreen(),
       EventFinancialReportScreen(),
+      SynologyCompanyPdfScreen(),
       SettingsScreen(),
     ];
 
@@ -111,7 +113,8 @@ class FounderShell extends ConsumerWidget {
                         _buildNavItem(ref, selectedIndex, 3, Icons.payments_outlined, Icons.payments, 'FINANCIALS', primaryColor, unselectedColor),
                         _buildNavItem(ref, selectedIndex, 4, Icons.account_balance_wallet_outlined, Icons.account_balance_wallet, 'FINANCIAL LEDGER', primaryColor, unselectedColor),
                         _buildNavItem(ref, selectedIndex, 5, Icons.analytics_outlined, Icons.analytics, 'EVENT REPORTS', primaryColor, unselectedColor),
-                        _buildNavItem(ref, selectedIndex, 6, Icons.settings_outlined, Icons.settings, 'SETTINGS', primaryColor, unselectedColor),
+                        _buildNavItem(ref, selectedIndex, 6, Icons.picture_as_pdf_outlined, Icons.picture_as_pdf, 'COMPANY PROFILE SHARE', primaryColor, unselectedColor),
+                        _buildNavItem(ref, selectedIndex, 7, Icons.settings_outlined, Icons.settings, 'SETTINGS', primaryColor, unselectedColor),
                       ],
                     ),
                   ),

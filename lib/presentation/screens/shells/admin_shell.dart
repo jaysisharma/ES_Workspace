@@ -13,6 +13,7 @@ import '../common/financial_ledger_screen.dart';
 import '../common/event_financial_report_screen.dart';
 import '../common/calendar_screen.dart';
 import '../common/settings_screen.dart';
+import '../admin/synology_company_pdf_screen.dart';
 import '../../widgets/app_drawer.dart';
 import '../common/create_order_screen.dart';
 import '../../providers/auth_provider.dart';
@@ -39,6 +40,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     FinancialLedgerScreen(),
     EventFinancialReportScreen(),
     CalendarScreen(),
+    SynologyCompanyPdfScreen(),
     SettingsScreen(),
   ];
 
@@ -234,6 +236,14 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                         ),
                         _buildDesktopNavItem(
                           index: 11,
+                          icon: Icons.picture_as_pdf_outlined,
+                          activeIcon: Icons.picture_as_pdf,
+                          label: 'Company Profile Share',
+                          primaryColor: primaryColor,
+                          unselectedColor: unselectedColor,
+                        ),
+                        _buildDesktopNavItem(
+                          index: 12,
                           icon: Icons.settings_outlined,
                           activeIcon: Icons.settings,
                           label: 'Settings',

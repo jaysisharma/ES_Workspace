@@ -5,6 +5,7 @@ import '../../providers/settings_provider.dart';
 import '../../providers/event_providers.dart';
 import '../../../domain/entities/event_entity.dart';
 import '../../widgets/leave_request_sheet.dart';
+import '../admin/synology_company_pdf_screen.dart';
 
 class StaffProfileScreen extends ConsumerStatefulWidget {
   const StaffProfileScreen({super.key});
@@ -355,11 +356,27 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                 child: Column(
                   children: [
                     _SettingsTile(
+                      icon: Icons.picture_as_pdf_outlined,
+                      iconColor: primaryColor,
+                      title: 'Company Profile & Share (Synology)',
+                      subtitle: 'Generate, preview & share company profile PDF',
+                      borderColor: borderColor,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SynologyCompanyPdfScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _SettingsTile(
                       icon: Icons.notifications_active_outlined,
                       iconColor: const Color(0xFFf59e0b),
                       title: 'Push Notifications',
                       subtitle: 'Alerts for new tasks and events',
                       borderColor: borderColor,
+                      isLast: true,
                       trailing: Switch.adaptive(
                         value: settings.notificationsEnabled,
                         activeTrackColor: primaryColor,
