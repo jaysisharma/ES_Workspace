@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import '../../../data/services/synology_service.dart';
@@ -47,6 +49,13 @@ class _SynologyCompanyPdfScreenState
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: docState.isLoading ? null : () => _showUploadCustomDialog(context),
+        icon: const Icon(Icons.upload_file_rounded),
+        label: const Text('Upload PDF', style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: colorScheme.primary,
+        foregroundColor: Colors.white,
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           await ref.read(companyDocumentNotifierProvider.notifier).refresh();
@@ -61,6 +70,64 @@ class _SynologyCompanyPdfScreenState
               _buildSynologyStatusCard(context, synologyConfig),
 
               const SizedBox(height: 16),
+
+              // Upload PDF Action Buttons
+              Text(
+                'UPLOAD & ADD DOCUMENTS',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onSurfaceVariant,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: docState.isLoading
+                          ? null
+                          : () => _showUploadCustomDialog(context),
+                      icon: const Icon(Icons.upload_file_rounded, size: 18),
+                      label: const Text(
+                        'Upload PDF File',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: docState.isLoading
+                          ? null
+                          : () => _onGenerateCompanyPdf(context),
+                      icon: const Icon(Icons.auto_awesome, size: 18),
+                      label: const Text(
+                        'Auto Profile PDF',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
 
               // Uploaded Documents Section Header
               Row(
@@ -467,6 +534,214 @@ class _SynologyCompanyPdfScreenState
   }
 
 
+
+  Future<void> _onGenerateCompanyPdf(BuildContext context) async {
+    final titleController = TextEditingController(
+        text: 'ES Workspace Official Company Profile & Services');
+    final descController = TextEditingController(
+        text: 'Comprehensive corporate overview, technical event services & banking details');
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.auto_awesome, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Auto-Generate Company Profile PDF', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Document Title',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.cloud_upload_rounded, size: 16),
+            label: const Text('Generate & Upload'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      final success = await ref
+          .read(companyDocumentNotifierProvider.notifier)
+          .generateAndUploadCompanyPdf(
+            title: titleController.text.trim(),
+            description: descController.text.trim(),
+          );
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Company details PDF generated & uploaded to Synology NAS!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to upload PDF to Synology'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _showUploadCustomDialog(BuildContext context) async {
+    FilePickerResult? result;
+    try {
+      result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: true,
+      );
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to open file picker: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (result == null || result.files.isEmpty) return;
+
+    final pickedFile = result.files.first;
+    Uint8List? fileBytes = pickedFile.bytes;
+    if (fileBytes == null && pickedFile.path != null) {
+      fileBytes = await File(pickedFile.path!).readAsBytes();
+    }
+
+    if (fileBytes == null || !context.mounted) return;
+
+    final filename = pickedFile.name.isNotEmpty ? pickedFile.name : 'Company_Document.pdf';
+    final titleController = TextEditingController(
+        text: filename.replaceAll('.pdf', '').replaceAll('_', ' '));
+    final descController =
+        TextEditingController(text: 'Official company PDF document');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.upload_file_rounded, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Upload PDF to Synology NAS',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Document Title',
+                  hintText: 'e.g. Company Profile & Package Rates 2026',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descController,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Description (Optional)',
+                  hintText: 'Brief description of document contents',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.cloud_upload_rounded, size: 16),
+            label: const Text('UPLOAD TO SYNOLOGY'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final success = await ref
+                  .read(companyDocumentNotifierProvider.notifier)
+                  .uploadCustomPdf(
+                    fileBytes: fileBytes!,
+                    filename: filename,
+                    title: titleController.text.trim().isEmpty
+                        ? filename
+                        : titleController.text.trim(),
+                    description: descController.text.trim(),
+                  );
+              if (mounted) {
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('PDF uploaded to Synology NAS successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to upload PDF to Synology NAS'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showShareToClientDialog(
       BuildContext context, CompanyDocumentEntity doc) {

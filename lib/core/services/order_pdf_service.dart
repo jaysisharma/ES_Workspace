@@ -67,6 +67,11 @@ class OrderPdfService {
     required List<OrderItemEntity> items,
     List<ExpenseEntity> additionalRevenue = const [],
     bool showFinancials = false,
+    double managementCharge = 0.0,
+    double managementChargeRate = 0.0,
+    double discount = 0.0,
+    double discountRate = 0.0,
+    double? vatRate,
     void Function(String)? onProgress,
   }) async {
     onProgress?.call('Processing ${items.length} items...');
@@ -128,6 +133,11 @@ class OrderPdfService {
                 itemRows,
                 showFinancials: showFinancials,
                 additionalRevenue: revenueRows,
+                managementCharge: managementCharge,
+                managementChargeRate: managementChargeRate,
+                discount: discount,
+                discountRate: discountRate,
+                customVatRate: vatRate,
               ),
               pw.SizedBox(height: 16),
             ],
@@ -738,6 +748,11 @@ class OrderPdfService {
     List<_PdfItemData> items, {
     bool showFinancials = false,
     List<_PdfRevenueData> additionalRevenue = const [],
+    double managementCharge = 0.0,
+    double managementChargeRate = 0.0,
+    double discount = 0.0,
+    double discountRate = 0.0,
+    double? customVatRate,
   }) {
     final headers = showFinancials
         ? ['SN', 'Vendor', 'Item', 'Qty', 'Unit', 'Type', 'Days', 'Rate', 'Amount']
@@ -746,10 +761,30 @@ class OrderPdfService {
         ? [0.7, 1.8, 2.5, 0.8, 0.9, 1.0, 0.8, 1.4, 1.6]
         : [0.8, 2.2, 3.2, 2.2, 1.0, 1.0, 1.0];
 
-    final double grandSubtotal = showFinancials
+    final double subtotal = showFinancials
         ? items.fold(0.0, (sum, item) => sum + item.amount) +
           additionalRevenue.fold(0.0, (sum, e) => sum + e.amount)
         : 0.0;
+
+    final double computedMgtCharge = managementCharge > 0
+        ? managementCharge
+        : (managementChargeRate > 0 ? (subtotal * managementChargeRate / 100) : 0.0);
+
+    final double computedDiscount = discount > 0
+        ? discount
+        : (discountRate > 0 ? (subtotal * discountRate / 100) : 0.0);
+
+    final double netTotal = subtotal + computedMgtCharge - computedDiscount;
+
+    final double effectiveVatRate = (customVatRate != null && customVatRate >= 0)
+        ? customVatRate
+        : order.vatRate;
+
+    final double computedVat = effectiveVatRate > 0.0001
+        ? (netTotal * effectiveVatRate)
+        : 0.0;
+
+    final double grandTotal = netTotal + computedVat;
 
     int sn = 1;
     final rows = <pw.TableRow>[
@@ -825,13 +860,36 @@ class OrderPdfService {
           mainAxisAlignment: pw.MainAxisAlignment.end,
           children: [
             pw.Container(
-              width: 200,
+              width: 240,
+              padding: const pw.EdgeInsets.all(8),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: _borderColor, width: 0.5),
+                borderRadius: pw.BorderRadius.circular(2),
+              ),
               child: pw.Column(children: [
-                _summaryRow('SUBTOTAL', 'Rs. ${grandSubtotal.toStringAsFixed(0)}'),
-                if (order.vatRate > 0.0001)
-                  _summaryRow('VAT (${(order.vatRate * 100).toStringAsFixed(0)}%)', 'Rs. ${(grandSubtotal * order.vatRate).toStringAsFixed(0)}'),
+                _summaryRow('SUBTOTAL', 'Rs. ${subtotal.toStringAsFixed(0)}'),
+                if (computedMgtCharge > 0)
+                  _summaryRow(
+                    managementChargeRate > 0
+                        ? 'MANAGEMENT CHARGE (${managementChargeRate.toStringAsFixed(0)}%)'
+                        : 'MANAGEMENT CHARGE',
+                    'Rs. ${computedMgtCharge.toStringAsFixed(0)}',
+                  ),
+                if (computedDiscount > 0)
+                  _summaryRow(
+                    discountRate > 0
+                        ? 'DISCOUNT (${discountRate.toStringAsFixed(0)}%)'
+                        : 'DISCOUNT',
+                    '- Rs. ${computedDiscount.toStringAsFixed(0)}',
+                  ),
+                _summaryRow('TOTAL', 'Rs. ${netTotal.toStringAsFixed(0)}', isBold: true),
+                if (computedVat > 0)
+                  _summaryRow(
+                    'VAT (${(effectiveVatRate * 100).toStringAsFixed(0)}%)',
+                    'Rs. ${computedVat.toStringAsFixed(0)}',
+                  ),
                 pw.Divider(color: _borderColor, thickness: 1),
-                _summaryRow('GRAND TOTAL', 'Rs. ${(grandSubtotal * (1 + order.vatRate)).toStringAsFixed(0)}', isBold: true, fontSize: 10),
+                _summaryRow('GRAND TOTAL', 'Rs. ${grandTotal.toStringAsFixed(0)}', isBold: true, fontSize: 10),
               ]),
             ),
           ],

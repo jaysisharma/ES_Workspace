@@ -540,76 +540,210 @@ class _RevenueBreakdownScreenState
 
   void _showRevenuePdfOptions() {
     final colorScheme = Theme.of(context).colorScheme;
+    final mgtChargeController = TextEditingController();
+    final discountController = TextEditingController();
+    final vatRateController = TextEditingController(
+      text: widget.order.vatRate > 0
+          ? (widget.order.vatRate * 100).toStringAsFixed(0)
+          : '',
+    );
+    bool isMgtChargePercent = true;
+    bool isDiscountPercent = true;
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Revenue PDF',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            const SizedBox(height: 20),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.fromLTRB(
+            24,
+            20,
+            24,
+            MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Revenue PDF Options',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onSurface,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
                 ),
-                child: Icon(Icons.print_outlined, color: colorScheme.primary),
-              ),
-              title: const Text(
-                'Print / Save',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: const Text('Open print dialog to save or print'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _executeRevenuePdf(share: false);
-              },
-            ),
-            const Divider(),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 12),
+
+                // Management Charge (Optional)
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: mgtChargeController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Management Charge (Optional)',
+                          hintText: isMgtChargePercent ? 'e.g. 10 (%)' : 'e.g. 5000 (NPR)',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          prefixIcon: const Icon(Icons.percent, size: 18),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ToggleButtons(
+                      isSelected: [isMgtChargePercent, !isMgtChargePercent],
+                      borderRadius: BorderRadius.circular(8),
+                      constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
+                      onPressed: (index) {
+                        setModalState(() => isMgtChargePercent = index == 0);
+                      },
+                      children: const [
+                        Text('%', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('NPR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ],
                 ),
-                child: const Icon(Icons.share_outlined, color: Colors.green),
-              ),
-              title: const Text(
-                'Share',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: const Text('Share PDF via WhatsApp, email, etc.'),
-              onTap: () {
-                Navigator.pop(ctx);
-                _executeRevenuePdf(share: true);
-              },
+                const SizedBox(height: 12),
+
+                // Discount (Optional)
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: discountController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Discount (Optional)',
+                          hintText: isDiscountPercent ? 'e.g. 5 (%)' : 'e.g. 2000 (NPR)',
+                          isDense: true,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          prefixIcon: const Icon(Icons.local_offer_outlined, size: 18),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ToggleButtons(
+                      isSelected: [isDiscountPercent, !isDiscountPercent],
+                      borderRadius: BorderRadius.circular(8),
+                      constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
+                      onPressed: (index) {
+                        setModalState(() => isDiscountPercent = index == 0);
+                      },
+                      children: const [
+                        Text('%', style: TextStyle(fontWeight: FontWeight.bold)),
+                        Text('NPR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // VAT Rate (Optional)
+                TextField(
+                  controller: vatRateController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'VAT % (Optional)',
+                    hintText: 'e.g. 13',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    prefixIcon: const Icon(Icons.receipt_long, size: 18),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.print_outlined, size: 18),
+                        label: const Text('PREVIEW / PRINT'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () {
+                          final valMgt = double.tryParse(mgtChargeController.text.trim()) ?? 0.0;
+                          final valDisc = double.tryParse(discountController.text.trim()) ?? 0.0;
+                          final valVat = double.tryParse(vatRateController.text.trim());
+
+                          Navigator.pop(ctx);
+                          _executeRevenuePdf(
+                            share: false,
+                            managementCharge: isMgtChargePercent ? 0.0 : valMgt,
+                            managementChargeRate: isMgtChargePercent ? valMgt : 0.0,
+                            discount: isDiscountPercent ? 0.0 : valDisc,
+                            discountRate: isDiscountPercent ? valDisc : 0.0,
+                            vatRate: valVat != null ? (valVat / 100.0) : null,
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.share_outlined, size: 18),
+                        label: const Text('SHARE PDF'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade700,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () {
+                          final valMgt = double.tryParse(mgtChargeController.text.trim()) ?? 0.0;
+                          final valDisc = double.tryParse(discountController.text.trim()) ?? 0.0;
+                          final valVat = double.tryParse(vatRateController.text.trim());
+
+                          Navigator.pop(ctx);
+                          _executeRevenuePdf(
+                            share: true,
+                            managementCharge: isMgtChargePercent ? 0.0 : valMgt,
+                            managementChargeRate: isMgtChargePercent ? valMgt : 0.0,
+                            discount: isDiscountPercent ? 0.0 : valDisc,
+                            discountRate: isDiscountPercent ? valDisc : 0.0,
+                            vatRate: valVat != null ? (valVat / 100.0) : null,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _executeRevenuePdf({required bool share}) async {
+  Future<void> _executeRevenuePdf({
+    required bool share,
+    double managementCharge = 0.0,
+    double managementChargeRate = 0.0,
+    double discount = 0.0,
+    double discountRate = 0.0,
+    double? vatRate,
+  }) async {
     String progressMessage = 'Generating Revenue Summary PDF…';
     StateSetter setSnackBarState = (_) {};
 
@@ -649,6 +783,11 @@ class _RevenueBreakdownScreenState
         items: _items,
         additionalRevenue: _manualRevenues,
         showFinancials: true,
+        managementCharge: managementCharge,
+        managementChargeRate: managementChargeRate,
+        discount: discount,
+        discountRate: discountRate,
+        vatRate: vatRate,
         onProgress: (status) {
           if (mounted) setSnackBarState(() => progressMessage = status);
         },
