@@ -35,6 +35,17 @@ This document tracks the architectural implementation, completed features, and p
 ### 6. Revisions
 - **Domain**: `RevisionEntity` scaffolded with clean architecture entity formatting.
 
+### 7. Inventory Management
+- **Domain**: `InventoryItemEntity`, `InventoryRepository` (CRUD operations, stock adjustment logic).
+- **Data**: `FirestoreInventoryRepository` mapped to Cloud Firestore `'inventory'`.
+- **Presentation**: `InventoryNotifier` (Riverpod notifier managing items, metrics, categories, search filtering), `InventoryManagementScreen`, `AddEditInventoryScreen`.
+
+### 8. Company PDF & Synology NAS Integration
+- **Infrastructure**: `SynologyService` (handles Synology Web API authentication, multi-part PDF file upload to Synology FileStation, sharing link generation).
+- **Domain & Data**: `CompanyDocumentEntity`, `FirestoreCompanyDocumentRepository` (stores document metadata and Synology download links in Cloud Firestore).
+- **PDF Generation**: `CompanyPdfGenerator` (generates official Company Profile PDF with services, contact, terms, and Synology NAS verification stamp).
+- **Presentation**: `CompanyDocumentNotifier` & `SynologyCompanyPdfScreen` featuring Synology NAS status configuration, PDF preview, document management, and one-click sharing to clients via system share (`share_plus`).
+
 ---
 
 ## ⏳ Pending / Remaining Tasks

@@ -1,6 +1,0 @@
-Analyzing order_app...                                          
-
-   info • The private field _manualRevenues could be 'final' • lib/presentation/screens/revenue_breakdown_screen.dart:33:23 • prefer_final_fields
-   info • Statements in an if should be enclosed in a block • lib/presentation/screens/revenue_breakdown_screen.dart:141:58 • curly_braces_in_flow_control_structures
-
-2 issues found. (ran in 7.7s)

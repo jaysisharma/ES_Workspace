@@ -13,6 +13,8 @@ import '../../../core/utils/excel_export_helper.dart';
 import '../../providers/order_providers.dart';
 import 'profile_screen.dart';
 import '../../widgets/manage_geofence_dialog.dart';
+import '../admin/synology_company_pdf_screen.dart';
+import 'inventory_management_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -314,6 +316,44 @@ class SettingsScreen extends ConsumerWidget {
                           builder: (context) => const ManageGeofenceDialog(),
                         );
                       },
+                      trailing: Icon(
+                        Icons.chevron_right,
+                        color: labelColor.withValues(alpha: 0.5),
+                        size: 18,
+                      ),
+                      isLast: false,
+                      textColor: textColor,
+                      labelColor: labelColor,
+                      dividerColor: dividerColor,
+                    ),
+                    _buildActionRow(
+                      title: 'Company PDF & Synology NAS',
+                      subtitle: 'Upload, manage & share company PDF via Synology',
+                      icon: Icons.cloud_upload_outlined,
+                      iconColor: Colors.deepOrange,
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const SynologyCompanyPdfScreen()),
+                      ),
+                      trailing: Icon(
+                        Icons.chevron_right,
+                        color: labelColor.withValues(alpha: 0.5),
+                        size: 18,
+                      ),
+                      isLast: false,
+                      textColor: textColor,
+                      labelColor: labelColor,
+                      dividerColor: dividerColor,
+                    ),
+                    _buildActionRow(
+                      title: 'Inventory & Equipment',
+                      subtitle: 'Track available stock, rates & categories',
+                      icon: Icons.inventory_2_outlined,
+                      iconColor: Colors.purple,
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const InventoryManagementScreen()),
+                      ),
                       trailing: Icon(
                         Icons.chevron_right,
                         color: labelColor.withValues(alpha: 0.5),

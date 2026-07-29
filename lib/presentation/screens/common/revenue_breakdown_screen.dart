@@ -9,6 +9,11 @@ import '../../providers/order_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../widgets/vendor_autocomplete_field.dart';
 import '../../providers/vendor_provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'dart:typed_data';
+import '../../../data/services/synology_service.dart';
+import '../../providers/company_document_provider.dart';
 import 'pdf_preview_screen.dart';
 import 'package:printing/printing.dart';
 
@@ -148,6 +153,10 @@ class _RevenueBreakdownScreenState
     String category = revenue?.category ?? 'Labour';
     String billingType = revenue?.billingType ?? 'event';
     String? selectedVendorId = revenue?.vendorId;
+    String? currentBillUrl = revenue?.billUrl;
+    String? currentBillPath = revenue?.billPath;
+    String? currentBillName = revenue?.billName;
+    bool isUploadingBill = false;
     final vendorNameController = TextEditingController(
       text: revenue?.vendorName ?? '',
     );
@@ -378,6 +387,101 @@ class _RevenueBreakdownScreenState
                       ],
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'BILL / RECEIPT ATTACHMENT (OPTIONAL)',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: labelColor,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (currentBillUrl != null && currentBillUrl!.isNotEmpty) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.receipt_long, color: Colors.green, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              currentBillName ?? 'Bill Document',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                            onPressed: () {
+                              setModalState(() {
+                                currentBillUrl = null;
+                                currentBillPath = null;
+                                currentBillName = null;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    OutlinedButton.icon(
+                      onPressed: isUploadingBill
+                          ? null
+                          : () async {
+                              setModalState(() => isUploadingBill = true);
+                              try {
+                                final result = await FilePicker.platform.pickFiles(
+                                  type: FileType.custom,
+                                  allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+                                  withData: true,
+                                );
+                                if (result != null && result.files.isNotEmpty) {
+                                  final picked = result.files.first;
+                                  Uint8List? bytes = picked.bytes;
+                                  if (bytes == null && picked.path != null) {
+                                    bytes = await File(picked.path!).readAsBytes();
+                                  }
+                                  if (bytes != null) {
+                                    final filename = 'Bill_${DateTime.now().millisecondsSinceEpoch}_${picked.name}';
+                                    final synologyConfig = ref.read(companyDocumentNotifierProvider).synologyConfig;
+                                    final uploadRes = await SynologyService().uploadPdf(
+                                      config: synologyConfig,
+                                      fileBytes: bytes,
+                                      filename: filename,
+                                    );
+                                    setModalState(() {
+                                      currentBillName = picked.name;
+                                      currentBillPath = uploadRes?['synologyPath'] ?? '/EventSolution/ESWORKSPACE_app/$filename';
+                                      currentBillUrl = uploadRes?['shareUrl'] ?? '${synologyConfig.host}/sharing/$filename';
+                                      isUploadingBill = false;
+                                    });
+                                  } else {
+                                    setModalState(() => isUploadingBill = false);
+                                  }
+                                } else {
+                                  setModalState(() => isUploadingBill = false);
+                                }
+                              } catch (e) {
+                                setModalState(() => isUploadingBill = false);
+                              }
+                            },
+                      icon: isUploadingBill
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.upload_file_rounded, size: 18),
+                      label: Text(isUploadingBill ? 'Uploading Bill to Synology...' : 'Upload Bill / Receipt Document (PDF/Image)'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(44),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
@@ -405,6 +509,9 @@ class _RevenueBreakdownScreenState
                               ? null
                               : vendorNameController.text.trim(),
                           createdAt: revenue?.createdAt ?? DateTime.now(),
+                          billUrl: currentBillUrl,
+                          billPath: currentBillPath,
+                          billName: currentBillName,
                         );
 
                         setState(() {
@@ -1016,6 +1123,37 @@ class _RevenueBreakdownScreenState
             'Rate: $currencyLabel ${revenue.rate.toStringAsFixed(0)} | Qty: ${revenue.quantity} | Days: ${revenue.days}',
             style: TextStyle(fontSize: 12, color: labelColor),
           ),
+          if (revenue.hasBill) ...[
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () => _previewBill(context, revenue),
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.receipt_long, size: 14, color: Colors.green),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'Attached Bill: ${revenue.billName ?? "View Attachment"}',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.open_in_new, size: 12, color: Colors.green),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1034,6 +1172,45 @@ class _RevenueBreakdownScreenState
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  void _previewBill(BuildContext context, ExpenseEntity item) {
+    if (item.billUrl == null) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.receipt_long, color: Colors.green),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                item.billName ?? 'Bill / Receipt',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Attached to: ${item.description.isNotEmpty ? item.description : item.category}'),
+            const SizedBox(height: 8),
+            Text('Synology / Storage URL:', style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            SelectableText(
+              item.billUrl!,
+              style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
         ],
       ),
     );

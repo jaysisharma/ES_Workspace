@@ -14,6 +14,8 @@ import '../screens/admin/admin_attendance_dashboard.dart';
 import '../screens/staff/staff_attendance_screen.dart';
 import '../providers/auth_provider.dart';
 import '../../domain/entities/user_entity.dart';
+import '../screens/common/inventory_management_screen.dart';
+import '../screens/admin/synology_company_pdf_screen.dart';
 import 'leave_request_sheet.dart';
 
 class AppDrawer extends ConsumerWidget {
@@ -77,6 +79,26 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                 ],
+                _DrawerTile(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Inventory Management',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.pushPage(const InventoryManagementScreen());
+                  },
+                ),
+                if (ref.watch(authNotifierProvider).user?.role ==
+                        UserRole.admin ||
+                    ref.watch(authNotifierProvider).user?.role ==
+                        UserRole.founder)
+                  _DrawerTile(
+                    icon: Icons.cloud_upload_outlined,
+                    label: 'Company PDF (Synology)',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushPage(const SynologyCompanyPdfScreen());
+                    },
+                  ),
                 _DrawerTile(
                   icon: Icons.description_outlined,
                   label: 'Purchase Orders',

@@ -13,6 +13,9 @@ class ExpenseEntity {
   final String? vendorName;
   final String category; // 'Labour' or 'Transportation'
   final DateTime createdAt;
+  final String? billUrl;
+  final String? billPath;
+  final String? billName;
 
   const ExpenseEntity({
     required this.id,
@@ -29,7 +32,12 @@ class ExpenseEntity {
     this.vendorName,
     required this.category,
     required this.createdAt,
+    this.billUrl,
+    this.billPath,
+    this.billName,
   });
+
+  bool get hasBill => billUrl != null && billUrl!.isNotEmpty;
 
   ExpenseEntity copyWith({
     String? id,
@@ -46,6 +54,9 @@ class ExpenseEntity {
     String? vendorName,
     String? category,
     DateTime? createdAt,
+    String? billUrl,
+    String? billPath,
+    String? billName,
   }) {
     return ExpenseEntity(
       id: id ?? this.id,
@@ -62,6 +73,9 @@ class ExpenseEntity {
       vendorName: vendorName ?? this.vendorName,
       category: category ?? this.category,
       createdAt: createdAt ?? this.createdAt,
+      billUrl: billUrl ?? this.billUrl,
+      billPath: billPath ?? this.billPath,
+      billName: billName ?? this.billName,
     );
   }
 
@@ -83,7 +97,10 @@ class ExpenseEntity {
           vendorId == other.vendorId &&
           vendorName == other.vendorName &&
           category == other.category &&
-          createdAt == other.createdAt;
+          createdAt == other.createdAt &&
+          billUrl == other.billUrl &&
+          billPath == other.billPath &&
+          billName == other.billName;
 
   @override
   int get hashCode =>
@@ -100,5 +117,8 @@ class ExpenseEntity {
       vendorId.hashCode ^
       vendorName.hashCode ^
       category.hashCode ^
-      createdAt.hashCode;
+      createdAt.hashCode ^
+      billUrl.hashCode ^
+      billPath.hashCode ^
+      billName.hashCode;
 }

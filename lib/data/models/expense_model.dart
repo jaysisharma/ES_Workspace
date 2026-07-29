@@ -16,6 +16,9 @@ class ExpenseModel extends ExpenseEntity {
     super.vendorName,
     required super.category,
     required super.createdAt,
+    super.billUrl,
+    super.billPath,
+    super.billName,
   });
 
   factory ExpenseModel.fromJson(Map<String, dynamic> json) {
@@ -34,6 +37,9 @@ class ExpenseModel extends ExpenseEntity {
       vendorName: json['vendorName'] as String?,
       category: json['category'] as String? ?? 'Miscellaneous',
       createdAt: DateTime.parse(json['createdAt'] as String),
+      billUrl: json['billUrl'] as String?,
+      billPath: json['billPath'] as String?,
+      billName: json['billName'] as String?,
     );
   }
 
@@ -53,6 +59,9 @@ class ExpenseModel extends ExpenseEntity {
       'vendorName': vendorName,
       'category': category,
       'createdAt': createdAt.toIso8601String(),
+      'billUrl': billUrl,
+      'billPath': billPath,
+      'billName': billName,
     };
   }
 
@@ -72,6 +81,9 @@ class ExpenseModel extends ExpenseEntity {
       vendorName: entity.vendorName,
       category: entity.category,
       createdAt: entity.createdAt,
+      billUrl: entity.billUrl,
+      billPath: entity.billPath,
+      billName: entity.billName,
     );
   }
 }
