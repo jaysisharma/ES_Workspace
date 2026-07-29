@@ -9,6 +9,7 @@ import '../../domain/entities/user_entity.dart';
 import '../providers/attendance_providers.dart';
 import '../providers/hr_providers.dart';
 import '../providers/order_providers.dart';
+import 'calendar/nepali_date_picker_dialog.dart';
 
 class AdminManualAttendanceDialog extends ConsumerStatefulWidget {
   const AdminManualAttendanceDialog({super.key});
@@ -155,14 +156,14 @@ class _AdminManualAttendanceDialogState
                 icon: const Icon(Icons.calendar_month, size: 16),
                 label: Text(formatNepaliDate(_selectedDate, 'dd MMM yyyy (BS)')),
                 onPressed: () async {
-                  final picked = await showMaterialDatePicker(
+                  final picked = await NepaliDatePickerDialog.show(
                     context: context,
-                    initialDate: _selectedDate.toNepaliDateTime(),
-                    firstDate: NepaliDateTime(2070, 1, 1),
-                    lastDate: NepaliDateTime.now().add(const Duration(days: 1)),
+                    title: 'Select Attendance Date (Nepali BS)',
+                    initialStart: _selectedDate,
+                    allowRange: false,
                   );
-                  if (picked != null) {
-                    setState(() => _selectedDate = picked.toDateTime());
+                  if (picked != null && picked['start'] != null) {
+                    setState(() => _selectedDate = picked['start']!);
                   }
                 },
               ),

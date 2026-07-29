@@ -10,6 +10,7 @@ import '../../../domain/entities/event_entity.dart';
 import '../../../domain/entities/order_entity.dart';
 import 'calendar_event_detail_screen.dart';
 import 'order_details_screen.dart';
+import '../../widgets/calendar/custom_nepali_calendar_widget.dart';
 
 class CalendarScreen extends ConsumerStatefulWidget {
   const CalendarScreen({super.key});
@@ -211,146 +212,24 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Month Grid View (Collapsible)
-            AnimatedCrossFade(
-              firstChild: Container(
-                color: isDarkMode ? cardColor : Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 8.0,
-                ),
-                child: Column(
-                  children: [
-                    // Weekday Headers
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-                          .map(
-                            (d) => SizedBox(
-                              width: 40,
-                              child: Text(
-                                d,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: labelColor,
-                                ),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                    const SizedBox(height: 8),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 7,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                            childAspectRatio: 1,
-                          ),
-                      itemCount: 42, // 6 weeks
-                      itemBuilder: (context, index) {
-                        // Grid anchored to the Nepali month's first day
-                        final firstDayOfNepaliMonth = NepaliDateTime(
-                          selectedNepali.year,
-                          selectedNepali.month,
-                          1,
-                        ).toDateTime();
-                        final firstDayOffset =
-                            firstDayOfNepaliMonth.weekday - 1;
-                        final date = firstDayOfNepaliMonth.add(
-                          Duration(days: index - firstDayOffset),
-                        );
-
-                        final dateNepali = date.toNepaliDateTime();
-                        final isCurrentMonth =
-                            dateNepali.year == selectedNepali.year &&
-                            dateNepali.month == selectedNepali.month;
-                        final isSelected =
-                            date.year == _selectedDate.year &&
-                            date.month == _selectedDate.month &&
-                            date.day == _selectedDate.day;
-                        final isToday =
-                            date.year == DateTime.now().year &&
-                            date.month == DateTime.now().month &&
-                            date.day == DateTime.now().day;
-                        final hasEvent = allScheduledDates.contains(
-                          DateTime(date.year, date.month, date.day),
-                        );
-
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedDate = date;
-                              _isDayFiltered = true;
-                            });
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? primaryColor
-                                  : (isToday
-                                        ? primaryColor.withValues(alpha: 0.1)
-                                        : Colors.transparent),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: isSelected
-                                    ? primaryColor
-                                    : (isToday
-                                          ? primaryColor.withValues(alpha: 0.5)
-                                          : Colors.transparent),
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  '${date.day}',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: isSelected || isToday
-                                        ? FontWeight.bold
-                                        : FontWeight.normal,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : (isCurrentMonth
-                                              ? textColor
-                                              : labelColor.withValues(
-                                                  alpha: 0.5,
-                                                )),
-                                  ),
-                                ),
-                                if (hasEvent)
-                                  Container(
-                                    margin: const EdgeInsets.only(top: 2),
-                                    width: 4,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? Colors.white
-                                          : primaryColor,
-                                      shape: BoxShape.circle,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+              child: CustomNepaliCalendarWidget(
+                selectedDate: selectedNepali,
+                eventDates: allScheduledDates,
+                isExpanded: _isCalendarExpanded,
+                onToggleExpand: () {
+                  setState(() {
+                    _isCalendarExpanded = !_isCalendarExpanded;
+                  });
+                },
+                onDateSelected: (nepaliDate) {
+                  setState(() {
+                    _selectedDate = nepaliDate.toDateTime();
+                    _isDayFiltered = true;
+                  });
+                },
               ),
-              secondChild: const SizedBox.shrink(),
-              crossFadeState: _isCalendarExpanded
-                  ? CrossFadeState.showFirst
-                  : CrossFadeState.showSecond,
-              duration: const Duration(milliseconds: 300),
             ),
 
             // Monthly Day Header

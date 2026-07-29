@@ -255,6 +255,31 @@ class OrderNotifier extends Notifier<OrderState> {
     }
   }
 
+  Future<void> toggleArchiveOrder(String orderId, bool isArchived) async {
+    try {
+      final repository = ref.read(orderRepositoryProvider);
+      final order = await repository.getOrderById(orderId);
+      if (order != null) {
+        final now = DateTime.now();
+        final updatedLogs = List<OrderLogEntity>.from(order.logs)
+          ..add(OrderLogEntity(
+            timestamp: now,
+            message: isArchived ? 'Order archived by admin' : 'Order unarchived by admin',
+          ));
+        final updatedOrder = order.copyWith(
+          isArchived: isArchived,
+          logs: updatedLogs,
+          updatedAt: now,
+        );
+        await repository.updateOrder(updatedOrder);
+        final updatedList = state.orders.map((o) => o.id == orderId ? updatedOrder : o).toList();
+        state = state.copyWith(orders: updatedList);
+      }
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
   Future<void> delete(String id) async {
     state = state.copyWith(isLoading: true, clearError: true);
     try {

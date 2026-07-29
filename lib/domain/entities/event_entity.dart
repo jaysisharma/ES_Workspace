@@ -11,6 +11,8 @@ class EventEntity {
   final String orderId;
   final String? assignedStaffId;
   final Color? color;
+  final bool isArchived;
+  final DateTime? createdAt;
 
   const EventEntity({
     required this.id,
@@ -23,6 +25,8 @@ class EventEntity {
     required this.completion,
     this.assignedStaffId,
     this.color,
+    this.isArchived = false,
+    this.createdAt,
   });
 
   EventEntity copyWith({
@@ -36,6 +40,8 @@ class EventEntity {
     double? completion,
     String? assignedStaffId,
     Color? color,
+    bool? isArchived,
+    DateTime? createdAt,
   }) {
     return EventEntity(
       id: id ?? this.id,
@@ -48,6 +54,8 @@ class EventEntity {
       completion: completion ?? this.completion,
       assignedStaffId: assignedStaffId ?? this.assignedStaffId,
       color: color ?? this.color,
+      isArchived: isArchived ?? this.isArchived,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 

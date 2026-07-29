@@ -390,6 +390,7 @@ class _SyncSetupDialogState extends ConsumerState<SyncSetupDialog> {
             top: 16,
             left: 16,
             child: FloatingActionButton.small(
+              heroTag: 'sync_setup_dialog_fab',
               backgroundColor: Colors.black.withValues(alpha: 0.6),
               foregroundColor: Colors.white,
               onPressed: () {

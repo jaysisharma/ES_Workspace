@@ -12,6 +12,7 @@ import '../../providers/event_notifier.dart';
 import '../../providers/category_providers.dart';
 import '../../providers/client_provider.dart';
 import '../../../domain/entities/client_entity.dart';
+import '../../widgets/calendar/nepali_date_picker_dialog.dart';
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   /// Pass an existing order to enter edit mode.
@@ -136,52 +137,26 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   }
 
   Future<void> _selectDate(BuildContext context, bool isSetup) async {
-    final colorScheme = Theme.of(context).colorScheme;
+    final title = isSetup ? 'Select Setup Date (Nepali BS)' : 'Select Event Date (Nepali BS)';
+    final initialStart = isSetup ? _setupDate : _eventDate;
+    final initialEnd = isSetup ? _setupEndDate : _eventEndDate;
 
-    final DateTimeRange? picked = await showDateRangePicker(
+    final picked = await NepaliDatePickerDialog.show(
       context: context,
-      initialDateRange: DateTimeRange(
-        start: isSetup ? _setupDate : _eventDate,
-        end:
-            (isSetup ? _setupEndDate : _eventEndDate) ??
-            (isSetup ? _setupDate : _eventDate),
-      ),
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: colorScheme,
-            dialogTheme: DialogThemeData(
-              backgroundColor: colorScheme.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(6),
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
+      title: title,
+      initialStart: initialStart,
+      initialEnd: initialEnd,
+      allowRange: true,
     );
 
-    if (picked != null) {
+    if (picked != null && picked['start'] != null) {
       setState(() {
         if (isSetup) {
-          _setupDate = picked.start;
-          _setupEndDate =
-              picked.start.day == picked.end.day &&
-                  picked.start.month == picked.end.month &&
-                  picked.start.year == picked.end.year
-              ? null
-              : picked.end;
+          _setupDate = picked['start']!;
+          _setupEndDate = picked['end'];
         } else {
-          _eventDate = picked.start;
-          _eventEndDate =
-              picked.start.day == picked.end.day &&
-                  picked.start.month == picked.end.month &&
-                  picked.start.year == picked.end.year
-              ? null
-              : picked.end;
+          _eventDate = picked['start']!;
+          _eventEndDate = picked['end'];
         }
       });
     }

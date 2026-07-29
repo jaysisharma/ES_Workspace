@@ -56,6 +56,19 @@ class EventNotifier extends Notifier<EventState> {
     }
   }
 
+  Future<void> toggleArchiveEvent(String eventId, bool isArchived) async {
+    try {
+      final repository = ref.read(eventRepositoryProvider);
+      final event = await repository.getEventById(eventId);
+      if (event != null) {
+        final updatedEvent = event.copyWith(isArchived: isArchived);
+        await repository.updateEvent(updatedEvent);
+      }
+    } catch (e) {
+      state = state.copyWith(errorMessage: e.toString());
+    }
+  }
+
   Future<void> updateCompletion(String eventId, double completion) async {
     try {
       final repository = ref.read(eventRepositoryProvider);

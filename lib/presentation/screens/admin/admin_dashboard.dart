@@ -51,6 +51,38 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     super.dispose();
   }
 
+  bool _matchesOrderQuery(OrderEntity o, String rawQuery) {
+    final query = rawQuery.trim().toLowerCase();
+    if (query.isEmpty) return true;
+
+    final cleanNoSymbols = query.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+    final cleanNoPrefix = query
+        .replaceAll('#', '')
+        .replaceAll('order-', '')
+        .replaceAll('ord-', '')
+        .replaceAll('order', '')
+        .replaceAll('id:', '')
+        .trim();
+
+    final orderIdLower = o.id.toLowerCase();
+    final orderIdNoSymbols = orderIdLower.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+
+    final idMatch = orderIdLower.contains(query) ||
+        (cleanNoPrefix.isNotEmpty && orderIdLower.contains(cleanNoPrefix)) ||
+        (cleanNoSymbols.isNotEmpty && orderIdNoSymbols.contains(cleanNoSymbols));
+
+    if (idMatch) return true;
+
+    return o.eventName.toLowerCase().contains(query) ||
+        o.venue.toLowerCase().contains(query) ||
+        o.client.toLowerCase().contains(query) ||
+        o.contactPerson.toLowerCase().contains(query) ||
+        o.contactNumber.toLowerCase().contains(query) ||
+        o.category.toLowerCase().contains(query) ||
+        o.notes.toLowerCase().contains(query) ||
+        o.description.toLowerCase().contains(query);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -429,6 +461,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                       OrderStatus.inProgress.name,
                                       OrderStatus.completed.name,
                                       OrderStatus.draft.name,
+                                      'archived',
                                     ];
 
                                     return Row(
@@ -439,6 +472,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                         String label;
                                         if (option == 'ALL') {
                                           label = 'ALL';
+                                        } else if (option == 'archived') {
+                                          label = 'ARCHIVED 📦';
                                         } else {
                                           label =
                                               option[0].toUpperCase() +
@@ -474,9 +509,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                                   ? Colors.white
                                                   : labelColor,
                                             ),
-                                            backgroundColor: colorScheme
-                                                .surfaceContainerHighest
-                                                .withValues(alpha: 0.2),
+                                            backgroundColor: isSelected
+                                                ? colorScheme.primary
+                                                : colorScheme
+                                                    .surfaceContainerHighest
+                                                    .withValues(alpha: 0.2),
                                             selectedColor: colorScheme.primary,
                                             shape: RoundedRectangleBorder(
                                               borderRadius: BorderRadius.circular(8),
@@ -522,21 +559,23 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                       dashboardFilterNotifierProvider,
                                     );
                                     final filteredOrders = orders.where((o) {
-                                      final matchesFilter =
-                                          filterState.selectedFilter == 'ALL' ||
-                                          o.status.name == filterState.selectedFilter;
-                                      final matchesSearch =
-                                          _searchQuery.isEmpty ||
-                                          o.eventName.toLowerCase().contains(
-                                            _searchQuery.toLowerCase(),
-                                          ) ||
-                                          o.id.toLowerCase().contains(
-                                            _searchQuery.toLowerCase(),
-                                          ) ||
-                                          o.venue.toLowerCase().contains(
-                                            _searchQuery.toLowerCase(),
-                                          );
-                                      return matchesFilter && matchesSearch;
+                                      final isArchivedFilter =
+                                          filterState.selectedFilter.toLowerCase() == 'archived';
+                                      final isSearching = _searchQuery.trim().isNotEmpty;
+
+                                      final archiveMatch = isArchivedFilter
+                                          ? o.isArchived
+                                          : (isSearching ? true : !o.isArchived);
+
+                                      final matchesFilter = isArchivedFilter
+                                          ? true
+                                          : (filterState.selectedFilter == 'ALL' ||
+                                              isSearching ||
+                                              o.status.name == filterState.selectedFilter);
+
+                                      final matchesSearch = _matchesOrderQuery(o, _searchQuery);
+
+                                      return archiveMatch && matchesFilter && matchesSearch;
                                     }).toList();
 
                                     if (filteredOrders.isEmpty) {

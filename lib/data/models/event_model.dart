@@ -13,9 +13,18 @@ class EventModel extends EventEntity {
     required super.completion,
     super.assignedStaffId,
     super.color,
+    super.isArchived = false,
+    super.createdAt,
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
+    final createdDate = json['createdAt'] != null
+        ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.parse(json['date'] as String)
+        : DateTime.parse(json['date'] as String);
+    final isOlderThan1Month = DateTime.now().difference(createdDate).inDays >= 30;
+    final explicitArchived = json['isArchived'] as bool?;
+    final isArchived = explicitArchived ?? isOlderThan1Month;
+
     return EventModel(
       id: json['id'] as String,
       orderId: json['orderId'] as String,
@@ -27,6 +36,8 @@ class EventModel extends EventEntity {
       completion: (json['completion'] as num).toDouble(),
       assignedStaffId: json['assignedStaffId'] as String?,
       color: json['color'] != null ? Color(json['color'] as int) : null,
+      isArchived: isArchived,
+      createdAt: createdDate,
     );
   }
 
@@ -42,6 +53,8 @@ class EventModel extends EventEntity {
       'completion': completion,
       'assignedStaffId': assignedStaffId,
       'color': color?.toARGB32(),
+      'isArchived': isArchived,
+      'createdAt': (createdAt ?? date).toIso8601String(),
     };
   }
 
@@ -57,6 +70,8 @@ class EventModel extends EventEntity {
       completion: entity.completion,
       assignedStaffId: entity.assignedStaffId,
       color: entity.color,
+      isArchived: entity.isArchived,
+      createdAt: entity.createdAt,
     );
   }
 }

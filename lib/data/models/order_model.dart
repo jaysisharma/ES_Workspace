@@ -23,9 +23,15 @@ class OrderModel extends OrderEntity {
     super.client = '',
     super.description = '',
     super.vatRate = 0.0,
+    super.isArchived = false,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
+    final createdAtDate = _parseDateTime(json['createdAt'] as String);
+    final isOlderThan1Month = DateTime.now().difference(createdAtDate).inDays >= 30;
+    final explicitArchived = json['isArchived'] as bool?;
+    final isArchived = explicitArchived ?? isOlderThan1Month;
+
     return OrderModel(
       id: json['id'] as String,
       eventName: json['eventName'] as String,
@@ -45,7 +51,7 @@ class OrderModel extends OrderEntity {
       assignedStaffIds: List<String>.from(json['assignedStaffIds'] ?? []),
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
       totalExpenses: (json['totalExpenses'] as num?)?.toDouble() ?? 0.0,
-      createdAt: _parseDateTime(json['createdAt'] as String),
+      createdAt: createdAtDate,
       updatedAt: _parseDateTime(json['updatedAt'] as String),
       logs:
           (json['logs'] as List<dynamic>?)
@@ -56,6 +62,7 @@ class OrderModel extends OrderEntity {
       client: json['client'] as String? ?? '',
       description: json['description'] as String? ?? '',
       vatRate: (json['vatRate'] as num?)?.toDouble() ?? 0.0,
+      isArchived: isArchived,
     );
   }
 
@@ -81,6 +88,7 @@ class OrderModel extends OrderEntity {
       'client': client,
       'description': description,
       'vatRate': vatRate,
+      'isArchived': isArchived,
       'logs': logs
           .map(
             (log) => {
@@ -143,6 +151,7 @@ class OrderModel extends OrderEntity {
       client: entity.client,
       description: entity.description,
       vatRate: entity.vatRate,
+      isArchived: entity.isArchived,
     );
   }
 }

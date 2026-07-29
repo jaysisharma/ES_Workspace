@@ -7,6 +7,7 @@ import '../../providers/settings_provider.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../domain/entities/order_entity.dart';
 import 'order_details_screen.dart';
+import '../../widgets/calendar/nepali_date_picker_dialog.dart';
 
 class EventFinancialReportScreen extends ConsumerStatefulWidget {
   const EventFinancialReportScreen({super.key});
@@ -45,14 +46,20 @@ class _EventFinancialReportScreenState
           IconButton(
             icon: const Icon(Icons.date_range_outlined),
             onPressed: () async {
-              final picked = await showDateRangePicker(
+              final picked = await NepaliDatePickerDialog.show(
                 context: context,
-                firstDate: DateTime(2020),
-                lastDate: DateTime(2030),
-                initialDateRange: _selectedDateRange,
+                title: 'Filter Event Date Range',
+                initialStart: _selectedDateRange?.start ?? DateTime.now(),
+                initialEnd: _selectedDateRange?.end ?? DateTime.now(),
+                allowRange: true,
               );
-              if (picked != null) {
-                setState(() => _selectedDateRange = picked);
+              if (picked != null && picked['start'] != null) {
+                setState(() {
+                  _selectedDateRange = DateTimeRange(
+                    start: picked['start']!,
+                    end: picked['end'] ?? picked['start']!,
+                  );
+                });
               }
             },
           ),

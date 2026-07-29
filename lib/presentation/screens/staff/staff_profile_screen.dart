@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/services/employee_pdf_service.dart';
+import '../../../domain/entities/employee_profile_entity.dart';
+import '../../../domain/entities/user_entity.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/employee_profile_providers.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/event_providers.dart';
 import '../../../domain/entities/event_entity.dart';
 import '../../widgets/leave_request_sheet.dart';
 import '../admin/synology_company_pdf_screen.dart';
+import '../common/pdf_preview_screen.dart';
 
 class StaffProfileScreen extends ConsumerStatefulWidget {
   const StaffProfileScreen({super.key});
@@ -16,6 +21,63 @@ class StaffProfileScreen extends ConsumerStatefulWidget {
 
 class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
   bool _isLoggingOut = false;
+
+  Future<void> _printMyEmployeePdf(BuildContext context, dynamic firebaseUser) async {
+    if (firebaseUser == null) return;
+    try {
+      final uid = firebaseUser.uid;
+      final email = firebaseUser.email ?? '';
+      final name = email.isNotEmpty ? email.split('@').first : 'Staff';
+
+      final userEntity = UserEntity(
+        id: uid,
+        name: name,
+        email: email,
+        role: UserRole.staff,
+        isActive: true,
+      );
+
+      final profiles = await ref.read(employeeProfilesStreamProvider.future);
+      final profile = profiles.firstWhere(
+        (p) => p.userId == uid,
+        orElse: () => EmployeeProfileEntity(
+          id: uid,
+          userId: uid,
+          name: name,
+          officeJoinDate: DateTime.now(),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      final pdfData = await EmployeePdfService.generateEmployeeDetailPdf(
+        profile: profile,
+        user: userEntity,
+      );
+
+      final fileName = 'Employee_Profile_${name.replaceAll(RegExp(r'[ ,]+'), '_')}.pdf';
+
+      if (!context.mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PdfPreviewScreen(
+            pdfData: pdfData,
+            title: 'My Employee Profile',
+            fileName: fileName,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate profile PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   Future<void> _confirmLogout() async {
     final confirmed = await showDialog<bool>(
@@ -307,6 +369,18 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                         size: 18,
                       ),
                       onTap: () => showStaffLeaveRequestSheet(context, ref),
+                    ),
+                    _SettingsTile(
+                      icon: Icons.picture_as_pdf_outlined,
+                      iconColor: primaryColor,
+                      title: 'Print / Download My Profile PDF',
+                      borderColor: borderColor,
+                      trailing: Icon(
+                        Icons.chevron_right,
+                        color: labelColor.withValues(alpha: 0.5),
+                        size: 18,
+                      ),
+                      onTap: () => _printMyEmployeePdf(context, user),
                     ),
                   ],
                 ),

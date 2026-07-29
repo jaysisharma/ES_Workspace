@@ -7,6 +7,7 @@ import '../../core/utils/nepali_date_formatter.dart';
 import '../../domain/entities/employee_profile_entity.dart';
 import '../providers/employee_profile_providers.dart';
 import '../providers/hr_providers.dart';
+import 'calendar/nepali_date_picker_dialog.dart';
 
 class EmployeeFormDialog extends ConsumerStatefulWidget {
   final String userId;
@@ -236,13 +237,13 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog>
                       icon: const Icon(Icons.cake, size: 16),
                       label: Text(_dob != null ? formatNepaliDate(_dob!, 'dd MMM yyyy') : 'Select DOB'),
                       onPressed: () async {
-                        final picked = await showDatePicker(
+                        final picked = await NepaliDatePickerDialog.show(
                           context: context,
-                          initialDate: _dob ?? DateTime(1995, 1, 1),
-                          firstDate: DateTime(1950),
-                          lastDate: DateTime.now(),
+                          title: 'Select Date of Birth (Nepali BS)',
+                          initialStart: _dob ?? DateTime(1995, 1, 1),
+                          allowRange: false,
                         );
-                        if (picked != null) setState(() => _dob = picked);
+                        if (picked != null && picked['start'] != null) setState(() => _dob = picked['start']!);
                       },
                     ),
                   ],
@@ -300,13 +301,13 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog>
                       icon: const Icon(Icons.work_history, size: 16),
                       label: Text(formatNepaliDate(_officeJoinDate, 'dd MMM yyyy')),
                       onPressed: () async {
-                        final picked = await showDatePicker(
+                        final picked = await NepaliDatePickerDialog.show(
                           context: context,
-                          initialDate: _officeJoinDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now().add(const Duration(days: 30)),
+                          title: 'Select Office Join Date (Nepali BS)',
+                          initialStart: _officeJoinDate,
+                          allowRange: false,
                         );
-                        if (picked != null) setState(() => _officeJoinDate = picked);
+                        if (picked != null && picked['start'] != null) setState(() => _officeJoinDate = picked['start']!);
                       },
                     ),
                   ],
@@ -325,13 +326,13 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog>
                           ? formatNepaliDate(_officeLeavingDate!, 'dd MMM yyyy')
                           : 'N/A (Active)'),
                       onPressed: () async {
-                        final picked = await showDatePicker(
+                        final picked = await NepaliDatePickerDialog.show(
                           context: context,
-                          initialDate: _officeLeavingDate ?? DateTime.now(),
-                          firstDate: _officeJoinDate,
-                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                          title: 'Select Office Leaving Date (Nepali BS)',
+                          initialStart: _officeLeavingDate ?? DateTime.now(),
+                          allowRange: false,
                         );
-                        if (picked != null) setState(() => _officeLeavingDate = picked);
+                        if (picked != null && picked['start'] != null) setState(() => _officeLeavingDate = picked['start']!);
                       },
                     ),
                   ],

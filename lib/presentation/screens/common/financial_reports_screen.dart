@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:share_plus/share_plus.dart';
+import '../../../core/utils/share_helper.dart';
 import '../../../core/utils/nepali_date_formatter.dart';
 import '../../providers/order_providers.dart';
 import '../../../core/services/order_pdf_service.dart';
@@ -37,9 +37,30 @@ class _FinancialReportsScreenState
 
     final filteredOrders = orderState.orders.where((order) {
       final query = _searchQuery.trim().toLowerCase();
+      if (query.isEmpty) return true;
+
+      final cleanNoSymbols = query.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+      final cleanNoPrefix = query
+          .replaceAll('#', '')
+          .replaceAll('order-', '')
+          .replaceAll('ord-', '')
+          .replaceAll('order', '')
+          .replaceAll('id:', '')
+          .trim();
+
+      final orderIdLower = order.id.toLowerCase();
+      final orderIdNoSymbols = orderIdLower.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+
+      final idMatch = orderIdLower.contains(query) ||
+          (cleanNoPrefix.isNotEmpty && orderIdLower.contains(cleanNoPrefix)) ||
+          (cleanNoSymbols.isNotEmpty && orderIdNoSymbols.contains(cleanNoSymbols));
+
+      if (idMatch) return true;
+
       return order.eventName.toLowerCase().contains(query) ||
-             order.id.toLowerCase().contains(query) ||
-             order.venue.toLowerCase().contains(query);
+          order.venue.toLowerCase().contains(query) ||
+          order.client.toLowerCase().contains(query) ||
+          order.contactPerson.toLowerCase().contains(query);
     }).toList();
 
     // Calculate totals for export
@@ -106,17 +127,11 @@ class _FinancialReportsScreenState
                       );
 
                       if (!context.mounted) return;
-                      final box = context.findRenderObject() as RenderBox?;
-                      await Share.shareXFiles(
-                        [
-                          XFile.fromData(
-                            pdfData,
-                            name: 'Financial_Summary_${formatNepaliDate(DateTime.now(), 'yyyyMMdd')}.pdf',
-                            mimeType: 'application/pdf',
-                          )
-                        ],
+                      await ShareHelper.sharePdf(
+                        context: context,
+                        pdfBytes: pdfData,
+                        fileName: 'Financial_Summary_${formatNepaliDate(DateTime.now(), 'yyyyMMdd')}.pdf',
                         subject: 'Financial Summary Report',
-                        sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
                       );
                     } catch (e, st) {
                       debugPrint('PDF generation error [financial_reports/export]: $e\n$st');
@@ -398,11 +413,11 @@ class _FinancialReportsScreenState
                         showFinancials: true,
                       );
                       if (!mounted) return;
-                      final box = context.findRenderObject() as RenderBox?;
-                      await Share.shareXFiles(
-                        [XFile.fromData(pdfData, name: 'Order_${order.id}_${order.venue.replaceAll(RegExp(r'[ ,]+'), '_')}.pdf', mimeType: 'application/pdf')],
+                      await ShareHelper.sharePdf(
+                        context: context,
+                        pdfBytes: pdfData,
+                        fileName: 'Order_${order.id}_${order.venue.replaceAll(RegExp(r"[ ,]+"), "_")}.pdf',
                         subject: 'Order Report: ${order.eventName}',
-                        sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
                       );
                     } catch (e, st) {
                       debugPrint('PDF generation error [financial_reports/report]: $e\n$st');

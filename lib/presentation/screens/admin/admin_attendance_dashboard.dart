@@ -8,6 +8,7 @@ import '../../providers/attendance_providers.dart';
 import '../../providers/auth_provider.dart';
 import '../staff/staff_attendance_screen.dart';
 import '../../widgets/manage_geofence_dialog.dart';
+import '../../widgets/calendar/nepali_date_picker_dialog.dart';
 import '../../../core/utils/route_transitions.dart';
 
 class AdminAttendanceDashboard extends ConsumerStatefulWidget {
@@ -412,17 +413,15 @@ class _AdminAttendanceDashboardState
                           icon: const Icon(Icons.calendar_today),
                           label: const Text('Change Date'),
                           onPressed: () async {
-                            final picked = await showDatePicker(
+                            final picked = await NepaliDatePickerDialog.show(
                               context: context,
-                              initialDate: _selectedDate,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime.now().add(
-                                const Duration(days: 365),
-                              ),
+                              title: 'Select Attendance Date (Nepali BS)',
+                              initialStart: _selectedDate,
+                              allowRange: false,
                             );
-                            if (picked != null) {
+                            if (picked != null && picked['start'] != null) {
                               setState(() {
-                                _selectedDate = picked;
+                                _selectedDate = picked['start']!;
                               });
                             }
                           },

@@ -65,6 +65,7 @@ dependencies:
   cloud_functions: ^6.3.5
   crypto: ^3.0.7
   file_picker: ^8.1.7
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

@@ -3,6 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:printing/printing.dart';
+import '../../../core/utils/share_helper.dart';
+import '../../../core/services/employee_pdf_service.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/nepali_date_formatter.dart';
 import '../../../domain/entities/employee_profile_entity.dart';
@@ -10,6 +13,7 @@ import '../../../domain/entities/user_entity.dart';
 import '../../../domain/entities/leave_request_entity.dart';
 import '../../providers/employee_profile_providers.dart';
 import '../../providers/hr_providers.dart';
+import '../common/pdf_preview_screen.dart';
 import 'add_employee_screen.dart';
 
 class EmployeeDetailScreen extends ConsumerStatefulWidget {
@@ -28,6 +32,47 @@ class EmployeeDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
+  Future<void> _printEmployeePdf(EmployeeProfileEntity profile, {bool share = false}) async {
+    try {
+      final pdfData = await EmployeePdfService.generateEmployeeDetailPdf(
+        profile: profile,
+        user: widget.user,
+      );
+
+      final fileName = 'Employee_Profile_${profile.name.replaceAll(RegExp(r'[ ,]+'), '_')}.pdf';
+
+      if (!mounted) return;
+
+      if (share) {
+        await ShareHelper.sharePdf(
+          context: context,
+          pdfBytes: pdfData,
+          fileName: fileName,
+          subject: 'Employee Profile - ${profile.name}',
+        );
+      } else {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PdfPreviewScreen(
+              pdfData: pdfData,
+              title: 'Employee Profile - ${profile.name}',
+              fileName: fileName,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate Employee PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -54,6 +99,16 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.picture_as_pdf_outlined, color: colorScheme.primary),
+            tooltip: 'Print / Preview PDF',
+            onPressed: () => _printEmployeePdf(profile, share: false),
+          ),
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Share Employee PDF',
+            onPressed: () => _printEmployeePdf(profile, share: true),
+          ),
           IconButton(
             icon: const Icon(Icons.edit_note),
             tooltip: 'Edit HR Profile',
@@ -90,6 +145,41 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 
             // 5. Credentials & Identification Documents Grid
             _buildDocumentsTab(context, profile, borderColor, labelColor, textColor),
+            const SizedBox(height: 20),
+
+            // 6. Action Bar for PDF Generation
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.print_outlined, size: 18),
+                    label: const Text('PREVIEW / PRINT PDF',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () => _printEmployeePdf(profile, share: false),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.share_outlined, size: 18),
+                    label: const Text('SHARE DOSSIER PDF',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () => _printEmployeePdf(profile, share: true),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),

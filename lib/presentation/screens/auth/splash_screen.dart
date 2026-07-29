@@ -93,13 +93,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                   fontFamily: 'Manrope',
                   letterSpacing: -0.5,
                 ),
-                children: [
-                  const TextSpan(text: 'ES Workspace '),
-                  TextSpan(
-                    text: 'Pro',
-                    style: TextStyle(color: colorScheme.primary),
-                  ),
-                ],
+                children: [const TextSpan(text: 'ES Workspace ')],
               ),
             ),
             const SizedBox(height: 8),

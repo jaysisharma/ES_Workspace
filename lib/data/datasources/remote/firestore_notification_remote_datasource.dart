@@ -25,25 +25,39 @@ class FirestoreNotificationRemoteDataSource
 
   @override
   Stream<List<NotificationEntity>> getNotifications() {
-    final uid = _auth.currentUser?.uid;
+    final currentUser = _auth.currentUser;
+    final uid = currentUser?.uid;
+    final authCreatedAt = currentUser?.metadata.creationTime;
 
     // Fetch notifications where:
     //  - targetRole matches the current user's role, OR
     //  - targetUserId matches the current user's uid
-    // We do this client-side by merging two streams and deduplicating.
-    // The first stream covers role-based notifications; the second covers
-    // user-specific ones.
+    //  - timestamp is after the user's account creation time (keeping it fresh for new users)
     return _firestore
         .collection('notifications')
         .orderBy('timestamp', descending: true)
         .snapshots()
         .asyncMap((snapshot) async {
-          // Get current user's role from Firestore users collection
+          // Get current user's role and account creation date from Firestore users collection
           String? roleStr;
+          DateTime? accountCreatedAt = authCreatedAt;
+
           if (uid != null) {
             try {
               final userDoc = await _firestore.collection('users').doc(uid).get();
-              roleStr = userDoc.data()?['role'] as String?;
+              final data = userDoc.data();
+              if (data != null) {
+                roleStr = data['role'] as String?;
+                final rawCreatedAt = data['createdAt'];
+                if (rawCreatedAt != null) {
+                  if (rawCreatedAt is Timestamp) {
+                    accountCreatedAt = rawCreatedAt.toDate();
+                  } else if (rawCreatedAt is String) {
+                    accountCreatedAt =
+                        DateTime.tryParse(rawCreatedAt) ?? accountCreatedAt;
+                  }
+                }
+              }
             } catch (_) {}
           }
 
@@ -53,6 +67,16 @@ class FirestoreNotificationRemoteDataSource
           return snapshot.docs
               .map((doc) => NotificationModel.fromJson(doc.data()))
               .where((n) {
+                // If user account creation timestamp is known, do not show notifications
+                // created before the user account creation (allow 1 min buffer for creation sync)
+                if (accountCreatedAt != null) {
+                  final threshold =
+                      accountCreatedAt.subtract(const Duration(minutes: 1));
+                  if (n.timestamp.isBefore(threshold)) {
+                    return false;
+                  }
+                }
+
                 // User-specific notification
                 if (n.targetUserId != null) return n.targetUserId == uid;
                 // Role-based notification

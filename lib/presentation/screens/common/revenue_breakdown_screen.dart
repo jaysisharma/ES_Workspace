@@ -15,7 +15,9 @@ import 'dart:typed_data';
 import '../../../data/services/synology_service.dart';
 import '../../providers/company_document_provider.dart';
 import 'pdf_preview_screen.dart';
-import 'package:printing/printing.dart';
+import '../../../core/utils/share_helper.dart';
+
+enum VatOption { noVat, vat13, custom }
 
 class RevenueBreakdownScreen extends ConsumerStatefulWidget {
   final OrderEntity order;
@@ -40,6 +42,12 @@ class _RevenueBreakdownScreenState
   late Map<String, FocusNode> _focusNodes;
   late List<OrderItemEntity> _items;
   late TextEditingController _orderDescriptionController;
+  late TextEditingController _mgtChargeController;
+  late TextEditingController _discountController;
+  late TextEditingController _vatRateController;
+  late VatOption _vatOption;
+  bool _isMgtChargePercent = true;
+  bool _isDiscountPercent = true;
   final List<ExpenseEntity> _manualRevenues = [];
 
   @override
@@ -64,6 +72,21 @@ class _RevenueBreakdownScreenState
     _orderDescriptionController = TextEditingController(
       text: widget.order.description,
     );
+    _mgtChargeController = TextEditingController();
+    _discountController = TextEditingController();
+    
+    if (widget.order.vatRate == 0) {
+      _vatOption = VatOption.noVat;
+      _vatRateController = TextEditingController(text: '0');
+    } else if ((widget.order.vatRate - 0.13).abs() < 0.001) {
+      _vatOption = VatOption.vat13;
+      _vatRateController = TextEditingController(text: '13');
+    } else {
+      _vatOption = VatOption.custom;
+      _vatRateController = TextEditingController(
+        text: (widget.order.vatRate * 100).toStringAsFixed(0),
+      );
+    }
     _loadAdditionalRevenue();
   }
 
@@ -98,6 +121,9 @@ class _RevenueBreakdownScreenState
       node.dispose();
     }
     _orderDescriptionController.dispose();
+    _mgtChargeController.dispose();
+    _discountController.dispose();
+    _vatRateController.dispose();
     super.dispose();
   }
 
@@ -120,6 +146,37 @@ class _RevenueBreakdownScreenState
       _manualRevenues.fold(0, (sum, e) => sum + e.amount);
 
   double get _totalRevenue => _itemTotalRevenue + _manualTotalRevenue;
+
+  double get _managementChargeAmount {
+    final val = double.tryParse(_mgtChargeController.text.trim()) ?? 0.0;
+    if (val <= 0) return 0.0;
+    return _isMgtChargePercent ? (_totalRevenue * val / 100.0) : val;
+  }
+
+  double get _discountAmount {
+    final val = double.tryParse(_discountController.text.trim()) ?? 0.0;
+    if (val <= 0) return 0.0;
+    return _isDiscountPercent ? (_totalRevenue * val / 100.0) : val;
+  }
+
+  double get _netTotalRevenue =>
+      _totalRevenue + _managementChargeAmount - _discountAmount;
+
+  double get _effectiveVatRate {
+    switch (_vatOption) {
+      case VatOption.noVat:
+        return 0.0;
+      case VatOption.vat13:
+        return 0.13;
+      case VatOption.custom:
+        final val = double.tryParse(_vatRateController.text.trim());
+        return (val != null && val >= 0) ? (val / 100.0) : 0.0;
+    }
+  }
+
+  double get _vatAmount => _netTotalRevenue * _effectiveVatRate;
+
+  double get _grandTotalRevenue => _netTotalRevenue + _vatAmount;
 
   void _addRevenue(String currencyLabel) {
     _showRevenueForm(currencyLabel);
@@ -538,212 +595,11 @@ class _RevenueBreakdownScreenState
     );
   }
 
-  void _showRevenuePdfOptions() {
-    final colorScheme = Theme.of(context).colorScheme;
-    final mgtChargeController = TextEditingController();
-    final discountController = TextEditingController();
-    final vatRateController = TextEditingController(
-      text: widget.order.vatRate > 0
-          ? (widget.order.vatRate * 100).toStringAsFixed(0)
-          : '',
-    );
-    bool isMgtChargePercent = true;
-    bool isDiscountPercent = true;
+  Future<void> _executeRevenuePdf({required bool share}) async {
+    final valMgt = double.tryParse(_mgtChargeController.text.trim()) ?? 0.0;
+    final valDisc = double.tryParse(_discountController.text.trim()) ?? 0.0;
+    final valVat = double.tryParse(_vatRateController.text.trim());
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          padding: EdgeInsets.fromLTRB(
-            24,
-            20,
-            24,
-            MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Revenue PDF Options',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(ctx),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Management Charge (Optional)
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: mgtChargeController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(
-                          labelText: 'Management Charge (Optional)',
-                          hintText: isMgtChargePercent ? 'e.g. 10 (%)' : 'e.g. 5000 (NPR)',
-                          isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          prefixIcon: const Icon(Icons.percent, size: 18),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ToggleButtons(
-                      isSelected: [isMgtChargePercent, !isMgtChargePercent],
-                      borderRadius: BorderRadius.circular(8),
-                      constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
-                      onPressed: (index) {
-                        setModalState(() => isMgtChargePercent = index == 0);
-                      },
-                      children: const [
-                        Text('%', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('NPR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Discount (Optional)
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: discountController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(
-                          labelText: 'Discount (Optional)',
-                          hintText: isDiscountPercent ? 'e.g. 5 (%)' : 'e.g. 2000 (NPR)',
-                          isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          prefixIcon: const Icon(Icons.local_offer_outlined, size: 18),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    ToggleButtons(
-                      isSelected: [isDiscountPercent, !isDiscountPercent],
-                      borderRadius: BorderRadius.circular(8),
-                      constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
-                      onPressed: (index) {
-                        setModalState(() => isDiscountPercent = index == 0);
-                      },
-                      children: const [
-                        Text('%', style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text('NPR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // VAT Rate (Optional)
-                TextField(
-                  controller: vatRateController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'VAT % (Optional)',
-                    hintText: 'e.g. 13',
-                    isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    prefixIcon: const Icon(Icons.receipt_long, size: 18),
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.print_outlined, size: 18),
-                        label: const Text('PREVIEW / PRINT'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        onPressed: () {
-                          final valMgt = double.tryParse(mgtChargeController.text.trim()) ?? 0.0;
-                          final valDisc = double.tryParse(discountController.text.trim()) ?? 0.0;
-                          final valVat = double.tryParse(vatRateController.text.trim());
-
-                          Navigator.pop(ctx);
-                          _executeRevenuePdf(
-                            share: false,
-                            managementCharge: isMgtChargePercent ? 0.0 : valMgt,
-                            managementChargeRate: isMgtChargePercent ? valMgt : 0.0,
-                            discount: isDiscountPercent ? 0.0 : valDisc,
-                            discountRate: isDiscountPercent ? valDisc : 0.0,
-                            vatRate: valVat != null ? (valVat / 100.0) : null,
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.share_outlined, size: 18),
-                        label: const Text('SHARE PDF'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade700,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        onPressed: () {
-                          final valMgt = double.tryParse(mgtChargeController.text.trim()) ?? 0.0;
-                          final valDisc = double.tryParse(discountController.text.trim()) ?? 0.0;
-                          final valVat = double.tryParse(vatRateController.text.trim());
-
-                          Navigator.pop(ctx);
-                          _executeRevenuePdf(
-                            share: true,
-                            managementCharge: isMgtChargePercent ? 0.0 : valMgt,
-                            managementChargeRate: isMgtChargePercent ? valMgt : 0.0,
-                            discount: isDiscountPercent ? 0.0 : valDisc,
-                            discountRate: isDiscountPercent ? valDisc : 0.0,
-                            vatRate: valVat != null ? (valVat / 100.0) : null,
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _executeRevenuePdf({
-    required bool share,
-    double managementCharge = 0.0,
-    double managementChargeRate = 0.0,
-    double discount = 0.0,
-    double discountRate = 0.0,
-    double? vatRate,
-  }) async {
     String progressMessage = 'Generating Revenue Summary PDF…';
     StateSetter setSnackBarState = (_) {};
 
@@ -783,11 +639,11 @@ class _RevenueBreakdownScreenState
         items: _items,
         additionalRevenue: _manualRevenues,
         showFinancials: true,
-        managementCharge: managementCharge,
-        managementChargeRate: managementChargeRate,
-        discount: discount,
-        discountRate: discountRate,
-        vatRate: vatRate,
+        managementCharge: _isMgtChargePercent ? 0.0 : valMgt,
+        managementChargeRate: _isMgtChargePercent ? valMgt : 0.0,
+        discount: _isDiscountPercent ? 0.0 : valDisc,
+        discountRate: _isDiscountPercent ? valDisc : 0.0,
+        vatRate: valVat != null ? (valVat / 100.0) : null,
         onProgress: (status) {
           if (mounted) setSnackBarState(() => progressMessage = status);
         },
@@ -800,7 +656,12 @@ class _RevenueBreakdownScreenState
           'Revenue_Summary_${widget.order.id}_${widget.order.venue.replaceAll(RegExp(r'[ ,]+'), '_')}.pdf';
 
       if (share) {
-        await Printing.sharePdf(bytes: pdfData, filename: fileName);
+        await ShareHelper.sharePdf(
+          context: context,
+          pdfBytes: pdfData,
+          fileName: fileName,
+          subject: 'Revenue Summary',
+        );
       } else {
         await Navigator.push(
           context,
@@ -828,6 +689,354 @@ class _RevenueBreakdownScreenState
     }
   }
 
+  Widget _buildOptionalFinancialsSection(String currencyLabel) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final borderColor = colorScheme.outline.withValues(alpha: 0.3);
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 20),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tune_rounded, size: 18, color: colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                'OPTIONAL FINANCIALS & PDF SETTINGS',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.primary,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Management Charge (Optional)
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _mgtChargeController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: 'Management Charge (Optional)',
+                    hintText: _isMgtChargePercent
+                        ? 'e.g. 10 (%)'
+                        : 'e.g. 5000 ($currencyLabel)',
+                    isDense: true,
+                    filled: true,
+                    fillColor: colorScheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.percent, size: 18),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ToggleButtons(
+                isSelected: [_isMgtChargePercent, !_isMgtChargePercent],
+                borderRadius: BorderRadius.circular(8),
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
+                onPressed: (index) {
+                  setState(() => _isMgtChargePercent = index == 0);
+                },
+                children: [
+                  const Text('%', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(currencyLabel,
+                      style: const TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Discount (Optional)
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _discountController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    labelText: 'Discount (Optional)',
+                    hintText: _isDiscountPercent
+                        ? 'e.g. 5 (%)'
+                        : 'e.g. 2000 ($currencyLabel)',
+                    isDense: true,
+                    filled: true,
+                    fillColor: colorScheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.local_offer_outlined, size: 18),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ToggleButtons(
+                isSelected: [_isDiscountPercent, !_isDiscountPercent],
+                borderRadius: BorderRadius.circular(8),
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 40),
+                onPressed: (index) {
+                  setState(() => _isDiscountPercent = index == 0);
+                },
+                children: [
+                  const Text('%', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(currencyLabel,
+                      style: const TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // VAT Option Choice Chips
+          Text(
+            'VAT OPTION',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onSurfaceVariant,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: ChoiceChip(
+                  label: const Center(
+                    child: Text(
+                      'NO VAT (0%)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                    ),
+                  ),
+                  selected: _vatOption == VatOption.noVat,
+                  selectedColor: colorScheme.surfaceContainerHighest,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _vatOption = VatOption.noVat;
+                        _vatRateController.text = '0';
+                      });
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ChoiceChip(
+                  label: const Center(
+                    child: Text(
+                      '13% VAT',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                    ),
+                  ),
+                  selected: _vatOption == VatOption.vat13,
+                  selectedColor: Colors.green.shade100,
+                  labelStyle: TextStyle(
+                    color: _vatOption == VatOption.vat13 ? Colors.green.shade900 : null,
+                  ),
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _vatOption = VatOption.vat13;
+                        _vatRateController.text = '13';
+                      });
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ChoiceChip(
+                  label: const Center(
+                    child: Text(
+                      'CUSTOM %',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                    ),
+                  ),
+                  selected: _vatOption == VatOption.custom,
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _vatOption = VatOption.custom;
+                      });
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+
+          if (_vatOption == VatOption.custom) ...[
+            const SizedBox(height: 10),
+            TextField(
+              controller: _vatRateController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Custom VAT Rate %',
+                hintText: 'e.g. 13',
+                isDense: true,
+                filled: true,
+                fillColor: colorScheme.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                prefixIcon: const Icon(Icons.receipt_long, size: 18),
+              ),
+              style: const TextStyle(fontSize: 13),
+            ),
+          ],
+
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+
+          // Live In-Page Summary Breakdown Card
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: borderColor),
+            ),
+            child: Column(
+              children: [
+                _summarySummaryRow(
+                    'Subtotal', '$currencyLabel ${_totalRevenue.toStringAsFixed(0)}'),
+                if (_managementChargeAmount > 0)
+                  _summarySummaryRow(
+                    _isMgtChargePercent
+                        ? 'Management Charge (${_mgtChargeController.text.trim()}%)'
+                        : 'Management Charge',
+                    '+ $currencyLabel ${_managementChargeAmount.toStringAsFixed(0)}',
+                    color: Colors.blue.shade700,
+                  ),
+                if (_discountAmount > 0)
+                  _summarySummaryRow(
+                    _isDiscountPercent
+                        ? 'Discount (${_discountController.text.trim()}%)'
+                        : 'Discount',
+                    '- $currencyLabel ${_discountAmount.toStringAsFixed(0)}',
+                    color: Colors.orange.shade800,
+                  ),
+                _summarySummaryRow(
+                  'Total',
+                  '$currencyLabel ${_netTotalRevenue.toStringAsFixed(0)}',
+                  isBold: true,
+                ),
+                if (_vatAmount > 0)
+                  _summarySummaryRow(
+                    'VAT (${(_effectiveVatRate * 100).toStringAsFixed(0)}%)',
+                    '+ $currencyLabel ${_vatAmount.toStringAsFixed(0)}',
+                    color: Colors.green.shade800,
+                  ),
+                const Divider(height: 12),
+                _summarySummaryRow(
+                  'Grand Total',
+                  '$currencyLabel ${_grandTotalRevenue.toStringAsFixed(0)}',
+                  isBold: true,
+                  fontSize: 15,
+                  color: colorScheme.primary,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Direct Print / Share Action Buttons
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.print_outlined, size: 18),
+                  label: const Text('PREVIEW / PRINT PDF',
+                      style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () => _executeRevenuePdf(share: false),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.share_outlined, size: 18),
+                  label: const Text('SHARE REVENUE PDF',
+                      style: TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade700,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () => _executeRevenuePdf(share: true),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summarySummaryRow(String label, String value,
+      {bool isBold = false, double fontSize = 13, Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+              color: color ?? Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+              color: color ?? Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _confirmFinalize(String currencyLabel) async {
     final colorScheme = Theme.of(context).colorScheme;
     final zeroRateItems = _items
@@ -842,7 +1051,7 @@ class _RevenueBreakdownScreenState
         content: Text(
           zeroRateItems > 0
               ? 'You have $zeroRateItems items with a rate of 0. Are you sure you want to finalize?'
-              : 'This will update the total revenue to $currencyLabel ${_totalRevenue.toStringAsFixed(0)}. Do you want to proceed?',
+              : 'This will update the total revenue to $currencyLabel ${_grandTotalRevenue.toStringAsFixed(0)}. Do you want to proceed?',
         ),
         actions: [
           TextButton(
@@ -888,9 +1097,10 @@ class _RevenueBreakdownScreenState
       );
     }).toList();
 
-    final totalRevenue = _totalRevenue;
+    final totalRevenue = _grandTotalRevenue;
     final updatedOrder = widget.order.copyWith(
       totalAmount: totalRevenue,
+      vatRate: _effectiveVatRate,
       description: _orderDescriptionController.text.trim(),
     );
 
@@ -960,8 +1170,8 @@ class _RevenueBreakdownScreenState
               Icons.picture_as_pdf_outlined,
               color: colorScheme.primary,
             ),
-            onPressed: _showRevenuePdfOptions,
-            tooltip: 'Revenue PDF',
+            onPressed: () => _executeRevenuePdf(share: false),
+            tooltip: 'Preview / Print Revenue PDF',
           ),
           const SizedBox(width: 8),
         ],
@@ -1028,7 +1238,9 @@ class _RevenueBreakdownScreenState
                       child: _buildManualRevenueCard(revenue, currencyLabel),
                     ),
                   ),
-                const SizedBox(height: 80),
+                const SizedBox(height: 20),
+                _buildOptionalFinancialsSection(currencyLabel),
+                const SizedBox(height: 40),
               ],
             ),
           ),
@@ -1621,7 +1833,7 @@ class _RevenueBreakdownScreenState
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'TOTAL REVENUE',
+                  'GRAND TOTAL REVENUE',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -1630,7 +1842,7 @@ class _RevenueBreakdownScreenState
                   ),
                 ),
                 Text(
-                  '$currencyLabel ${_totalRevenue.toStringAsFixed(0)}',
+                  '$currencyLabel ${_grandTotalRevenue.toStringAsFixed(0)}',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,

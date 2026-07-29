@@ -15,6 +15,7 @@ import '../../providers/hr_providers.dart';
 import '../../../core/services/synology_storage_service.dart';
 import '../../../domain/entities/user_entity.dart';
 import 'employee_detail_screen.dart';
+import '../../widgets/calendar/nepali_date_picker_dialog.dart';
 
 class AddEmployeeScreen extends ConsumerStatefulWidget {
   final String userId;
@@ -322,16 +323,14 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
                             : 'Select DOB (BS Calendar)',
                       ),
                       onPressed: () async {
-                        final picked = await showMaterialDatePicker(
+                        final picked = await NepaliDatePickerDialog.show(
                           context: context,
-                          initialDate: _dob != null
-                              ? _dob!.toNepaliDateTime()
-                              : NepaliDateTime(2050, 1, 1),
-                          firstDate: NepaliDateTime(2000, 1, 1),
-                          lastDate: NepaliDateTime.now(),
+                          title: 'Select Date of Birth (Nepali BS)',
+                          initialStart: _dob ?? DateTime(1995, 1, 1),
+                          allowRange: false,
                         );
-                        if (picked != null) {
-                          setState(() => _dob = picked.toDateTime());
+                        if (picked != null && picked['start'] != null) {
+                          setState(() => _dob = picked['start']!);
                         }
                       },
                     ),
@@ -433,16 +432,14 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
                         formatNepaliDate(_officeJoinDate, 'dd MMM yyyy (BS)'),
                       ),
                       onPressed: () async {
-                        final picked = await showMaterialDatePicker(
+                        final picked = await NepaliDatePickerDialog.show(
                           context: context,
-                          initialDate: _officeJoinDate.toNepaliDateTime(),
-                          firstDate: NepaliDateTime(2060, 1, 1),
-                          lastDate: NepaliDateTime.now().add(
-                            const Duration(days: 30),
-                          ),
+                          title: 'Select Office Join Date (Nepali BS)',
+                          initialStart: _officeJoinDate,
+                          allowRange: false,
                         );
-                        if (picked != null) {
-                          setState(() => _officeJoinDate = picked.toDateTime());
+                        if (picked != null && picked['start'] != null) {
+                          setState(() => _officeJoinDate = picked['start']!);
                         }
                       },
                     ),
@@ -470,20 +467,14 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
                             : 'Active Employee',
                       ),
                       onPressed: () async {
-                        final picked = await showMaterialDatePicker(
+                        final picked = await NepaliDatePickerDialog.show(
                           context: context,
-                          initialDate: _officeLeavingDate != null
-                              ? _officeLeavingDate!.toNepaliDateTime()
-                              : NepaliDateTime.now(),
-                          firstDate: _officeJoinDate.toNepaliDateTime(),
-                          lastDate: NepaliDateTime.now().add(
-                            const Duration(days: 365),
-                          ),
+                          title: 'Select Office Leaving Date (Nepali BS)',
+                          initialStart: _officeLeavingDate ?? DateTime.now(),
+                          allowRange: false,
                         );
-                        if (picked != null) {
-                          setState(
-                            () => _officeLeavingDate = picked.toDateTime(),
-                          );
+                        if (picked != null && picked['start'] != null) {
+                          setState(() => _officeLeavingDate = picked['start']!);
                         }
                       },
                     ),

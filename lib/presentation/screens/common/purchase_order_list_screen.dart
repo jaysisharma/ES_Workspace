@@ -127,6 +127,7 @@ class PurchaseOrderListScreen extends ConsumerWidget {
         error: (e, st) => Center(child: Text('Error: $e')),
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'purchase_order_list_fab',
         onPressed: () => Navigator.push(
           context,
           SlidePageRoute(page: const CreatePurchaseOrderScreen()),

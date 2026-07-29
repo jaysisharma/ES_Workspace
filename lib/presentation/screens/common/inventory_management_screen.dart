@@ -206,6 +206,7 @@ class _InventoryManagementScreenState
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'inventory_management_fab',
         onPressed: () {
           Navigator.push(
             context,

@@ -12,6 +12,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/route_transitions.dart';
 import '../../../core/utils/excel_export_helper.dart';
 import '../../../core/services/order_pdf_service.dart';
+import '../../widgets/calendar/nepali_date_picker_dialog.dart';
 import 'pdf_preview_screen.dart';
 
 class FinancialLedgerScreen extends ConsumerStatefulWidget {
@@ -63,14 +64,20 @@ class _FinancialLedgerScreenState extends ConsumerState<FinancialLedgerScreen> {
           IconButton(
             icon: const Icon(Icons.date_range_outlined),
             onPressed: () async {
-              final picked = await showDateRangePicker(
+              final picked = await NepaliDatePickerDialog.show(
                 context: context,
-                initialDateRange: _selectedDateRange,
-                firstDate: DateTime(2020),
-                lastDate: DateTime(2030),
+                title: 'Filter Ledger Date Range',
+                initialStart: _selectedDateRange?.start ?? DateTime.now(),
+                initialEnd: _selectedDateRange?.end ?? DateTime.now(),
+                allowRange: true,
               );
-              if (picked != null) {
-                setState(() => _selectedDateRange = picked);
+              if (picked != null && picked['start'] != null) {
+                setState(() {
+                  _selectedDateRange = DateTimeRange(
+                    start: picked['start']!,
+                    end: picked['end'] ?? picked['start']!,
+                  );
+                });
               }
             },
           ),

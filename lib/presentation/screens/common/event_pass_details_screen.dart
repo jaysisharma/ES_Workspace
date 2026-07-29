@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../core/utils/share_helper.dart';
 import '../../../domain/entities/event_pass_entity.dart';
 import '../../../core/services/event_pass_pdf_service.dart';
 import '../../providers/event_pass_provider.dart';
@@ -165,11 +166,22 @@ class _EventPassDetailsScreenState
       ).create();
       await file.writeAsBytes(pngBytes);
 
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: 'QR Pass for ${widget.pass.clientName}',
-        sharePositionOrigin: rect,
-      );
+      // For desktop, use ShareHelper; on mobile use native share
+      final isDesktop = !Platform.isAndroid && !Platform.isIOS;
+      if (isDesktop && mounted) {
+        await ShareHelper.sharePdf(
+          context: context,
+          pdfBytes: pngBytes,
+          fileName: 'qr_pass_${widget.pass.clientName.replaceAll(' ', '_')}.png',
+          subject: 'QR Pass for ${widget.pass.clientName}',
+        );
+      } else {
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          subject: 'QR Pass for ${widget.pass.clientName}',
+          sharePositionOrigin: rect,
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

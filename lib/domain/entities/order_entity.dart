@@ -39,6 +39,7 @@ class OrderEntity {
   final String client;
   final String description;
   final double vatRate;
+  final bool isArchived;
 
   const OrderEntity({
     required this.id,
@@ -62,6 +63,7 @@ class OrderEntity {
     this.client = '',
     this.description = '',
     this.vatRate = 0.0,
+    this.isArchived = false,
   });
 
   OrderEntity copyWith({
@@ -85,6 +87,7 @@ class OrderEntity {
     String? client,
     String? description,
     double? vatRate,
+    bool? isArchived,
   }) {
     return OrderEntity(
       id: id,
@@ -108,6 +111,7 @@ class OrderEntity {
       client: client ?? this.client,
       description: description ?? this.description,
       vatRate: vatRate ?? this.vatRate,
+      isArchived: isArchived ?? this.isArchived,
     );
   }
 

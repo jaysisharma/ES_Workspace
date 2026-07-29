@@ -438,6 +438,62 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                       ),
                     ),
                   const SizedBox(width: 4),
+                  // Archive / Unarchive button (Admin/Founder only)
+                  if (ref.watch(authNotifierProvider).user?.role == UserRole.admin ||
+                      ref.watch(authNotifierProvider).user?.role == UserRole.founder)
+                    IconButton(
+                      icon: Icon(
+                        order.isArchived ? Icons.unarchive_outlined : Icons.archive_outlined,
+                        color: order.isArchived ? Colors.purple : labelColor,
+                        size: 20,
+                      ),
+                      tooltip: order.isArchived ? 'Unarchive Order' : 'Archive Order',
+                      onPressed: () async {
+                        final actionStr = order.isArchived ? 'unarchive' : 'archive';
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: Text('${actionStr[0].toUpperCase()}${actionStr.substring(1)} Order?'),
+                            content: Text(
+                              'Are you sure you want to $actionStr "${order.eventName}"?\n\n'
+                              '${order.isArchived ? "Unarchiving will restore it to the active homepage list." : "Archiving will hide it from the active homepage to keep your dashboard organized."}'
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: order.isArchived ? primaryColor : Colors.purple,
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: Text(actionStr.toUpperCase()),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm == true) {
+                          await ref
+                              .read(orderNotifierProvider.notifier)
+                              .toggleArchiveOrder(order.id, !order.isArchived);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Order "${order.eventName}" ${order.isArchived ? "unarchived" : "archived"} successfully.'),
+                                backgroundColor: Colors.purple,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      style: IconButton.styleFrom(
+                        backgroundColor: (order.isArchived ? Colors.purple : labelColor).withValues(alpha: 0.1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 4),
                   // Delete button (Admin only, hidden when from calendar)
                   if (!widget.fromCalendar &&
                       (ref.watch(authNotifierProvider).user?.role ==
@@ -788,10 +844,23 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
                             Expanded(
                               child: _DetailCell(
                                 label: 'Setup Date',
-                                value: formatNepaliDate(
-                                  order.setupDate,
-                                  'MMMM dd, yyyy',
-                                ),
+                                value: () {
+                                  final start = order.setupDate;
+                                  final end = order.setupEndDate;
+                                  if (end == null ||
+                                      (end.year == start.year &&
+                                          end.month == start.month &&
+                                          end.day == start.day)) {
+                                    return formatNepaliDate(
+                                      start,
+                                      'MMMM dd, yyyy',
+                                    );
+                                  }
+                                  if (start.year == end.year) {
+                                    return '${formatNepaliDate(start, 'MMMM dd')} - ${formatNepaliDate(end, 'MMMM dd, yyyy')}';
+                                  }
+                                  return '${formatNepaliDate(start, 'MMMM dd, yyyy')} - ${formatNepaliDate(end, 'MMMM dd, yyyy')}';
+                                }(),
                                 textColor: textColor,
                                 labelColor: labelColor,
                               ),

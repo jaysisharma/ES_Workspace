@@ -1,16 +1,18 @@
 import 'dart:typed_data';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/company_document_entity.dart';
 import '../../data/repositories/firestore_company_document_repository.dart';
 import '../../data/services/synology_service.dart';
 import '../../core/utils/company_pdf_generator.dart';
+import '../../core/utils/share_helper.dart';
 
 // ── Repository & Service Providers ───────────────────────────────────────────
-final companyDocumentRepoProvider = Provider<FirestoreCompanyDocumentRepository>(
-  (ref) => FirestoreCompanyDocumentRepository(),
-);
+final companyDocumentRepoProvider =
+    Provider<FirestoreCompanyDocumentRepository>(
+      (ref) => FirestoreCompanyDocumentRepository(),
+    );
 
 final synologyServiceProvider = Provider<SynologyService>(
   (ref) => SynologyService(),
@@ -57,7 +59,8 @@ class CompanyDocumentNotifier extends Notifier<CompanyDocumentState> {
     return const CompanyDocumentState();
   }
 
-  FirestoreCompanyDocumentRepository get _repo => ref.read(companyDocumentRepoProvider);
+  FirestoreCompanyDocumentRepository get _repo =>
+      ref.read(companyDocumentRepoProvider);
   SynologyService get _synologyService => ref.read(synologyServiceProvider);
 
   Future<void> _init() async {
@@ -100,7 +103,8 @@ class CompanyDocumentNotifier extends Notifier<CompanyDocumentState> {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final pdfBytes = await CompanyPdfGenerator.generateCompanyDetailsPdf();
-      final filename = 'Company_Details_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final filename =
+          'Company_Details_${DateTime.now().millisecondsSinceEpoch}.pdf';
 
       final uploadRes = await _synologyService.uploadPdf(
         config: state.synologyConfig,
@@ -108,13 +112,20 @@ class CompanyDocumentNotifier extends Notifier<CompanyDocumentState> {
         filename: filename,
       );
 
-      final synologyPath = uploadRes?['synologyPath'] ?? '/company_docs/$filename';
-      final shareUrl = uploadRes?['shareUrl'] ?? '${state.synologyConfig.host}/sharing/$filename';
+      final synologyPath =
+          uploadRes?['synologyPath'] ?? '/company_docs/$filename';
+      final shareUrl =
+          uploadRes?['shareUrl'] ??
+          '${state.synologyConfig.host}/sharing/$filename';
 
       final doc = CompanyDocumentEntity(
         id: '',
-        title: title.isEmpty ? 'ES Workspace Official Company Profile PDF' : title,
-        description: description.isEmpty ? 'Official company presentation & services brochure' : description,
+        title: title.isEmpty
+            ? 'ES Workspace Official Company Profile PDF'
+            : title,
+        description: description.isEmpty
+            ? 'Official company presentation & services brochure'
+            : description,
         synologyPath: synologyPath,
         shareUrl: shareUrl,
         fileSize: pdfBytes.length,
@@ -124,7 +135,9 @@ class CompanyDocumentNotifier extends Notifier<CompanyDocumentState> {
 
       await _repo.addDocument(doc);
       await _init();
-      state = state.copyWith(successMessage: 'Company PDF generated & uploaded to Synology NAS');
+      state = state.copyWith(
+        successMessage: 'Company PDF generated & uploaded to Synology NAS',
+      );
       return true;
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
@@ -146,8 +159,11 @@ class CompanyDocumentNotifier extends Notifier<CompanyDocumentState> {
         filename: filename,
       );
 
-      final synologyPath = uploadRes?['synologyPath'] ?? '/company_docs/$filename';
-      final shareUrl = uploadRes?['shareUrl'] ?? '${state.synologyConfig.host}/sharing/$filename';
+      final synologyPath =
+          uploadRes?['synologyPath'] ?? '/company_docs/$filename';
+      final shareUrl =
+          uploadRes?['shareUrl'] ??
+          '${state.synologyConfig.host}/sharing/$filename';
 
       final doc = CompanyDocumentEntity(
         id: '',
@@ -162,7 +178,9 @@ class CompanyDocumentNotifier extends Notifier<CompanyDocumentState> {
 
       await _repo.addDocument(doc);
       await _init();
-      state = state.copyWith(successMessage: 'File successfully uploaded to Synology NAS');
+      state = state.copyWith(
+        successMessage: 'File successfully uploaded to Synology NAS',
+      );
       return true;
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
@@ -183,6 +201,7 @@ class CompanyDocumentNotifier extends Notifier<CompanyDocumentState> {
   }
 
   Future<void> shareDocumentToClient({
+    required BuildContext context,
     required CompanyDocumentEntity doc,
     String? clientName,
     String? customNote,
@@ -193,7 +212,8 @@ class CompanyDocumentNotifier extends Notifier<CompanyDocumentState> {
     final note = (customNote != null && customNote.trim().isNotEmpty)
         ? '\n\nNote: ${customNote.trim()}'
         : '';
-    final message = '''
+    final message =
+        '''
 ${greeting}Please find our official Company Profile & Details document from ES Workspace:
 
 📄 ${doc.title}
@@ -205,20 +225,16 @@ Best Regards,
 Event Solution / ES Workspace Team
 ''';
 
-    try {
-      await Share.share(message, subject: 'Company Profile - Event Solution');
-    } catch (e) {
-      // Fallback for Windows desktop if share DLL is missing or unsupported
-      await Clipboard.setData(ClipboardData(text: message));
-      state = state.copyWith(
-        successMessage: 'Share text and Synology link copied to clipboard!',
-      );
-    }
+    await ShareHelper.shareText(
+      context: context,
+      message: message,
+      subject: 'Company Profile - Event Solution',
+    );
   }
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 final companyDocumentNotifierProvider =
     NotifierProvider<CompanyDocumentNotifier, CompanyDocumentState>(
-  () => CompanyDocumentNotifier(),
-);
+      () => CompanyDocumentNotifier(),
+    );

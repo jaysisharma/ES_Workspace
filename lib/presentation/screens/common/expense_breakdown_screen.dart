@@ -15,7 +15,7 @@ import 'dart:typed_data';
 import '../../../data/services/synology_service.dart';
 import '../../providers/company_document_provider.dart';
 import 'pdf_preview_screen.dart';
-import 'package:printing/printing.dart';
+import '../../../core/utils/share_helper.dart';
 import 'package:uuid/uuid.dart';
 
 class ExpenseBreakdownScreen extends ConsumerStatefulWidget {
@@ -300,7 +300,12 @@ class _ExpenseBreakdownScreenState
       final fileName = 'Expenses_Summary_${widget.order.id}_${widget.order.venue.replaceAll(RegExp(r'[ ,]+'), '_')}.pdf';
 
       if (share) {
-        await Printing.sharePdf(bytes: pdfData, filename: fileName);
+        await ShareHelper.sharePdf(
+          context: context,
+          pdfBytes: pdfData,
+          fileName: fileName,
+          subject: 'Expenses Summary',
+        );
       } else {
         await Navigator.push(
           context,
@@ -1638,9 +1643,10 @@ class _ExpenseBreakdownScreenState
             label: const Text('Open / Download'),
             onPressed: () {
               Navigator.pop(ctx);
-              Printing.sharePdf(
-                bytes: Uint8List(0),
-                filename: expense.billName ?? 'bill.pdf',
+              // Printing.sharePdf removed (doesn't support WhatsApp)
+              // For bill PDFs, open from file path if available
+              ScaffoldMessenger.of(ctx).showSnackBar(
+                const SnackBar(content: Text('Download the bill from the Synology link or scan the bill directly.')),
               );
             },
           ),

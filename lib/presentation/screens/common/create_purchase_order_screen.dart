@@ -6,6 +6,7 @@ import '../../../domain/entities/purchase_order_entity.dart';
 import '../../../domain/entities/order_item_entity.dart';
 import '../../providers/purchase_order_providers.dart';
 import '../../providers/order_providers.dart';
+import '../../widgets/calendar/nepali_date_picker_dialog.dart';
 
 class CreatePurchaseOrderScreen extends ConsumerStatefulWidget {
   final PurchaseOrderEntity? existingPO;
@@ -320,14 +321,14 @@ class _CreatePurchaseOrderScreenState
                 'Event Date',
                 _eventDate,
                 _eventEndDate,
-                (d) => setState(() => _eventDate = d.start),
+                false,
               ),
               const SizedBox(height: 12),
               _buildDateTile(
                 'Setup Date',
                 _setupDate,
                 _setupEndDate,
-                (d) => setState(() => _setupDate = d.start),
+                true,
               ),
               const SizedBox(height: 12),
               const Text(
@@ -618,7 +619,7 @@ class _CreatePurchaseOrderScreenState
     String label,
     DateTime start,
     DateTime? end,
-    Function(DateTimeRange) onSelected,
+    bool isSetup,
   ) {
     String dateText = formatNepaliDate(start, 'MMM dd, yyyy');
     if (end != null && (end.year != start.year || end.month != start.month || end.day != start.day)) {
@@ -637,13 +638,29 @@ class _CreatePurchaseOrderScreenState
       ),
       trailing: const Icon(Icons.calendar_today, size: 20),
       onTap: () async {
-        final picked = await showDateRangePicker(
+        final title = isSetup
+            ? 'Select Setup Date (Nepali BS)'
+            : 'Select Event Date (Nepali BS)';
+
+        final picked = await NepaliDatePickerDialog.show(
           context: context,
-          initialDateRange: DateTimeRange(start: start, end: end ?? start),
-          firstDate: DateTime(2020),
-          lastDate: DateTime(2030),
+          title: title,
+          initialStart: start,
+          initialEnd: end,
+          allowRange: true,
         );
-        if (picked != null) onSelected(picked);
+
+        if (picked != null && picked['start'] != null) {
+          setState(() {
+            if (isSetup) {
+              _setupDate = picked['start']!;
+              _setupEndDate = picked['end'];
+            } else {
+              _eventDate = picked['start']!;
+              _eventEndDate = picked['end'];
+            }
+          });
+        }
       },
     );
   }

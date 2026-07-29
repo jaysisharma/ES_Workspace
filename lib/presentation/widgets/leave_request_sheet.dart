@@ -10,6 +10,7 @@ import '../providers/auth_provider.dart';
 import '../providers/employee_profile_providers.dart';
 import '../providers/hr_providers.dart';
 import '../providers/notification_notifier.dart';
+import 'calendar/nepali_date_picker_dialog.dart';
 
 void showStaffLeaveRequestSheet(BuildContext context, WidgetRef ref) {
   final authState = ref.read(authNotifierProvider);
@@ -262,19 +263,15 @@ void showLeaveRequestSheet({
                                     formatNepaliDate(startDate, 'dd MMM yyyy'),
                                   ),
                                   onPressed: () async {
-                                    final picked = await showDatePicker(
+                                    final picked = await NepaliDatePickerDialog.show(
                                       context: context,
-                                      initialDate: startDate,
-                                      firstDate: DateTime.now().subtract(
-                                        const Duration(days: 7),
-                                      ),
-                                      lastDate: DateTime.now().add(
-                                        const Duration(days: 365),
-                                      ),
+                                      title: 'Select Leave Start Date (Nepali BS)',
+                                      initialStart: startDate,
+                                      allowRange: false,
                                     );
-                                    if (picked != null) {
+                                    if (picked != null && picked['start'] != null) {
                                       setSheetState(() {
-                                        startDate = picked;
+                                        startDate = picked['start']!;
                                         if (endDate.isBefore(startDate)) {
                                           endDate = startDate.add(
                                             const Duration(days: 1),
@@ -309,16 +306,14 @@ void showLeaveRequestSheet({
                                     formatNepaliDate(endDate, 'dd MMM yyyy'),
                                   ),
                                   onPressed: () async {
-                                    final picked = await showDatePicker(
+                                    final picked = await NepaliDatePickerDialog.show(
                                       context: context,
-                                      initialDate: endDate,
-                                      firstDate: startDate,
-                                      lastDate: DateTime.now().add(
-                                        const Duration(days: 365),
-                                      ),
+                                      title: 'Select Leave End Date (Nepali BS)',
+                                      initialStart: endDate,
+                                      allowRange: false,
                                     );
-                                    if (picked != null) {
-                                      setSheetState(() => endDate = picked);
+                                    if (picked != null && picked['start'] != null) {
+                                      setSheetState(() => endDate = picked['start']!);
                                     }
                                   },
                                 ),

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import '../../../core/services/employee_pdf_service.dart';
 import '../../../core/utils/nepali_date_formatter.dart';
 import '../../../domain/entities/attendance_entity.dart';
+import '../../../domain/entities/employee_profile_entity.dart';
 import '../../../domain/entities/leave_request_entity.dart';
 import '../../../domain/entities/notification_entity.dart';
 import '../../../domain/entities/order_entity.dart';
@@ -13,9 +15,11 @@ import '../../providers/employee_profile_providers.dart';
 import '../../providers/hr_providers.dart';
 import '../../providers/notification_notifier.dart';
 import '../../providers/order_providers.dart';
+import '../common/pdf_preview_screen.dart';
 import 'employee_detail_screen.dart';
 import 'add_employee_screen.dart';
 import '../../widgets/admin_manual_attendance_dialog.dart';
+import '../../widgets/calendar/nepali_date_picker_dialog.dart';
 import '../../../core/services/fcm_sender.dart';
 
 class HrManagementScreen extends ConsumerStatefulWidget {
@@ -61,12 +65,94 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
     super.dispose();
   }
 
+  Future<void> _printSingleEmployeePdf(BuildContext context, UserEntity user) async {
+    try {
+      final profiles = await ref.read(employeeProfilesStreamProvider.future);
+      final profile = profiles.firstWhere(
+        (p) => p.userId == user.id,
+        orElse: () => EmployeeProfileEntity(
+          id: user.id,
+          userId: user.id,
+          name: user.name,
+          officeJoinDate: DateTime.now(),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+      final pdfData = await EmployeePdfService.generateEmployeeDetailPdf(
+        profile: profile,
+        user: user,
+      );
+
+      final fileName = 'Employee_Profile_${user.name.replaceAll(RegExp(r'[ ,]+'), '_')}.pdf';
+
+      if (!context.mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PdfPreviewScreen(
+            pdfData: pdfData,
+            title: 'Employee Profile - ${user.name}',
+            fileName: fileName,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate Employee PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _printStaffDirectoryPdf(
+    AsyncValue<List<UserEntity>> usersAsync,
+    AsyncValue<List<EmployeeProfileEntity>> profilesAsync,
+  ) async {
+    try {
+      final users = usersAsync.value ?? [];
+      final profiles = profilesAsync.value ?? [];
+
+      final pdfData = await EmployeePdfService.generateStaffListPdf(
+        profiles: profiles,
+        users: users,
+      );
+
+      final fileName = 'Staff_Directory_${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PdfPreviewScreen(
+            pdfData: pdfData,
+            title: 'Staff Directory',
+            fileName: fileName,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate Staff Directory PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final labelColor = colorScheme.onSurfaceVariant;
 
     final usersAsync = ref.watch(usersStreamProvider);
+    final profilesAsync = ref.watch(employeeProfilesStreamProvider);
     final attendanceAsync = ref.watch(todayAttendanceStreamProvider);
     final leaveRequestsAsync = ref.watch(leaveRequestsStreamProvider);
     final ordersAsync = ref.watch(ordersStreamProvider);
@@ -81,6 +167,11 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.picture_as_pdf_outlined, color: colorScheme.primary),
+            tooltip: 'Print Staff Directory PDF',
+            onPressed: () => _printStaffDirectoryPdf(usersAsync, profilesAsync),
+          ),
           isMobile
               ? IconButton(
                   icon: const Icon(Icons.person_add_alt_1),
@@ -179,7 +270,12 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                   controller: _tabController,
                   children: [
                     // Tab 1: Staff Directory
-                    _buildStaffDirectoryTab(context, allUsers, orders),
+                    _buildStaffDirectoryTab(
+                      context,
+                      allUsers,
+                      orders,
+                      profilesAsync.maybeWhen(data: (p) => p, orElse: () => []),
+                    ),
 
                     // Tab 2: Live Attendance
                     _buildAttendanceTab(context, todayAttendance),
@@ -339,6 +435,7 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
     BuildContext context,
     List<UserEntity> users,
     List<OrderEntity> orders,
+    List<EmployeeProfileEntity> profiles,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
     final labelColor = colorScheme.onSurfaceVariant;
@@ -453,18 +550,26 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                                 children: [
                                   Row(
                                     children: [
-                                      CircleAvatar(
-                                        backgroundColor: colorScheme.primaryContainer,
-                                        child: Text(
-                                          u.name.isNotEmpty
-                                              ? u.name[0].toUpperCase()
-                                              : 'U',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: colorScheme.onPrimaryContainer,
+                                      (() {
+                                        final profile = profiles.where((p) => p.userId == u.id).firstOrNull;
+                                        final photoUrl = profile?.photoUrl;
+                                        return CircleAvatar(
+                                          backgroundColor: colorScheme.primaryContainer,
+                                          foregroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                                              ? NetworkImage(photoUrl)
+                                              : null,
+                                          onForegroundImageError: (photoUrl != null && photoUrl.isNotEmpty)
+                                              ? (_, __) {}
+                                              : null,
+                                          child: Text(
+                                            u.name.isNotEmpty ? u.name[0].toUpperCase() : 'U',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: colorScheme.onPrimaryContainer,
+                                            ),
                                           ),
-                                        ),
-                                      ),
+                                        );
+                                      })(),
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
@@ -528,6 +633,11 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                                           color: labelColor,
                                         ),
                                       ),
+                                      IconButton(
+                                        icon: Icon(Icons.picture_as_pdf_outlined, size: 18, color: colorScheme.primary),
+                                        tooltip: 'Print Employee PDF',
+                                        onPressed: () => _printSingleEmployeePdf(context, u),
+                                      ),
                                       TextButton.icon(
                                         icon: const Icon(
                                           Icons.badge_outlined,
@@ -557,16 +667,26 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                           ),
                         ),
                         child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: colorScheme.primaryContainer,
-                            child: Text(
-                              u.name.isNotEmpty ? u.name[0].toUpperCase() : 'U',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onPrimaryContainer,
+                          leading: (() {
+                            final profile = profiles.where((p) => p.userId == u.id).firstOrNull;
+                            final photoUrl = profile?.photoUrl;
+                            return CircleAvatar(
+                              backgroundColor: colorScheme.primaryContainer,
+                              foregroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                                  ? NetworkImage(photoUrl)
+                                  : null,
+                              onForegroundImageError: (photoUrl != null && photoUrl.isNotEmpty)
+                                  ? (_, __) {}
+                                  : null,
+                              child: Text(
+                                u.name.isNotEmpty ? u.name[0].toUpperCase() : 'U',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.onPrimaryContainer,
+                                ),
                               ),
-                            ),
-                          ),
+                            );
+                          })(),
                           title: Row(
                             children: [
                               Flexible(
@@ -591,6 +711,11 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              IconButton(
+                                icon: Icon(Icons.picture_as_pdf_outlined, size: 18, color: colorScheme.primary),
+                                tooltip: 'Print Employee PDF',
+                                onPressed: () => _printSingleEmployeePdf(context, u),
+                              ),
                               OutlinedButton.icon(
                                 icon: const Icon(
                                   Icons.badge_outlined,
@@ -814,18 +939,17 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
     final hasMore = filtered.length > _leaveLimit;
 
     Future<void> selectDateRange() async {
-      final DateTimeRange? picked = await showDateRangePicker(
+      final picked = await NepaliDatePickerDialog.show(
         context: context,
-        firstDate: DateTime(2020),
-        lastDate: DateTime(2100),
-        initialDateRange: _leaveStartDate != null && _leaveEndDate != null
-            ? DateTimeRange(start: _leaveStartDate!, end: _leaveEndDate!)
-            : null,
+        title: 'Filter Leave Requests (Nepali BS)',
+        initialStart: _leaveStartDate ?? DateTime.now(),
+        initialEnd: _leaveEndDate ?? DateTime.now(),
+        allowRange: true,
       );
-      if (picked != null) {
+      if (picked != null && picked['start'] != null) {
         setState(() {
-          _leaveStartDate = picked.start;
-          _leaveEndDate = picked.end;
+          _leaveStartDate = picked['start']!;
+          _leaveEndDate = picked['end'] ?? picked['start']!;
         });
       }
     }
