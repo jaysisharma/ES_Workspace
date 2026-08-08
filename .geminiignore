@@ -1,0 +1,52 @@
+# Build & Compiler Artifacts
+build/
+.dart_tool/
+.idea/
+.vscode/
+android/.gradle/
+android/app/build/
+ios/Pods/
+ios/.symlinks/
+macos/Pods/
+macos/.symlinks/
+.flutter-plugins-dependencies
+.metadata
+
+# Dependency Trees & Lock Files (Heavy token cost)
+node_modules/
+**/node_modules/
+package-lock.json
+**/package-lock.json
+pubspec.lock
+skills-lock.json
+Podfile.lock
+**/Podfile.lock
+
+# Generated Code Files
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+*.config.dart
+
+# Binary Assets, Fonts & Images
+Roboto/
+assets/fonts/
+*.ttf
+*.otf
+*.woff
+*.woff2
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.pdf
+*.zip
+
+# Knowledge Graph / Cache Outputs
+graphify-out/
+
+# System & OS Files
+.DS_Store
+*.log
+

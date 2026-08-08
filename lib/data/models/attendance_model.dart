@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../domain/entities/attendance_entity.dart';
+import 'package:order_app/domain/entities/attendance_entity.dart';
 
 class AttendanceModel extends AttendanceEntity {
   const AttendanceModel({

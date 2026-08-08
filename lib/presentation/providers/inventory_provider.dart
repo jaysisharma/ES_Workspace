@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/inventory_entity.dart';
-import '../../domain/repositories/inventory_repository.dart';
-import '../../data/repositories/firestore_inventory_repository.dart';
+import 'package:order_app/domain/entities/inventory_entity.dart';
+import 'package:order_app/domain/repositories/inventory_repository.dart';
+import 'package:order_app/data/repositories/firestore_inventory_repository.dart';
 
 // ── Repository Provider ────────────────────────────────────────────────────────
 final inventoryRepositoryProvider = Provider<InventoryRepository>(

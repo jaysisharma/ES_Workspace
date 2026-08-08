@@ -2,11 +2,11 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/company_document_entity.dart';
-import '../../data/repositories/firestore_company_document_repository.dart';
-import '../../data/services/synology_service.dart';
-import '../../core/utils/company_pdf_generator.dart';
-import '../../core/utils/share_helper.dart';
+import 'package:order_app/domain/entities/company_document_entity.dart';
+import 'package:order_app/data/repositories/firestore_company_document_repository.dart';
+import 'package:order_app/data/services/synology_service.dart';
+import 'package:order_app/core/utils/company_pdf_generator.dart';
+import 'package:order_app/core/utils/share_helper.dart';
 
 // ── Repository & Service Providers ───────────────────────────────────────────
 final companyDocumentRepoProvider =

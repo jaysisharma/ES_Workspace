@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/remote/firestore_employee_profile_datasource.dart';
-import '../../data/repositories/employee_profile_repository_impl.dart';
-import '../../domain/entities/employee_profile_entity.dart';
-import '../../domain/repositories/employee_profile_repository.dart';
+import 'package:order_app/data/datasources/remote/firestore_employee_profile_datasource.dart';
+import 'package:order_app/data/repositories/employee_profile_repository_impl.dart';
+import 'package:order_app/domain/entities/employee_profile_entity.dart';
+import 'package:order_app/domain/repositories/employee_profile_repository.dart';
 
 final employeeProfileRemoteDataSourceProvider =
     Provider<EmployeeProfileRemoteDataSource>((ref) {

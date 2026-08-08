@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nepali_utils/nepali_utils.dart';
+import 'package:order_app/core/utils/nepali_date_formatter.dart';
 
 class CustomNepaliCalendarWidget extends StatefulWidget {
   final NepaliDateTime selectedDate;
@@ -328,7 +329,7 @@ class _CustomNepaliCalendarWidgetState
                     _currentMonth,
                     dayNumber,
                   );
-                  final currentDayAd = currentDayNp.toDateTime();
+                  final currentDayAd = safeNepaliToDateTime(currentDayNp);
 
                   final isSelected =
                       widget.selectedDate.year == _currentYear &&

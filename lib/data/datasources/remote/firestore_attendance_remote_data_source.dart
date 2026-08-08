@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/attendance_model.dart';
-import '../../../domain/entities/attendance_entity.dart';
+import 'package:order_app/domain/entities/attendance_entity.dart';
 
 abstract class FirestoreAttendanceRemoteDataSource {
   Future<void> saveAttendance(AttendanceModel model);

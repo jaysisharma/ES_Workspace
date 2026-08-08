@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/employee_profile_model.dart';
-import '../../../domain/entities/employee_profile_entity.dart';
+import 'package:order_app/domain/entities/employee_profile_entity.dart';
 
 abstract class EmployeeProfileRemoteDataSource {
   Stream<List<EmployeeProfileEntity>> getEmployeeProfiles();
@@ -19,7 +19,7 @@ class FirestoreEmployeeProfileRemoteDataSource
   Stream<List<EmployeeProfileEntity>> getEmployeeProfiles() {
     return _firestore.collection('employee_profiles').snapshots().map((snapshot) {
       return snapshot.docs
-          .map((doc) => EmployeeProfileModel.fromJson(doc.data()))
+          .map<EmployeeProfileEntity>((doc) => EmployeeProfileModel.fromJson(doc.data()))
           .toList();
     });
   }

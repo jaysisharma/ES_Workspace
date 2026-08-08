@@ -1,7 +1,7 @@
-import '../../domain/entities/change_request_entity.dart';
-import '../../domain/repositories/change_request_repository.dart';
+import 'package:order_app/domain/entities/change_request_entity.dart';
+import 'package:order_app/domain/repositories/change_request_repository.dart';
 import '../datasources/remote/firestore_change_request_remote_datasource.dart';
-import '../../core/errors/failures.dart';
+import 'package:order_app/core/errors/failures.dart';
 
 class ChangeRequestRepositoryImpl implements ChangeRequestRepository {
   final ChangeRequestRemoteDataSource _remoteDataSource;

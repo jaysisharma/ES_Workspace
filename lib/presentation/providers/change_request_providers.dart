@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/remote/firestore_change_request_remote_datasource.dart';
-import '../../data/repositories/change_request_repository_impl.dart';
-import '../../domain/repositories/change_request_repository.dart';
-import '../../domain/usecases/create_change_request_usecase.dart';
-import '../../domain/usecases/get_change_requests_by_order_usecase.dart';
-import '../../domain/usecases/update_change_request_status_usecase.dart';
+import 'package:order_app/data/datasources/remote/firestore_change_request_remote_datasource.dart';
+import 'package:order_app/data/repositories/change_request_repository_impl.dart';
+import 'package:order_app/domain/repositories/change_request_repository.dart';
+import 'package:order_app/domain/usecases/create_change_request_usecase.dart';
+import 'package:order_app/domain/usecases/get_change_requests_by_order_usecase.dart';
+import 'package:order_app/domain/usecases/update_change_request_status_usecase.dart';
 import 'change_request_notifier.dart';
 
 final changeRequestRemoteDataSourceProvider =

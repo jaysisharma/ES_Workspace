@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
-import '../../domain/entities/event_pass_entity.dart';
-import '../../domain/repositories/event_pass_repository.dart';
-import '../../data/repositories/firestore_event_pass_repository.dart';
-import '../../data/repositories/local_file_event_pass_repository.dart';
-import '../../data/repositories/local_http_event_pass_repository.dart';
-import '../../core/services/local_pass_server.dart';
+import 'package:order_app/domain/entities/event_pass_entity.dart';
+import 'package:order_app/domain/repositories/event_pass_repository.dart';
+import 'package:order_app/data/repositories/firestore_event_pass_repository.dart';
+import 'package:order_app/data/repositories/local_file_event_pass_repository.dart';
+import 'package:order_app/data/repositories/local_http_event_pass_repository.dart';
+import 'package:order_app/core/services/local_pass_server.dart';
 
 // ── Sync Modes ───────────────────────────────────────────────────────────────
 enum PassSyncMode { cloud, localHost, localClient }

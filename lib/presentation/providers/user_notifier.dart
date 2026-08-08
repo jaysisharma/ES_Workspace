@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/user_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
 import 'user_providers.dart';
 
 class UserState {

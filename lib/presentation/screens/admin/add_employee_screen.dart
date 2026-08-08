@@ -7,15 +7,14 @@ import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
-import 'package:nepali_date_picker/nepali_date_picker.dart';
-import '../../../core/utils/nepali_date_formatter.dart';
-import '../../../domain/entities/employee_profile_entity.dart';
-import '../../providers/employee_profile_providers.dart';
-import '../../providers/hr_providers.dart';
-import '../../../core/services/synology_storage_service.dart';
-import '../../../domain/entities/user_entity.dart';
-import 'employee_detail_screen.dart';
-import '../../widgets/calendar/nepali_date_picker_dialog.dart';
+import 'package:order_app/core/utils/nepali_date_formatter.dart';
+import 'package:order_app/domain/entities/employee_profile_entity.dart';
+import 'package:order_app/presentation/providers/employee_profile_providers.dart';
+import 'package:order_app/presentation/providers/hr_providers.dart';
+import 'package:order_app/core/services/synology_storage_service.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/screens/admin/employee_detail_screen.dart';
+import 'package:order_app/presentation/widgets/calendar/nepali_date_picker_dialog.dart';
 
 class AddEmployeeScreen extends ConsumerStatefulWidget {
   final String userId;
@@ -62,6 +61,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
   late TextEditingController _citController;
   late TextEditingController _insuranceController;
   late TextEditingController _tdsController;
+  late TextEditingController _tdsPercentageController;
 
   late TextEditingController _photoUrlController;
   late TextEditingController _citizenshipNumberController;
@@ -114,6 +114,17 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     );
     _tdsController = TextEditingController(text: p?.tds.toString() ?? '0');
 
+    final basicVal = p?.basicSalary ?? 0.0;
+    final daVal = p?.dearnessAllowance ?? 0.0;
+    final bonusVal = p?.bonus ?? 0.0;
+    final grossVal = basicVal + daVal + bonusVal;
+    final tdsVal = p?.tds ?? 0.0;
+    final initTdsPct = (grossVal > 0 && tdsVal > 0) ? (tdsVal / grossVal * 100) : 1.0;
+
+    _tdsPercentageController = TextEditingController(
+      text: initTdsPct.toStringAsFixed(1),
+    );
+
     _photoUrlController = TextEditingController(text: p?.photoUrl ?? '');
     _citizenshipNumberController = TextEditingController(
       text: p?.citizenshipNumber ?? '',
@@ -142,6 +153,16 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     }
   }
 
+  void _recalculateTdsAmount() {
+    final basic = double.tryParse(_basicSalaryController.text) ?? 0.0;
+    final da = double.tryParse(_dearnessAllowanceController.text) ?? 0.0;
+    final bonus = double.tryParse(_bonusController.text) ?? 0.0;
+    final gross = basic + da + bonus;
+    final pct = double.tryParse(_tdsPercentageController.text) ?? 0.0;
+    final calculatedTds = gross * (pct / 100.0);
+    _tdsController.text = calculatedTds.toStringAsFixed(0);
+  }
+
   @override
   void dispose() {
     _tabController.dispose();
@@ -154,10 +175,13 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     _grandfatherNameController.dispose();
     _addressController.dispose();
     _basicSalaryController.dispose();
+    _dearnessAllowanceController.dispose();
     _bonusController.dispose();
     _ssfController.dispose();
     _citController.dispose();
     _insuranceController.dispose();
+    _tdsController.dispose();
+    _tdsPercentageController.dispose();
     _photoUrlController.dispose();
     _citizenshipNumberController.dispose();
     _citizenshipFrontController.dispose();
@@ -497,21 +521,30 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
             'Basic Salary (NPR)',
             _basicSalaryController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) {
+              _recalculateTdsAmount();
+              setState(() {});
+            },
           ),
           const SizedBox(height: 12),
           _buildTextField(
             'Dearness Allowance (DA)',
             _dearnessAllowanceController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) {
+              _recalculateTdsAmount();
+              setState(() {});
+            },
           ),
           const SizedBox(height: 12),
           _buildTextField(
             'Bonus / Performance Allowance',
             _bonusController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) {
+              _recalculateTdsAmount();
+              setState(() {});
+            },
           ),
           const SizedBox(height: 12),
           // Computed Gross Salary Box
@@ -575,11 +608,31 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
-          _buildTextField(
-            'TDS (Tax Deducted at Source)',
-            _tdsController,
-            keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+          Row(
+            children: [
+              Expanded(
+                flex: 1,
+                child: _buildTextField(
+                  'TDS Rate (%)',
+                  _tdsPercentageController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (_) {
+                    _recalculateTdsAmount();
+                    setState(() {});
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 1,
+                child: _buildTextField(
+                  'TDS Amount (NPR)',
+                  _tdsController,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -789,14 +842,14 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
       try {
         final base64Data = value.split(',').last;
         final bytes = base64Decode(base64Data);
-        return Image.memory(bytes, fit: BoxFit.cover, width: double.infinity);
+        return Image.memory(bytes, fit: BoxFit.contain, width: double.infinity, height: double.infinity);
       } catch (_) {}
     } else if (value.startsWith('http://') || value.startsWith('https://')) {
-      return Image.network(value, fit: BoxFit.cover, width: double.infinity);
+      return Image.network(value, fit: BoxFit.contain, width: double.infinity, height: double.infinity);
     } else {
       final file = File(value);
       if (file.existsSync()) {
-        return Image.file(file, fit: BoxFit.cover, width: double.infinity);
+        return Image.file(file, fit: BoxFit.contain, width: double.infinity, height: double.infinity);
       }
     }
 

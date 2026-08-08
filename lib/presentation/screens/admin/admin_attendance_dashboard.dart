@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
-import '../../../domain/entities/attendance_entity.dart';
-import '../../../core/services/geofence_service.dart';
-import '../../providers/attendance_providers.dart';
-import '../../providers/auth_provider.dart';
-import '../staff/staff_attendance_screen.dart';
-import '../../widgets/manage_geofence_dialog.dart';
-import '../../widgets/calendar/nepali_date_picker_dialog.dart';
-import '../../../core/utils/route_transitions.dart';
+import 'package:order_app/domain/entities/attendance_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/core/utils/nepali_date_formatter.dart';
+import 'package:order_app/presentation/providers/attendance_providers.dart';
+import 'package:order_app/presentation/providers/hr_providers.dart';
+import 'package:order_app/presentation/screens/staff/staff_attendance_screen.dart';
+import 'package:order_app/presentation/widgets/hr_management/manage_geofence_dialog.dart';
+import 'package:order_app/presentation/widgets/calendar/nepali_date_picker_dialog.dart';
+import 'package:order_app/presentation/widgets/hr_management/admin_attendance_card.dart';
+import 'package:order_app/presentation/widgets/hr_management/admin_attendance_filter_bar.dart';
+import 'package:order_app/presentation/widgets/hr_management/admin_attendance_month_view.dart';
+import 'package:order_app/core/utils/route_transitions.dart';
 
 class AdminAttendanceDashboard extends ConsumerStatefulWidget {
   const AdminAttendanceDashboard({super.key});
@@ -21,43 +24,29 @@ class AdminAttendanceDashboard extends ConsumerStatefulWidget {
 
 class _AdminAttendanceDashboardState
     extends ConsumerState<AdminAttendanceDashboard> {
+  AttendanceViewMode _viewMode = AttendanceViewMode.day;
   DateTime _selectedDate = DateTime.now();
+  String? _selectedStaffId;
+  String _searchQuery = '';
   bool _showOnlyOutOfBounds = false;
-  final ScrollController _scrollController = ScrollController();
-  int _pageSize = 15;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      setState(() {
-        _pageSize += 15;
-      });
-    }
-  }
 
   void _showSelfieDialog(BuildContext context, String imageUrl, String title) {
     showDialog(
       context: context,
       builder: (context) {
         return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               AppBar(
                 title: Text(title),
                 automaticallyImplyLeading: false,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                ),
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -99,11 +88,47 @@ class _AdminAttendanceDashboardState
     );
   }
 
+  Future<void> _pickDate() async {
+    final picked = await NepaliDatePickerDialog.show(
+      context: context,
+      title: 'Select Attendance Date (Nepali BS)',
+      initialStart: _selectedDate,
+      allowRange: false,
+    );
+    if (picked != null && picked['start'] != null) {
+      setState(() {
+        _selectedDate = picked['start']!;
+      });
+    }
+  }
+
+  Future<void> _pickMonth() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      helpText: 'Select Month & Year',
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = DateTime(picked.year, picked.month, 1);
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final attendanceStream = ref.watch(allAttendanceStreamProvider);
-    final currentUserId = ref.watch(authNotifierProvider).user?.uid ?? '';
-    final todayAttendance = ref.watch(todayAttendanceStreamProvider);
+    final usersAsync = ref.watch(usersStreamProvider);
+
+    final staffList = usersAsync.maybeWhen(
+      data: (users) => users,
+      orElse: () => <UserEntity>[],
+    );
+
+    final selectedStaff = staffList.where((u) => u.id == _selectedStaffId).firstOrNull;
 
     return Scaffold(
       appBar: AppBar(
@@ -123,7 +148,7 @@ class _AdminAttendanceDashboardState
               ),
               icon: const Icon(Icons.touch_app, size: 16, color: Colors.white),
               label: const Text(
-                'Mark My Attendance',
+                'Mark Attendance',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -150,634 +175,185 @@ class _AdminAttendanceDashboardState
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(allAttendanceStreamProvider),
+            onPressed: () {
+              ref.invalidate(allAttendanceStreamProvider);
+              ref.invalidate(usersStreamProvider);
+            },
           ),
         ],
       ),
-      body: attendanceStream.when(
-        data: (allRecords) {
-          var filteredRecords = allRecords.where((r) {
-            return r.checkInTime.year == _selectedDate.year &&
-                r.checkInTime.month == _selectedDate.month &&
-                r.checkInTime.day == _selectedDate.day;
-          }).toList();
+      body: Column(
+        children: [
+          // Filter Bar
+          AdminAttendanceFilterBarWidget(
+            viewMode: _viewMode,
+            onViewModeChanged: (mode) => setState(() => _viewMode = mode),
+            selectedDate: _selectedDate,
+            onPickDate: _pickDate,
+            onPickMonth: _pickMonth,
+            selectedStaffId: _selectedStaffId,
+            staffList: staffList,
+            onStaffChanged: (id) => setState(() => _selectedStaffId = id),
+            searchQuery: _searchQuery,
+            onSearchQueryChanged: (query) => setState(() => _searchQuery = query),
+            showOnlyOutOfBounds: _showOnlyOutOfBounds,
+            onOutOfBoundsToggled: (val) => setState(() => _showOnlyOutOfBounds = val),
+          ),
 
-          if (_showOnlyOutOfBounds) {
-            filteredRecords = filteredRecords
-                .where((r) => !r.isWithinGeofence)
-                .toList();
-          }
+          // Main View Stream Body
+          Expanded(
+            child: attendanceStream.when(
+              data: (allRecords) {
+                // Filter by Staff ID or Search Query if specified
+                var filtered = allRecords.where((r) {
+                  if (_selectedStaffId != null && r.staffId != _selectedStaffId) {
+                    return false;
+                  }
+                  if (_searchQuery.isNotEmpty) {
+                    final q = _searchQuery.toLowerCase();
+                    final matchName = r.staffName.toLowerCase().contains(q);
+                    final matchEvent = r.eventTitle.toLowerCase().contains(q);
+                    return matchName || matchEvent;
+                  }
+                  return true;
+                }).toList();
 
-          filteredRecords.sort(
-            (a, b) => b.checkInTime.compareTo(a.checkInTime),
-          );
+                if (_viewMode == AttendanceViewMode.month) {
+                  final monthlyRecords = filtered.where((r) {
+                    return r.checkInTime.year == _selectedDate.year &&
+                        r.checkInTime.month == _selectedDate.month;
+                  }).toList();
+                  monthlyRecords.sort((a, b) => b.checkInTime.compareTo(a.checkInTime));
 
-          final onDutyCount = filteredRecords
-              .where((r) => !r.isCheckedOut)
-              .length;
-          final presentCount = filteredRecords
-              .where((r) => r.status == AttendanceStatus.present)
-              .length;
-          final outOfBoundsCount = allRecords
-              .where((r) => !r.isWithinGeofence)
-              .length;
+                  return AdminAttendanceMonthViewWidget(
+                    monthlyRecords: monthlyRecords,
+                    selectedStaff: selectedStaff,
+                    selectedMonth: _selectedDate,
+                    onStatusChanged: (item, status) {
+                      ref
+                          .read(attendanceNotifierProvider.notifier)
+                          .updateStatus(item.id, status);
+                    },
+                    onSelfieTap: (url, name) => _showSelfieDialog(
+                      context,
+                      url,
+                      '$name Check-In Selfie',
+                    ),
+                  );
+                }
 
-          return Column(
-            children: [
-              // Metric Summary Cards & Geofence Filter
-              Container(
-                padding: const EdgeInsets.all(16),
-                color: Theme.of(
-                  context,
-                ).colorScheme.surfaceVariant.withOpacity(0.3),
-                child: Column(
+                // Day View Mode
+                var dayRecords = filtered.where((r) {
+                  return r.checkInTime.year == _selectedDate.year &&
+                      r.checkInTime.month == _selectedDate.month &&
+                      r.checkInTime.day == _selectedDate.day;
+                }).toList();
+
+                if (_showOnlyOutOfBounds) {
+                  dayRecords = dayRecords.where((r) => !r.isWithinGeofence).toList();
+                }
+
+                dayRecords.sort((a, b) => b.checkInTime.compareTo(a.checkInTime));
+
+                final nepaliDayHeader = formatNepaliDate(_selectedDate, 'yyyy MMMM dd');
+
+                return Column(
                   children: [
-                    // Admin Personal Attendance Status Banner
+                    // Metric Summary Chips
                     Container(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.3),
-                        ),
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .primary
-                                  .withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.verified_user_rounded,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 22,
-                            ),
+                          _buildMetricChip('Total Logs', '${dayRecords.length}', Theme.of(context).colorScheme.primary),
+                          _buildMetricChip(
+                            'On Duty',
+                            '${dayRecords.where((r) => !r.isCheckedOut).length}',
+                            Theme.of(context).colorScheme.secondary,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'My Attendance Status',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.grey,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                todayAttendance.when(
-                                  data: (records) {
-                                    final record = records
-                                        .where((r) => r.staffId == currentUserId)
-                                        .firstOrNull;
-                                    if (record == null) {
-                                      return const Text(
-                                        'Not Clocked In Today',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                          color: Colors.orange,
-                                        ),
-                                      );
-                                    }
-                                    if (!record.isCheckedOut) {
-                                      return Text(
-                                        'Clocked In at ${DateFormat('hh:mm a').format(record.checkInTime)}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                          color: Colors.green,
-                                        ),
-                                      );
-                                    }
-                                    return Text(
-                                      'Clocked Out at ${DateFormat('hh:mm a').format(record.checkOutTime!)}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        color: Colors.blue,
-                                      ),
-                                    );
-                                  },
-                                  loading: () => const Text(
-                                    'Checking status...',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                  error: (_, __) => const Text(
-                                    'Not Clocked In',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                ),
-                              ],
-                            ),
+                          _buildMetricChip(
+                            'Present',
+                            '${dayRecords.where((r) => r.status == AttendanceStatus.present).length}',
+                            Theme.of(context).colorScheme.tertiary,
                           ),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                SlidePageRoute(
-                                  page: const StaffAttendanceScreen(),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.primary,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                            ),
-                            icon: const Icon(
-                              Icons.camera_alt_outlined,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                            label: const Text(
-                              'Mark / Manage',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Office Geofence Zone Banner
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.pin_drop_rounded,
-                                color: Theme.of(context).colorScheme.primary,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 10),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Text(
-                                    'Office Geofence Zone',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Manage central GPS coordinates & radius',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => const ManageGeofenceDialog(),
-                              );
-                            },
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              side: BorderSide(
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            icon: Icon(
-                              Icons.edit_location_alt_rounded,
-                              size: 15,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                            label: Text(
-                              'Manage Zone',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Date Filter
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Date: ${DateFormat('MMM dd, yyyy').format(_selectedDate)}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        TextButton.icon(
-                          icon: const Icon(Icons.calendar_today),
-                          label: const Text('Change Date'),
-                          onPressed: () async {
-                            final picked = await NepaliDatePickerDialog.show(
-                              context: context,
-                              title: 'Select Attendance Date (Nepali BS)',
-                              initialStart: _selectedDate,
-                              allowRange: false,
-                            );
-                            if (picked != null && picked['start'] != null) {
+                          GestureDetector(
+                            onTap: () {
                               setState(() {
-                                _selectedDate = picked['start']!;
+                                _showOnlyOutOfBounds = !_showOnlyOutOfBounds;
                               });
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        _buildMetricChip(
-                          context,
-                          'Total Logs',
-                          '${filteredRecords.length}',
-                          Theme.of(context).colorScheme.primary,
-                          false,
-                        ),
-                        _buildMetricChip(
-                          context,
-                          'On Duty',
-                          '$onDutyCount',
-                          Theme.of(context).colorScheme.secondary,
-                          false,
-                        ),
-                        _buildMetricChip(
-                          context,
-                          'Present',
-                          '$presentCount',
-                          Theme.of(context).colorScheme.tertiary,
-                          false,
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _showOnlyOutOfBounds = !_showOnlyOutOfBounds;
-                            });
-                          },
-                          child: _buildMetricChip(
-                            context,
-                            'Out of Fence',
-                            '$outOfBoundsCount',
-                            Theme.of(context).colorScheme.error,
-                            _showOnlyOutOfBounds,
+                            },
+                            child: _buildMetricChip(
+                              'Out of Fence',
+                              '${allRecords.where((r) => !r.isWithinGeofence).length}',
+                              Theme.of(context).colorScheme.error,
+                              _showOnlyOutOfBounds,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                    ),
+
+                    // Day Record List
+                    Expanded(
+                      child: dayRecords.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No attendance records found for $nepaliDayHeader BS',
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(12),
+                              itemCount: dayRecords.length,
+                              itemBuilder: (context, index) {
+                                final item = dayRecords[index];
+                                return AdminAttendanceCardWidget(
+                                  item: item,
+                                  onStatusChanged: (status) {
+                                    ref
+                                        .read(attendanceNotifierProvider.notifier)
+                                        .updateStatus(item.id, status);
+                                  },
+                                  onSelfieTap: () {
+                                    if (item.checkInSelfieUrl != null) {
+                                      _showSelfieDialog(
+                                        context,
+                                        item.checkInSelfieUrl!,
+                                        '${item.staffName} Check-In Selfie',
+                                      );
+                                    }
+                                  },
+                                );
+                              },
+                            ),
                     ),
                   ],
-                ),
-              ),
-
-              // Attendance List
-              Expanded(
-                child: filteredRecords.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No attendance records found for this selection.',
-                        ),
-                      )
-                    : () {
-                        final hasMore = filteredRecords.length > _pageSize;
-                        final currentLength = hasMore
-                            ? _pageSize
-                            : filteredRecords.length;
-
-                        return ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.all(12),
-                          itemCount: hasMore
-                              ? currentLength + 1
-                              : currentLength,
-                          itemBuilder: (context, index) {
-                            if (index == currentLength) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child: Center(
-                                  child: CircularProgressIndicator(),
-                                ),
-                              );
-                            }
-                            final item = filteredRecords[index];
-
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              elevation: 2,
-                              child: Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                item.staffName,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
-                                              Text(
-                                                item.eventTitle,
-                                                style: TextStyle(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).primaryColor,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        PopupMenuButton<AttendanceStatus>(
-                                          initialValue: item.status,
-                                          onSelected: (status) {
-                                            ref
-                                                .read(
-                                                  attendanceNotifierProvider
-                                                      .notifier,
-                                                )
-                                                .updateStatus(item.id, status);
-                                          },
-                                          itemBuilder: (context) =>
-                                              AttendanceStatus.values.map((s) {
-                                                return PopupMenuItem(
-                                                  value: s,
-                                                  child: Text(s.displayName),
-                                                );
-                                              }).toList(),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: _getStatusColor(
-                                                context,
-                                                item.status,
-                                              ).withOpacity(0.15),
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              border: Border.all(
-                                                color: _getStatusColor(
-                                                  context,
-                                                  item.status,
-                                                ),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Text(
-                                                  item.status.displayName,
-                                                  style: TextStyle(
-                                                    color: _getStatusColor(
-                                                      context,
-                                                      item.status,
-                                                    ),
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                                const Icon(
-                                                  Icons.arrow_drop_down,
-                                                  size: 16,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const Divider(height: 16),
-
-                                    // Timestamps & Location & Geofence Badge
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Clock In: ${DateFormat('MMM dd, hh:mm a').format(item.checkInTime)}',
-                                              ),
-                                              if (item.checkOutTime != null)
-                                                Text(
-                                                  'Clock Out: ${DateFormat('MMM dd, hh:mm a').format(item.checkOutTime!)}',
-                                                ),
-                                              if (item.checkInAddress !=
-                                                  null) ...[
-                                                const SizedBox(height: 4),
-                                                Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.location_on,
-                                                      size: 14,
-                                                      color: Theme.of(
-                                                        context,
-                                                      ).colorScheme.error,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Expanded(
-                                                      child: Text(
-                                                        item.checkInAddress!,
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          color: Theme.of(context)
-                                                              .colorScheme
-                                                              .onSurfaceVariant,
-                                                        ),
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        maxLines: 2,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                              const SizedBox(height: 6),
-                                              // Geofence Audit Chip
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 3,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color: item.isWithinGeofence
-                                                      ? Theme.of(context)
-                                                            .colorScheme
-                                                            .tertiaryContainer
-                                                      : Theme.of(context)
-                                                            .colorScheme
-                                                            .errorContainer,
-                                                  borderRadius:
-                                                      BorderRadius.circular(6),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      item.isWithinGeofence
-                                                          ? Icons.verified
-                                                          : Icons
-                                                                .warning_amber_rounded,
-                                                      size: 13,
-                                                      color:
-                                                          item.isWithinGeofence
-                                                          ? Theme.of(context)
-                                                                .colorScheme
-                                                                .onTertiaryContainer
-                                                          : Theme.of(context)
-                                                                .colorScheme
-                                                                .onErrorContainer,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      item.isWithinGeofence
-                                                          ? 'Geofence Verified On-Site'
-                                                          : 'Out-of-Fence (${GeofenceService.formatDistance(item.distanceToVenueMeters)})',
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color:
-                                                            item.isWithinGeofence
-                                                            ? Theme.of(context)
-                                                                  .colorScheme
-                                                                  .onTertiaryContainer
-                                                            : Theme.of(context)
-                                                                  .colorScheme
-                                                                  .onErrorContainer,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        // Synology Selfie Thumbnail Button
-                                        if (item.checkInSelfieUrl != null)
-                                          GestureDetector(
-                                            onTap: () => _showSelfieDialog(
-                                              context,
-                                              item.checkInSelfieUrl!,
-                                              '${item.staffName} Check-In Selfie',
-                                            ),
-                                            child: Container(
-                                              width: 60,
-                                              height: 60,
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: Theme.of(
-                                                    context,
-                                                  ).colorScheme.primary,
-                                                  width: 2,
-                                                ),
-                                                image: DecorationImage(
-                                                  image: NetworkImage(
-                                                    item.checkInSelfieUrl!,
-                                                  ),
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      }(),
-              ),
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, __) =>
-            Center(child: Text('Error loading attendance logs: $e')),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, __) => Center(child: Text('Error loading logs: $e')),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildMetricChip(
-    BuildContext context,
     String label,
     String value,
     Color color, [
     bool isSelected = false,
   ]) {
     return Container(
-      width: 105,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      width: 85,
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       decoration: BoxDecoration(
-        color: isSelected ? color.withOpacity(0.25) : color.withOpacity(0.1),
+        color: isSelected ? color.withValues(alpha: 0.25) : color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isSelected ? color : color.withOpacity(0.3),
+          color: isSelected ? color : color.withValues(alpha: 0.3),
           width: isSelected ? 1.5 : 1.0,
         ),
       ),
@@ -787,36 +363,20 @@ class _AdminAttendanceDashboardState
             value,
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: 15,
               color: color,
             ),
           ),
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
-              color: isSelected
-                  ? Theme.of(context).colorScheme.onSurface
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 10,
+              color: color,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
         ],
       ),
     );
-  }
-
-  Color _getStatusColor(BuildContext context, AttendanceStatus status) {
-    final colorScheme = Theme.of(context).colorScheme;
-    switch (status) {
-      case AttendanceStatus.present:
-        return colorScheme.primary;
-      case AttendanceStatus.late:
-        return colorScheme.tertiary;
-      case AttendanceStatus.absent:
-        return colorScheme.error;
-      case AttendanceStatus.halfDay:
-        return colorScheme.secondary;
-    }
   }
 }

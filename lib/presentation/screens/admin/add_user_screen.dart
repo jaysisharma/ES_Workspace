@@ -2,9 +2,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../domain/entities/user_entity.dart';
-import '../../providers/settings_provider.dart';
-import '../../providers/user_providers.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/providers/settings_provider.dart';
+import 'package:order_app/presentation/providers/user_providers.dart';
 
 class AddUserScreen extends ConsumerStatefulWidget {
   const AddUserScreen({super.key});

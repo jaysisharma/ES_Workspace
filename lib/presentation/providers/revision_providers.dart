@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/remote/firestore_revision_remote_datasource.dart';
-import '../../data/repositories/revision_repository_impl.dart';
-import '../../domain/repositories/revision_repository.dart';
-import '../../domain/usecases/create_revision_usecase.dart';
-import '../../domain/usecases/get_revisions_by_order_usecase.dart';
-import '../../domain/entities/revision_entity.dart';
+import 'package:order_app/data/datasources/remote/firestore_revision_remote_datasource.dart';
+import 'package:order_app/data/repositories/revision_repository_impl.dart';
+import 'package:order_app/domain/repositories/revision_repository.dart';
+import 'package:order_app/domain/usecases/create_revision_usecase.dart';
+import 'package:order_app/domain/usecases/get_revisions_by_order_usecase.dart';
+import 'package:order_app/domain/entities/revision_entity.dart';
 
 final revisionRemoteDataSourceProvider = Provider<RevisionRemoteDataSource>((
   ref,

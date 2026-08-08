@@ -2,11 +2,11 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
-import '../../domain/entities/event_pass_entity.dart';
+import 'package:order_app/domain/entities/event_pass_entity.dart';
 import './badge_service.dart';
 
 class EventPassPdfService {
-  static Future<void> generateAndPrintPassPdf(EventPassEntity pass) async {
+  static Future<void> generateAndPrintPassPdf(EventPassEntity pass, {PdfPageFormat pageFormat = PdfPageFormat.a4}) async {
     try {
       final template = await BadgeService.loadTemplate();
       if (template != null) {
@@ -23,11 +23,12 @@ class EventPassPdfService {
 
     final pdf = pw.Document();
     final qrData = '{"id":"${pass.id}","sig":"${pass.passSignature}"}';
+    final isA5 = pageFormat.width < 500;
 
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(40),
+        pageFormat: pageFormat,
+        margin: isA5 ? const pw.EdgeInsets.all(20) : const pw.EdgeInsets.all(40),
         build: (pw.Context context) {
           return pw.Container(
             padding: const pw.EdgeInsets.all(24),

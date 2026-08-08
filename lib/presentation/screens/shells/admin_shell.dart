@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
-import '../admin/admin_dashboard.dart';
-import '../admin/hr_management_screen.dart';
-import '../admin/admin_attendance_dashboard.dart';
-import '../staff/staff_attendance_screen.dart';
-import '../common/vendor_screen.dart';
-import '../common/client_screen.dart';
-import '../common/purchase_order_list_screen.dart';
-import '../common/revenue_summary_screen.dart';
-import '../common/financial_ledger_screen.dart';
-import '../common/event_financial_report_screen.dart';
-import '../common/calendar_screen.dart';
-import '../common/settings_screen.dart';
-import '../admin/synology_company_pdf_screen.dart';
-import '../../widgets/app_drawer.dart';
-import '../common/create_order_screen.dart';
-import '../../providers/auth_provider.dart';
+import 'package:order_app/presentation/screens/admin/admin_dashboard.dart';
+import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
+import 'package:order_app/presentation/screens/admin/admin_attendance_dashboard.dart';
+import 'package:order_app/presentation/screens/staff/staff_attendance_screen.dart';
+import 'package:order_app/presentation/screens/common/contacts/vendor_screen.dart';
+import 'package:order_app/presentation/screens/common/contacts/client_screen.dart';
+import 'package:order_app/presentation/screens/common/orders/purchase_order_list_screen.dart';
+import 'package:order_app/presentation/screens/common/finance/revenue_summary_screen.dart';
+import 'package:order_app/presentation/screens/common/finance/financial_ledger_screen.dart';
+import 'package:order_app/presentation/screens/common/finance/event_financial_report_screen.dart';
+import 'package:order_app/presentation/screens/common/events/calendar_screen.dart';
+import 'package:order_app/presentation/screens/common/utility/settings_screen.dart';
+import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
+import 'package:order_app/presentation/widgets/common/app_drawer.dart';
+import 'package:order_app/presentation/screens/common/orders/create_order_screen.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 
 class AdminShell extends ConsumerStatefulWidget {
   const AdminShell({super.key});
@@ -238,7 +238,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                           index: 11,
                           icon: Icons.picture_as_pdf_outlined,
                           activeIcon: Icons.picture_as_pdf,
-                          label: 'Company Profile Share',
+                          label: 'Company Profile',
                           primaryColor: primaryColor,
                           unselectedColor: unselectedColor,
                         ),
@@ -304,9 +304,15 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.logout_rounded, size: 20, color: Colors.redAccent),
+                            icon: const Icon(
+                              Icons.logout_rounded,
+                              size: 20,
+                              color: Colors.redAccent,
+                            ),
                             tooltip: 'Logout',
-                            onPressed: () => ref.read(authNotifierProvider.notifier).logout(),
+                            onPressed: () => ref
+                                .read(authNotifierProvider.notifier)
+                                .logout(),
                           ),
                         ],
                       ),
@@ -385,11 +391,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                   ),
                   activeIcon: Padding(
                     padding: const EdgeInsets.only(bottom: 4),
-                    child: Icon(
-                      Icons.badge,
-                      size: 26,
-                      color: primaryColor,
-                    ),
+                    child: Icon(Icons.badge, size: 26, color: primaryColor),
                   ),
                   label: 'HR SYSTEM',
                 ),
@@ -488,9 +490,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                   label,
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: isSelected
-                        ? FontWeight.w700
-                        : FontWeight.w500,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected ? primaryColor : unselectedColor,
                     letterSpacing: 0.2,
                     fontFamily: 'Roboto',

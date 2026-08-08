@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/founder_navigation_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../widgets/app_drawer.dart';
+import 'package:order_app/presentation/providers/founder_navigation_provider.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/presentation/widgets/common/app_drawer.dart';
 import '../founder/founder_dashboard.dart';
-import '../admin/hr_management_screen.dart';
-import '../admin/admin_attendance_dashboard.dart';
-import '../common/revenue_summary_screen.dart';
-import '../common/financial_ledger_screen.dart';
-import '../common/event_financial_report_screen.dart';
-import '../admin/synology_company_pdf_screen.dart';
-import '../common/settings_screen.dart';
+import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
+import 'package:order_app/presentation/screens/admin/admin_attendance_dashboard.dart';
+import 'package:order_app/presentation/screens/common/finance/revenue_summary_screen.dart';
+import 'package:order_app/presentation/screens/common/finance/financial_ledger_screen.dart';
+import 'package:order_app/presentation/screens/common/finance/event_financial_report_screen.dart';
+import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
+import 'package:order_app/presentation/screens/common/utility/settings_screen.dart';
 
 class FounderShell extends ConsumerWidget {
   const FounderShell({super.key});
@@ -107,14 +107,86 @@ class FounderShell extends ConsumerWidget {
                     child: ListView(
                       padding: EdgeInsets.zero,
                       children: [
-                        _buildNavItem(ref, selectedIndex, 0, Icons.grid_view_outlined, Icons.grid_view, 'EXECUTIVE OVERVIEW', primaryColor, unselectedColor),
-                        _buildNavItem(ref, selectedIndex, 1, Icons.badge_outlined, Icons.badge, 'HR & EMPLOYEES', primaryColor, unselectedColor),
-                        _buildNavItem(ref, selectedIndex, 2, Icons.co_present_outlined, Icons.co_present, 'ATTENDANCE LOGS', primaryColor, unselectedColor),
-                        _buildNavItem(ref, selectedIndex, 3, Icons.payments_outlined, Icons.payments, 'FINANCIALS', primaryColor, unselectedColor),
-                        _buildNavItem(ref, selectedIndex, 4, Icons.account_balance_wallet_outlined, Icons.account_balance_wallet, 'FINANCIAL LEDGER', primaryColor, unselectedColor),
-                        _buildNavItem(ref, selectedIndex, 5, Icons.analytics_outlined, Icons.analytics, 'EVENT REPORTS', primaryColor, unselectedColor),
-                        _buildNavItem(ref, selectedIndex, 6, Icons.picture_as_pdf_outlined, Icons.picture_as_pdf, 'COMPANY PROFILE SHARE', primaryColor, unselectedColor),
-                        _buildNavItem(ref, selectedIndex, 7, Icons.settings_outlined, Icons.settings, 'SETTINGS', primaryColor, unselectedColor),
+                        _buildNavItem(
+                          ref,
+                          selectedIndex,
+                          0,
+                          Icons.grid_view_outlined,
+                          Icons.grid_view,
+                          'EXECUTIVE OVERVIEW',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          ref,
+                          selectedIndex,
+                          1,
+                          Icons.badge_outlined,
+                          Icons.badge,
+                          'HR & EMPLOYEES',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          ref,
+                          selectedIndex,
+                          2,
+                          Icons.co_present_outlined,
+                          Icons.co_present,
+                          'ATTENDANCE LOGS',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          ref,
+                          selectedIndex,
+                          3,
+                          Icons.payments_outlined,
+                          Icons.payments,
+                          'FINANCIALS',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          ref,
+                          selectedIndex,
+                          4,
+                          Icons.account_balance_wallet_outlined,
+                          Icons.account_balance_wallet,
+                          'FINANCIAL LEDGER',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          ref,
+                          selectedIndex,
+                          5,
+                          Icons.analytics_outlined,
+                          Icons.analytics,
+                          'EVENT REPORTS',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          ref,
+                          selectedIndex,
+                          6,
+                          Icons.picture_as_pdf_outlined,
+                          Icons.picture_as_pdf,
+                          'COMPANY PROFILE',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          ref,
+                          selectedIndex,
+                          7,
+                          Icons.settings_outlined,
+                          Icons.settings,
+                          'SETTINGS',
+                          primaryColor,
+                          unselectedColor,
+                        ),
                       ],
                     ),
                   ),
@@ -169,9 +241,15 @@ class FounderShell extends ConsumerWidget {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.logout_rounded, size: 20, color: Colors.redAccent),
+                            icon: const Icon(
+                              Icons.logout_rounded,
+                              size: 20,
+                              color: Colors.redAccent,
+                            ),
                             tooltip: 'Logout',
-                            onPressed: () => ref.read(authNotifierProvider.notifier).logout(),
+                            onPressed: () => ref
+                                .read(authNotifierProvider.notifier)
+                                .logout(),
                           ),
                         ],
                       ),
@@ -183,7 +261,10 @@ class FounderShell extends ConsumerWidget {
 
             // Screen View
             Expanded(
-              child: IndexedStack(index: selectedIndex < screens.length ? selectedIndex : 0, children: screens),
+              child: IndexedStack(
+                index: selectedIndex < screens.length ? selectedIndex : 0,
+                children: screens,
+              ),
             ),
           ],
         ),
@@ -192,7 +273,10 @@ class FounderShell extends ConsumerWidget {
 
     return Scaffold(
       drawer: const AppDrawer(),
-      body: IndexedStack(index: selectedIndex < screens.length ? selectedIndex : 0, children: screens),
+      body: IndexedStack(
+        index: selectedIndex < screens.length ? selectedIndex : 0,
+        children: screens,
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: surfaceDark,

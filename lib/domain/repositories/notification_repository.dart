@@ -1,4 +1,4 @@
-import '../../domain/entities/notification_entity.dart';
+import 'package:order_app/domain/entities/notification_entity.dart';
 
 abstract class NotificationRepository {
   Stream<List<NotificationEntity>> getNotificationsStream();

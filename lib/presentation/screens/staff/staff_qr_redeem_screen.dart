@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../providers/event_pass_provider.dart';
-import '../../widgets/sync_setup_dialog.dart';
-import '../common/event_pass_details_screen.dart';
-import '../common/scan_pass_screen.dart';
+import 'package:order_app/presentation/providers/event_pass_provider.dart';
+import 'package:order_app/presentation/widgets/common/sync_setup_dialog.dart';
+import 'package:order_app/presentation/screens/common/passes/event_pass_details_screen.dart';
+import 'package:order_app/presentation/screens/common/passes/scan_pass_screen.dart';
 
 class StaffQrRedeemScreen extends ConsumerWidget {
   const StaffQrRedeemScreen({super.key});

@@ -1,4 +1,4 @@
-import '../../domain/entities/employee_profile_entity.dart';
+import 'package:order_app/domain/entities/employee_profile_entity.dart';
 
 class EmployeeProfileModel extends EmployeeProfileEntity {
   const EmployeeProfileModel({

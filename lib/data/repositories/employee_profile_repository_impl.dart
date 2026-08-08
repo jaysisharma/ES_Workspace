@@ -1,5 +1,5 @@
-import '../../domain/entities/employee_profile_entity.dart';
-import '../../domain/repositories/employee_profile_repository.dart';
+import 'package:order_app/domain/entities/employee_profile_entity.dart';
+import 'package:order_app/domain/repositories/employee_profile_repository.dart';
 import '../datasources/remote/firestore_employee_profile_datasource.dart';
 
 class EmployeeProfileRepositoryImpl implements EmployeeProfileRepository {

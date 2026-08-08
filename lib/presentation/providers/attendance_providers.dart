@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/attendance_entity.dart';
-import '../../domain/repositories/attendance_repository.dart';
-import '../../domain/usecases/attendance_usecases.dart';
-import '../../data/datasources/remote/firestore_attendance_remote_data_source.dart';
-import '../../data/repositories/attendance_repository_impl.dart';
+import 'package:order_app/domain/entities/attendance_entity.dart';
+import 'package:order_app/domain/repositories/attendance_repository.dart';
+import 'package:order_app/domain/usecases/attendance_usecases.dart';
+import 'package:order_app/data/datasources/remote/firestore_attendance_remote_data_source.dart';
+import 'package:order_app/data/repositories/attendance_repository_impl.dart';
 
 final attendanceRemoteDataSourceProvider = Provider<FirestoreAttendanceRemoteDataSource>((ref) {
   return FirestoreAttendanceRemoteDataSourceImpl(firestore: FirebaseFirestore.instance);

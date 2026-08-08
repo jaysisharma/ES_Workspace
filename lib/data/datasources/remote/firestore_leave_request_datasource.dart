@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/leave_request_model.dart';
-import '../../../domain/entities/leave_request_entity.dart';
+import 'package:order_app/domain/entities/leave_request_entity.dart';
 
 abstract class LeaveRequestRemoteDataSource {
   Stream<List<LeaveRequestEntity>> getLeaveRequests();

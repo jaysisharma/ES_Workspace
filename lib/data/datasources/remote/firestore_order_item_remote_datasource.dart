@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../core/errors/failures.dart';
+import 'package:order_app/core/errors/failures.dart';
 import '../../models/order_item_model.dart';
-import '../../../domain/entities/order_item_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
 
 abstract class OrderItemRemoteDataSource {
   Future<void> addItem(OrderItemEntity item);

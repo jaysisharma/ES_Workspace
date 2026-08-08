@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../core/utils/currency_formatter.dart';
-import '../../../domain/entities/order_item_entity.dart';
+import 'package:order_app/core/utils/currency_formatter.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
 
 class ClientRevenueSection extends StatelessWidget {
   final List<OrderItemEntity> allItems;

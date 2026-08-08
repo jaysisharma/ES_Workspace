@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/order_item_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
 import 'order_providers.dart';
 
 class OrderItemState {
@@ -58,12 +58,13 @@ class OrderItemNotifier extends Notifier<OrderItemState> {
   }
 
   Future<void> updateItem(OrderItemEntity item) async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    // Optimistic local update so UI does not collapse or trigger scroll jumps
+    final updatedItems = state.items.map((i) => i.id == item.id ? item : i).toList();
+    state = state.copyWith(items: updatedItems, clearError: true);
     try {
       await ref.read(updateOrderItemUseCaseProvider)(item);
-      await loadItems(item.orderId); // Refresh list
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(error: e.toString());
     }
   }
 
@@ -83,10 +84,26 @@ class OrderItemNotifier extends Notifier<OrderItemState> {
   }
 
   Future<void> toggleCompletion(OrderItemEntity item) async {
-    // Single responsibility: Only flip the item and call the update usecase.
     final updatedItem = item.copyWith(isCompleted: !item.isCompleted);
-    // Reuse the updateItem logic to handle state loading and refreshing
     await updateItem(updatedItem);
+  }
+
+  Future<void> assignStaffToTask(OrderItemEntity item, String? staffId, String? staffName) async {
+    final updatedItem = staffId == null || staffId.isEmpty
+        ? item.copyWith(clearAssignedStaff: true)
+        : item.copyWith(assignedStaffId: staffId, assignedStaffName: staffName);
+    await updateItem(updatedItem);
+  }
+
+  Future<void> assignAllTasksToStaff(String? staffId, String? staffName) async {
+    final updatedItems = state.items.map((item) {
+      if (staffId == null || staffId.isEmpty) {
+        return item.copyWith(clearAssignedStaff: true);
+      } else {
+        return item.copyWith(assignedStaffId: staffId, assignedStaffName: staffName);
+      }
+    }).toList();
+    await bulkUpdateItems(updatedItems);
   }
 
   Future<void> deleteItemsForOrder(String orderId) async {

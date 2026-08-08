@@ -1,4 +1,4 @@
-import '../../domain/entities/expense_entity.dart';
+import 'package:order_app/domain/entities/expense_entity.dart';
 
 class ExpenseModel extends ExpenseEntity {
   const ExpenseModel({

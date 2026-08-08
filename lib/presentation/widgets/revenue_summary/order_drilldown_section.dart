@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../core/utils/nepali_date_formatter.dart';
-import '../../../domain/entities/order_entity.dart';
-import '../../../domain/entities/order_item_entity.dart';
+import 'package:order_app/core/utils/nepali_date_formatter.dart';
+import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
 
 class OrderDrilldownSection extends StatelessWidget {
   final OrderEntity order;

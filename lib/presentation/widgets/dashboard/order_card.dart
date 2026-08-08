@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/utils/route_transitions.dart';
-import '../../../domain/entities/order_entity.dart';
-import '../../../domain/entities/user_entity.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/order_providers.dart';
-import '../../screens/common/order_details_screen.dart';
+import 'package:order_app/core/utils/route_transitions.dart';
+import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/presentation/providers/order_providers.dart';
+import 'package:order_app/presentation/screens/common/orders/order_details_screen.dart';
 
 class OrderCard extends ConsumerWidget {
   final OrderEntity order;

@@ -1,6 +1,6 @@
 import 'package:cloud_functions/cloud_functions.dart';
-import '../../domain/entities/attendance_entity.dart';
-import '../../domain/repositories/attendance_repository.dart';
+import 'package:order_app/domain/entities/attendance_entity.dart';
+import 'package:order_app/domain/repositories/attendance_repository.dart';
 import '../datasources/remote/firestore_attendance_remote_data_source.dart';
 import '../models/attendance_model.dart';
 

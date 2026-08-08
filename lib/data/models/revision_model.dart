@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../domain/entities/revision_entity.dart';
+import 'package:order_app/domain/entities/revision_entity.dart';
 
 class RevisionModel extends RevisionEntity {
   const RevisionModel({

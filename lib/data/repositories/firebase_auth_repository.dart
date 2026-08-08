@@ -5,11 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../firebase_options.dart';
-import '../../domain/entities/auth_entity.dart';
-import '../../domain/entities/user_entity.dart';
-import '../../domain/repositories/auth_repository.dart';
+import 'package:order_app/domain/entities/auth_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/domain/repositories/auth_repository.dart';
 import '../models/auth_model.dart';
-import '../../core/errors/failures.dart'; // Ensure error handling matches
+import 'package:order_app/core/errors/failures.dart'; // Ensure error handling matches
 
 class FirebaseAuthRepository implements AuthRepository {
   final FirebaseAuth _firebaseAuth;
@@ -99,10 +99,19 @@ class FirebaseAuthRepository implements AuthRepository {
     return authResult;
   }
 
-  /// Save active user session locally to SharedPreferences for Desktop restart persistence
+  /// Save active user session locally to SharedPreferences.
+  /// Admin sessions are NEVER persisted — admins auto-logout when the app closes.
   Future<void> _saveSessionToLocal(AuthEntity auth) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (auth.role == UserRole.admin) {
+        // Admin: wipe any old session so they are never auto-resumed
+        await prefs.remove('user_session_v1');
+        debugPrint(
+          '🔒 [AuthRepo] Admin session NOT persisted (auto-logout on app close)',
+        );
+        return;
+      }
       await prefs.setString(
         'user_session_v1',
         jsonEncode({
@@ -112,7 +121,7 @@ class FirebaseAuthRepository implements AuthRepository {
         }),
       );
       debugPrint(
-        '💾 [AuthRepo] Persistent session saved to local storage for ${auth.email}',
+        '💾 [AuthRepo] Persistent session saved to local storage for ${auth.email} (${auth.role.name})',
       );
     } catch (e) {
       debugPrint('⚠️ [AuthRepo] Error saving local session: $e');
@@ -275,6 +284,17 @@ class FirebaseAuthRepository implements AuthRepository {
           if (data['role'] != null) {
             role = _parseRole(data['role'] as String?);
           }
+
+          // Admin sessions should never be restored from local storage.
+          // If somehow an admin session slipped in, discard it.
+          if (role == UserRole.admin) {
+            debugPrint(
+              '🔒 [AuthRepo] Discarding stale admin local session — admin must re-login.',
+            );
+            await prefs.remove('user_session_v1');
+            return null;
+          }
+
           debugPrint(
             '💾 [AuthRepo] Found saved local session! UID: $uid, Email: $email, Role: $role',
           );
@@ -304,7 +324,21 @@ class FirebaseAuthRepository implements AuthRepository {
       }
 
       role ??= UserRole.staff;
+
+      // Admin: sign out of Firebase Auth immediately so the next cold start
+      // will NOT find a cached Firebase token. This enforces the auto-logout.
+      if (role == UserRole.admin && firebaseUser != null) {
+        try {
+          await _firebaseAuth.signOut();
+          debugPrint(
+            '🔒 [AuthRepo] Admin Firebase token cleared — will require login on next app start.',
+          );
+        } catch (_) {}
+        // Still return the admin entity for THIS session so the app works now.
+      }
+
       final auth = AuthModel(uid: uid, email: email ?? '', role: role);
+      // _saveSessionToLocal is a no-op for admin (won't persist)
       await _saveSessionToLocal(auth);
       return auth;
     } catch (e) {
@@ -325,6 +359,39 @@ class FirebaseAuthRepository implements AuthRepository {
       throw ServerException('FirebaseAuth Error: ${e.message}');
     } catch (e) {
       throw ServerException('Failed to update password: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user != null) {
+        final uid = user.uid;
+        try {
+          await _firestore.collection('users').doc(uid).update({
+            'isActive': false,
+            'isDeleted': true,
+            'deletedAt': FieldValue.serverTimestamp(),
+          });
+        } catch (e) {
+          debugPrint('⚠️ [AuthRepo] Firestore user doc update on delete: $e');
+        }
+
+        await user.delete();
+      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('user_session_v1');
+      debugPrint('🧹 [AuthRepo] User account and local session deleted');
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        throw ServerException(
+          'Security Check: Please log out and log back in before deleting your account.',
+        );
+      }
+      throw ServerException('FirebaseAuth Error (${e.code}): ${e.message}');
+    } catch (e) {
+      throw ServerException('Account deletion failed: ${e.toString()}');
     }
   }
 

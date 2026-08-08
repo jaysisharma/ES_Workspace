@@ -1,5 +1,5 @@
-import '../../domain/entities/purchase_order_entity.dart';
-import '../../domain/repositories/purchase_order_repository.dart';
+import 'package:order_app/domain/entities/purchase_order_entity.dart';
+import 'package:order_app/domain/repositories/purchase_order_repository.dart';
 import '../datasources/remote/firestore_purchase_order_remote_datasource.dart';
 
 class PurchaseOrderRepositoryImpl implements PurchaseOrderRepository {

@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../domain/entities/event_pass_entity.dart';
-import '../../domain/repositories/event_pass_repository.dart';
-import '../../core/errors/failures.dart';
+import 'package:order_app/domain/entities/event_pass_entity.dart';
+import 'package:order_app/domain/repositories/event_pass_repository.dart';
+import 'package:order_app/core/errors/failures.dart';
 
 class FirestoreEventPassRepository implements EventPassRepository {
   final FirebaseFirestore _firestore;

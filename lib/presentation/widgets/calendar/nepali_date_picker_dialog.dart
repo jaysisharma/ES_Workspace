@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nepali_utils/nepali_utils.dart';
 import 'custom_nepali_calendar_widget.dart';
-import '../../../core/utils/nepali_date_formatter.dart';
+import 'package:order_app/core/utils/nepali_date_formatter.dart';
 
 class NepaliDatePickerDialog extends StatefulWidget {
   final String title;
@@ -49,8 +49,10 @@ class _NepaliDatePickerDialogState extends State<NepaliDatePickerDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedStart = widget.initialStart.toNepaliDateTime();
-    _selectedEnd = widget.initialEnd?.toNepaliDateTime();
+    _selectedStart = safeDateTimeToNepali(widget.initialStart);
+    _selectedEnd = widget.initialEnd != null
+        ? safeDateTimeToNepali(widget.initialEnd!)
+        : null;
     // Default to Range Mode whenever range is allowed
     _isRangeMode = widget.allowRange;
   }
@@ -480,9 +482,9 @@ class _NepaliDatePickerDialogState extends State<NepaliDatePickerDialog> {
                           ),
                           onPressed: () {
                             Navigator.pop(context, {
-                              'start': _selectedStart.toDateTime(),
-                              'end': _isRangeMode
-                                  ? _selectedEnd?.toDateTime()
+                              'start': safeNepaliToDateTime(_selectedStart),
+                              'end': _isRangeMode && _selectedEnd != null
+                                  ? safeNepaliToDateTime(_selectedEnd!)
                                   : null,
                             });
                           },

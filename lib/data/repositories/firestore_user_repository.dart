@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../domain/entities/user_entity.dart';
-import '../../domain/repositories/user_repository.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/domain/repositories/user_repository.dart';
 import '../models/user_model.dart';
-import '../../core/errors/failures.dart';
+import 'package:order_app/core/errors/failures.dart';
 
 class FirestoreUserRepository implements UserRepository {
   final FirebaseFirestore _firestore;

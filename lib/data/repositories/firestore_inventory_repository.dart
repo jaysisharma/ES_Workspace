@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../domain/entities/inventory_entity.dart';
-import '../../domain/repositories/inventory_repository.dart';
-import '../../core/errors/failures.dart';
+import 'package:order_app/domain/entities/inventory_entity.dart';
+import 'package:order_app/domain/repositories/inventory_repository.dart';
+import 'package:order_app/core/errors/failures.dart';
 
 class FirestoreInventoryRepository implements InventoryRepository {
   final FirebaseFirestore _firestore;

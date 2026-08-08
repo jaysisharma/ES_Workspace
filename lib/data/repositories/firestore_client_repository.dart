@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../domain/entities/client_entity.dart';
-import '../../domain/repositories/client_repository.dart';
-import '../../core/errors/failures.dart';
+import 'package:order_app/domain/entities/client_entity.dart';
+import 'package:order_app/domain/repositories/client_repository.dart';
+import 'package:order_app/core/errors/failures.dart';
 
 class FirestoreClientRepository implements ClientRepository {
   final FirebaseFirestore _firestore;

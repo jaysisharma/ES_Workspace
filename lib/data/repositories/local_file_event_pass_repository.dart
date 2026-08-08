@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import '../../domain/entities/event_pass_entity.dart';
-import '../../domain/repositories/event_pass_repository.dart';
-import '../../core/errors/failures.dart';
+import 'package:order_app/domain/entities/event_pass_entity.dart';
+import 'package:order_app/domain/repositories/event_pass_repository.dart';
+import 'package:order_app/core/errors/failures.dart';
 
 class LocalFileEventPassRepository implements EventPassRepository {
   Future<File> get _passesFile async {

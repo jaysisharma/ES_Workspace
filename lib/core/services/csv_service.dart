@@ -1,7 +1,7 @@
 import 'package:csv/csv.dart';
-import '../../domain/entities/order_entity.dart';
-import '../../domain/entities/client_entity.dart';
-import '../../domain/entities/vendor_entity.dart';
+import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/domain/entities/client_entity.dart';
+import 'package:order_app/domain/entities/vendor_entity.dart';
 
 class CsvService {
   static String generateOrdersCsv(List<OrderEntity> orders) {

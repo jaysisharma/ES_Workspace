@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../providers/auth_provider.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'reset_password_screen.dart';
-import '../../../core/utils/auth_error_mapper.dart';
+import 'package:order_app/core/utils/auth_error_mapper.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -168,6 +168,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   fontSize: 14,
                                 ),
                                 keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                onSubmitted: (_) => FocusScope.of(context).nextFocus(),
                                 decoration: InputDecoration(
                                   hintText: 'you@company.com',
                                   hintStyle: TextStyle(
@@ -245,6 +247,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   fontSize: 14,
                                 ),
                                 obscureText: _obscurePassword,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) {
+                                  if (!authState.isLoading) {
+                                    _handleLogin();
+                                  }
+                                },
                                 decoration: InputDecoration(
                                   hintText: '••••••••',
                                   hintStyle: TextStyle(

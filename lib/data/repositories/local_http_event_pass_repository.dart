@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../domain/entities/event_pass_entity.dart';
-import '../../domain/repositories/event_pass_repository.dart';
-import '../../core/errors/failures.dart';
+import 'package:order_app/domain/entities/event_pass_entity.dart';
+import 'package:order_app/domain/repositories/event_pass_repository.dart';
+import 'package:order_app/core/errors/failures.dart';
 
 class LocalHttpEventPassRepository implements EventPassRepository {
   final String hostIp;

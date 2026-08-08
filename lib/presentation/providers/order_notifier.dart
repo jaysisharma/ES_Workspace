@@ -1,13 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/order_entity.dart';
-import '../../domain/entities/order_item_entity.dart';
-import '../../domain/entities/expense_entity.dart';
-import '../../domain/entities/user_entity.dart';
-import '../../core/services/fcm_sender.dart';
+import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
+import 'package:order_app/domain/entities/expense_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/core/services/fcm_sender.dart';
 import 'order_providers.dart';
 import 'notification_notifier.dart';
 import 'auth_provider.dart';
-import '../../domain/entities/notification_entity.dart';
+import 'package:order_app/domain/entities/notification_entity.dart';
 import 'package:uuid/uuid.dart';
 
 class OrderState {
@@ -52,16 +52,18 @@ class OrderNotifier extends Notifier<OrderState> {
 
   Future<void> loadOrders() async {
     state = state.copyWith(
-      isLoading: true, 
-      clearError: true, 
+      isLoading: true,
+      clearError: true,
       clearLastDoc: true,
       hasMore: true,
       orders: [],
     );
     try {
-      final result = await ref.read(orderRepositoryProvider).getOrdersPaginated(10);
+      final result = await ref
+          .read(orderRepositoryProvider)
+          .getOrdersPaginated(10);
       state = state.copyWith(
-        isLoading: false, 
+        isLoading: false,
         orders: result['orders'] as List<OrderEntity>,
         lastDoc: result['lastDoc'],
         hasMore: result['hasMore'] as bool,
@@ -76,11 +78,10 @@ class OrderNotifier extends Notifier<OrderState> {
 
     state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final result = await ref.read(orderRepositoryProvider).getOrdersPaginated(
-        10, 
-        lastDoc: state.lastDoc,
-      );
-      
+      final result = await ref
+          .read(orderRepositoryProvider)
+          .getOrdersPaginated(10, lastDoc: state.lastDoc);
+
       final newOrders = result['orders'] as List<OrderEntity>;
       state = state.copyWith(
         isLoading: false,
@@ -106,17 +107,19 @@ class OrderNotifier extends Notifier<OrderState> {
 
       // Notify founder only (admin already knows — they just created it)
       if (currentRole != UserRole.founder) {
-        await ref.read(notificationNotifierProvider.notifier).addNotification(
-          NotificationEntity(
-            id: const Uuid().v4(),
-            title: 'New Order Created',
-            description: 'Order for "${order.eventName}" has been created.',
-            timestamp: DateTime.now(),
-            type: 'order',
-            relatedId: order.id,
-            targetRole: 'founder',
-          ),
-        );
+        await ref
+            .read(notificationNotifierProvider.notifier)
+            .addNotification(
+              NotificationEntity(
+                id: const Uuid().v4(),
+                title: 'New Order Created',
+                description: 'Order for "${order.eventName}" has been created.',
+                timestamp: DateTime.now(),
+                type: 'order',
+                relatedId: order.id,
+                targetRole: 'founder',
+              ),
+            );
         FcmSender.sendToTopic(
           topic: 'role_founder',
           title: 'New Order Created',
@@ -126,18 +129,20 @@ class OrderNotifier extends Notifier<OrderState> {
 
       // Notify each assigned staff member individually
       for (final staffId in order.assignedStaffIds) {
-        await ref.read(notificationNotifierProvider.notifier).addNotification(
-          NotificationEntity(
-            id: const Uuid().v4(),
-            title: 'You\'ve Been Assigned',
-            description: 'You are assigned to "${order.eventName}".',
-            timestamp: DateTime.now(),
-            type: 'order',
-            relatedId: order.id,
-            targetRole: 'staff',
-            targetUserId: staffId,
-          ),
-        );
+        await ref
+            .read(notificationNotifierProvider.notifier)
+            .addNotification(
+              NotificationEntity(
+                id: const Uuid().v4(),
+                title: 'You\'ve Been Assigned',
+                description: 'You are assigned to "${order.eventName}".',
+                timestamp: DateTime.now(),
+                type: 'order',
+                relatedId: order.id,
+                targetRole: 'staff',
+                targetUserId: staffId,
+              ),
+            );
         FcmSender.sendToUser(
           userId: staffId,
           title: 'You\'ve Been Assigned',
@@ -169,39 +174,44 @@ class OrderNotifier extends Notifier<OrderState> {
         );
 
         // Notify founder of status changes
-        ref.read(notificationNotifierProvider.notifier).addNotification(
-          NotificationEntity(
-            id: const Uuid().v4(),
-            title: 'Order Status Updated',
-            description:
-                'Order "${order.eventName}" is now ${_statusLabel(order.status)}.',
-            timestamp: now,
-            type: 'system',
-            relatedId: order.id,
-            targetRole: 'founder',
-          ),
-        );
+        ref
+            .read(notificationNotifierProvider.notifier)
+            .addNotification(
+              NotificationEntity(
+                id: const Uuid().v4(),
+                title: 'Order Status Updated',
+                description:
+                    'Order "${order.eventName}" is now ${_statusLabel(order.status)}.',
+                timestamp: now,
+                type: 'system',
+                relatedId: order.id,
+                targetRole: 'founder',
+              ),
+            );
         FcmSender.sendToTopic(
           topic: 'role_founder',
           title: 'Order Status Updated',
-          body: 'Order "${order.eventName}" is now ${_statusLabel(order.status)}.',
+          body:
+              'Order "${order.eventName}" is now ${_statusLabel(order.status)}.',
         );
 
         // Also notify each assigned staff member
         for (final staffId in order.assignedStaffIds) {
-          ref.read(notificationNotifierProvider.notifier).addNotification(
-            NotificationEntity(
-              id: const Uuid().v4(),
-              title: 'Order Status Updated',
-              description:
-                  '"${order.eventName}" is now ${_statusLabel(order.status)}.',
-              timestamp: now,
-              type: 'system',
-              relatedId: order.id,
-              targetRole: 'staff',
-              targetUserId: staffId,
-            ),
-          );
+          ref
+              .read(notificationNotifierProvider.notifier)
+              .addNotification(
+                NotificationEntity(
+                  id: const Uuid().v4(),
+                  title: 'Order Status Updated',
+                  description:
+                      '"${order.eventName}" is now ${_statusLabel(order.status)}.',
+                  timestamp: now,
+                  type: 'system',
+                  relatedId: order.id,
+                  targetRole: 'staff',
+                  targetUserId: staffId,
+                ),
+              );
           FcmSender.sendToUser(
             userId: staffId,
             title: 'Order Status Updated',
@@ -226,15 +236,41 @@ class OrderNotifier extends Notifier<OrderState> {
                 'Expenses updated to Rs. ${order.totalExpenses.toStringAsFixed(0)}',
           ),
         );
-      } else {
-        newLogs.add(
-          OrderLogEntity(timestamp: now, message: 'Order details updated'),
-        );
-      }
+        // Check for newly assigned staff members and notify them
+        if (oldOrder != null) {
+          final oldStaffSet = oldOrder.assignedStaffIds.toSet();
+          final newlyAssignedStaff = order.assignedStaffIds
+              .where((id) => !oldStaffSet.contains(id))
+              .toList();
 
-      final updatedOrder = order.copyWith(logs: newLogs, updatedAt: now);
-      await ref.read(updateOrderUseCaseProvider)(updatedOrder);
-      await loadOrders();
+          for (final staffId in newlyAssignedStaff) {
+            await ref
+                .read(notificationNotifierProvider.notifier)
+                .addNotification(
+                  NotificationEntity(
+                    id: const Uuid().v4(),
+                    title: 'You\'ve Been Assigned',
+                    description:
+                        'You have been assigned to work on "${order.eventName}".',
+                    timestamp: now,
+                    type: 'order',
+                    relatedId: order.id,
+                    targetRole: 'staff',
+                    targetUserId: staffId,
+                  ),
+                );
+            FcmSender.sendToUser(
+              userId: staffId,
+              title: 'You\'ve Been Assigned',
+              body: 'You have been assigned to work on "${order.eventName}".',
+            );
+          }
+        }
+
+        final updatedOrder = order.copyWith(logs: newLogs, updatedAt: now);
+        await ref.read(updateOrderUseCaseProvider)(updatedOrder);
+        await loadOrders();
+      }
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -262,17 +298,23 @@ class OrderNotifier extends Notifier<OrderState> {
       if (order != null) {
         final now = DateTime.now();
         final updatedLogs = List<OrderLogEntity>.from(order.logs)
-          ..add(OrderLogEntity(
-            timestamp: now,
-            message: isArchived ? 'Order archived by admin' : 'Order unarchived by admin',
-          ));
+          ..add(
+            OrderLogEntity(
+              timestamp: now,
+              message: isArchived
+                  ? 'Order archived by admin'
+                  : 'Order unarchived by admin',
+            ),
+          );
         final updatedOrder = order.copyWith(
           isArchived: isArchived,
           logs: updatedLogs,
           updatedAt: now,
         );
         await repository.updateOrder(updatedOrder);
-        final updatedList = state.orders.map((o) => o.id == orderId ? updatedOrder : o).toList();
+        final updatedList = state.orders
+            .map((o) => o.id == orderId ? updatedOrder : o)
+            .toList();
         state = state.copyWith(orders: updatedList);
       }
     } catch (e) {
@@ -308,8 +350,11 @@ class OrderNotifier extends Notifier<OrderState> {
       );
 
       final updatedOrder = order.copyWith(logs: newLogs, updatedAt: now);
-      await ref
-          .read(finalizeRevenueUseCaseProvider)(updatedOrder, items, additionalRevenue);
+      await ref.read(finalizeRevenueUseCaseProvider)(
+        updatedOrder,
+        items,
+        additionalRevenue,
+      );
 
       // Notify admin + founder
       await ref
@@ -329,7 +374,8 @@ class OrderNotifier extends Notifier<OrderState> {
       FcmSender.sendToTopics(
         topics: ['role_admin', 'role_founder'],
         title: 'Revenue Finalized',
-        body: 'Revenue for "${order.eventName}" finalized at Rs. ${order.totalAmount.toStringAsFixed(0)}',
+        body:
+            'Revenue for "${order.eventName}" finalized at Rs. ${order.totalAmount.toStringAsFixed(0)}',
       );
 
       await loadOrders();
@@ -381,7 +427,8 @@ class OrderNotifier extends Notifier<OrderState> {
       FcmSender.sendToTopics(
         topics: ['role_admin', 'role_founder'],
         title: 'Expenses Finalized',
-        body: 'Expenses for "${order.eventName}" finalized at Rs. ${order.totalExpenses.toStringAsFixed(0)}',
+        body:
+            'Expenses for "${order.eventName}" finalized at Rs. ${order.totalExpenses.toStringAsFixed(0)}',
       );
 
       await loadOrders();

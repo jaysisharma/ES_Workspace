@@ -1,5 +1,5 @@
-import '../../domain/entities/event_entity.dart';
-import '../../domain/repositories/event_repository.dart';
+import 'package:order_app/domain/entities/event_entity.dart';
+import 'package:order_app/domain/repositories/event_repository.dart';
 import '../datasources/remote/firestore_event_remote_datasource.dart';
 import '../models/event_model.dart';
 

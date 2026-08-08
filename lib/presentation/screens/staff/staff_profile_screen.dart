@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/services/employee_pdf_service.dart';
-import '../../../domain/entities/employee_profile_entity.dart';
-import '../../../domain/entities/user_entity.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/employee_profile_providers.dart';
-import '../../providers/settings_provider.dart';
-import '../../providers/event_providers.dart';
-import '../../../domain/entities/event_entity.dart';
-import '../../widgets/leave_request_sheet.dart';
-import '../admin/synology_company_pdf_screen.dart';
-import '../common/pdf_preview_screen.dart';
+import 'package:order_app/core/services/employee_pdf_service.dart';
+import 'package:order_app/domain/entities/employee_profile_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/presentation/providers/employee_profile_providers.dart';
+import 'package:order_app/presentation/providers/settings_provider.dart';
+import 'package:order_app/presentation/providers/event_providers.dart';
+import 'package:order_app/domain/entities/event_entity.dart';
+import 'package:order_app/presentation/widgets/hr_management/leave_request_sheet.dart';
+import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
+import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
 
 class StaffProfileScreen extends ConsumerStatefulWidget {
   const StaffProfileScreen({super.key});
@@ -38,7 +38,7 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
       );
 
       final profiles = await ref.read(employeeProfilesStreamProvider.future);
-      final profile = profiles.firstWhere(
+      final profile = profiles.cast<EmployeeProfileEntity>().firstWhere(
         (p) => p.userId == uid,
         orElse: () => EmployeeProfileEntity(
           id: uid,

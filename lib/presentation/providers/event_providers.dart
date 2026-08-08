@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/remote/firestore_event_remote_datasource.dart';
-import '../../data/repositories/event_repository_impl.dart';
-import '../../domain/entities/event_entity.dart';
-import '../../domain/repositories/event_repository.dart';
+import 'package:order_app/data/datasources/remote/firestore_event_remote_datasource.dart';
+import 'package:order_app/data/repositories/event_repository_impl.dart';
+import 'package:order_app/domain/entities/event_entity.dart';
+import 'package:order_app/domain/repositories/event_repository.dart';
 
 final firestoreProvider = Provider<FirebaseFirestore>((ref) {
   return FirebaseFirestore.instance;

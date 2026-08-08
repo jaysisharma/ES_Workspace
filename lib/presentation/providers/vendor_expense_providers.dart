@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/order_item_entity.dart';
-import '../../domain/entities/expense_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
+import 'package:order_app/domain/entities/expense_entity.dart';
 import 'order_providers.dart';
 
 /// Provider to fetch all unique vendor names associated with a specific Order ID.

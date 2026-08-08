@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../screens/common/revenue_summary_screen.dart' show FinancialViewMode;
+import 'package:order_app/presentation/screens/common/finance/revenue_summary_screen.dart' show FinancialViewMode;
 
 class FinancialPerspectiveToggle extends StatelessWidget {
   final FinancialViewMode viewType;

@@ -17,7 +17,14 @@ class ExcelExportHelper {
     String sheetName = 'Sheet1',
     String? title,
   }) async {
-    final sanitizedFilename = filename.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    // Sanitize filename to remove special characters like &, %, $, #, spaces, etc.
+    final rawName = filename.endsWith('.xlsx')
+        ? filename.substring(0, filename.length - 5)
+        : filename;
+    final cleanName = rawName
+        .replaceAll(RegExp(r'[^a-zA-Z0-9_.-]'), '_')
+        .replaceAll(RegExp(r'_+'), '_');
+    final sanitizedFilename = '$cleanName.xlsx';
 
     try {
       final excel = Excel.createExcel();
@@ -196,7 +203,11 @@ class ExcelExportHelper {
           debugPrint('ExcelExportHelper: OpenFilex result: type=${openResult.type}, message=${openResult.message}');
 
           if (openResult.type != ResultType.done) {
-            throw Exception('Could not open file: ${openResult.message}');
+            // Fallback to share sheet if native viewer app cannot open directly
+            await Share.shareXFiles(
+              [XFile(file.path, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')],
+              text: sanitizedFilename,
+            );
           }
         } else {
           // Mobile platforms (iOS, Android) - trigger share sheet to allow "Save to Files" (download)

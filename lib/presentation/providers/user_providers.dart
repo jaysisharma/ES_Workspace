@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/repositories/user_repository.dart';
-import '../../data/repositories/firestore_user_repository.dart';
-import '../../domain/usecases/add_user_usecase.dart';
-import '../../domain/usecases/get_all_users_usecase.dart';
-import '../../domain/usecases/update_user_usecase.dart';
+import 'package:order_app/domain/repositories/user_repository.dart';
+import 'package:order_app/data/repositories/firestore_user_repository.dart';
+import 'package:order_app/domain/usecases/add_user_usecase.dart';
+import 'package:order_app/domain/usecases/get_all_users_usecase.dart';
+import 'package:order_app/domain/usecases/update_user_usecase.dart';
 import 'user_notifier.dart';
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {

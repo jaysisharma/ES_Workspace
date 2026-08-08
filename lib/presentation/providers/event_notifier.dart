@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/event_entity.dart';
+import 'package:order_app/domain/entities/event_entity.dart';
 import 'event_providers.dart';
 
 class EventState {

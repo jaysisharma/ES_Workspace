@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import '../../data/repositories/local_file_event_pass_repository.dart';
-import '../../domain/entities/event_pass_entity.dart';
+import 'package:order_app/data/repositories/local_file_event_pass_repository.dart';
+import 'package:order_app/domain/entities/event_pass_entity.dart';
 
 class LocalPassServer {
   final LocalFileEventPassRepository _repo = LocalFileEventPassRepository();

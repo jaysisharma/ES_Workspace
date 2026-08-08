@@ -3,18 +3,17 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:printing/printing.dart';
-import '../../../core/utils/share_helper.dart';
-import '../../../core/services/employee_pdf_service.dart';
-import '../../../core/utils/currency_formatter.dart';
-import '../../../core/utils/nepali_date_formatter.dart';
-import '../../../domain/entities/employee_profile_entity.dart';
-import '../../../domain/entities/user_entity.dart';
-import '../../../domain/entities/leave_request_entity.dart';
-import '../../providers/employee_profile_providers.dart';
-import '../../providers/hr_providers.dart';
-import '../common/pdf_preview_screen.dart';
-import 'add_employee_screen.dart';
+import 'package:order_app/core/utils/share_helper.dart';
+import 'package:order_app/core/services/employee_pdf_service.dart';
+import 'package:order_app/core/utils/currency_formatter.dart';
+import 'package:order_app/core/utils/nepali_date_formatter.dart';
+import 'package:order_app/domain/entities/employee_profile_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/domain/entities/leave_request_entity.dart';
+import 'package:order_app/presentation/providers/employee_profile_providers.dart';
+import 'package:order_app/presentation/providers/hr_providers.dart';
+import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
+import 'package:order_app/presentation/screens/admin/add_employee_screen.dart';
 
 class EmployeeDetailScreen extends ConsumerStatefulWidget {
   final UserEntity user;
@@ -405,65 +404,74 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               const Text('Monthly Compensation & Salary Structure',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const Divider(height: 20),
-              _buildDetailRow(
-                  'Basic Salary',
-                  CurrencyFormatter.formatWithLabel(profile.basicSalary, 'NPR'),
-                  labelColor,
-                  textColor),
-              _buildDetailRow(
-                  'Dearness Allowance (DA)',
-                  CurrencyFormatter.formatWithLabel(profile.dearnessAllowance, 'NPR'),
-                  labelColor,
-                  textColor),
-              _buildDetailRow(
-                  'Bonus / Allowances',
-                  CurrencyFormatter.formatWithLabel(profile.bonus, 'NPR'),
-                  labelColor,
-                  textColor),
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              () {
+                final gross = profile.grossSalary;
+                final tdsPct = gross > 0 ? (profile.tds / gross * 100) : 0.0;
+
+                return Column(
                   children: [
-                    const Text('Gross Salary',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text(
-                      CurrencyFormatter.formatWithLabel(profile.grossSalary, 'NPR'),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.primary,
+                    _buildDetailRow(
+                        'Basic Salary',
+                        CurrencyFormatter.formatWithLabel(profile.basicSalary, 'NPR'),
+                        labelColor,
+                        textColor),
+                    _buildDetailRow(
+                        'Dearness Allowance (DA)',
+                        CurrencyFormatter.formatWithLabel(profile.dearnessAllowance, 'NPR'),
+                        labelColor,
+                        textColor),
+                    _buildDetailRow(
+                        'Bonus / Allowances',
+                        CurrencyFormatter.formatWithLabel(profile.bonus, 'NPR'),
+                        labelColor,
+                        textColor),
+                    Container(
+                      margin: const EdgeInsets.symmetric(vertical: 6),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Gross Salary',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(
+                            CurrencyFormatter.formatWithLabel(profile.grossSalary, 'NPR'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    _buildDetailRow(
+                        'SSF Deduction',
+                        CurrencyFormatter.formatWithLabel(profile.ssf, 'NPR'),
+                        labelColor,
+                        textColor),
+                    _buildDetailRow(
+                        'CIT Contribution',
+                        CurrencyFormatter.formatWithLabel(profile.cit, 'NPR'),
+                        labelColor,
+                        textColor),
+                    _buildDetailRow(
+                        'Insurance Premium',
+                        CurrencyFormatter.formatWithLabel(profile.insurance, 'NPR'),
+                        labelColor,
+                        textColor),
+                    _buildDetailRow(
+                        'TDS (Tax Deducted at Source)',
+                        '${CurrencyFormatter.formatWithLabel(profile.tds, 'NPR')} (${tdsPct.toStringAsFixed(1)}%)',
+                        labelColor,
+                        textColor),
                   ],
-                ),
-              ),
-              const SizedBox(height: 6),
-              _buildDetailRow(
-                  'SSF Deduction',
-                  CurrencyFormatter.formatWithLabel(profile.ssf, 'NPR'),
-                  labelColor,
-                  textColor),
-              _buildDetailRow(
-                  'CIT Contribution',
-                  CurrencyFormatter.formatWithLabel(profile.cit, 'NPR'),
-                  labelColor,
-                  textColor),
-              _buildDetailRow(
-                  'Insurance Premium',
-                  CurrencyFormatter.formatWithLabel(profile.insurance, 'NPR'),
-                  labelColor,
-                  textColor),
-              _buildDetailRow(
-                  'TDS (Tax Deducted at Source)',
-                  CurrencyFormatter.formatWithLabel(profile.tds, 'NPR'),
-                  labelColor,
-                  textColor),
+                );
+              }(),
               const Divider(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -636,14 +644,14 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       try {
         final base64Data = photoUrl.split(',').last;
         final bytes = base64Decode(base64Data);
-        return Image.memory(bytes, fit: BoxFit.cover, width: double.infinity);
+        return Image.memory(bytes, fit: BoxFit.contain, width: double.infinity, height: double.infinity);
       } catch (_) {}
     } else if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
-      return Image.network(photoUrl, fit: BoxFit.cover, width: double.infinity);
+      return Image.network(photoUrl, fit: BoxFit.contain, width: double.infinity, height: double.infinity);
     } else {
       final file = File(photoUrl);
       if (file.existsSync()) {
-        return Image.file(file, fit: BoxFit.cover, width: double.infinity);
+        return Image.file(file, fit: BoxFit.contain, width: double.infinity, height: double.infinity);
       }
     }
 

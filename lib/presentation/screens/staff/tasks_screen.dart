@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/utils/nepali_date_formatter.dart';
-import '../../providers/order_providers.dart';
-import '../../../domain/entities/order_item_entity.dart';
-import '../../../domain/entities/order_entity.dart';
+import 'package:order_app/core/utils/nepali_date_formatter.dart';
+import 'package:order_app/presentation/providers/order_providers.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
+import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/providers/order_item_notifier.dart';
 
 class TasksScreen extends ConsumerWidget {
   const TasksScreen({super.key});
@@ -26,6 +29,7 @@ class TasksScreen extends ConsumerWidget {
         ? const Color(0xFF94a3b8)
         : const Color(0xFF64748b);
 
+    final currentUser = ref.watch(authNotifierProvider).user;
     final ordersAsync = ref.watch(ordersStreamProvider);
     final itemsAsync = ref.watch(allItemsStreamProvider);
 
@@ -62,14 +66,25 @@ class TasksScreen extends ConsumerWidget {
           return ordersAsync.when(
             data: (orders) {
               // Filter out items belonging to Draft orders
-              final activeOrderIds = orders
-                  .where((o) => o.status != OrderStatus.draft)
-                  .map((o) => o.id)
-                  .toSet();
+              final activeOrderMap = {
+                for (final o in orders.where((o) => o.status != OrderStatus.draft))
+                  o.id: o
+              };
 
-              final activeItems = allItems
-                  .where((item) => activeOrderIds.contains(item.orderId))
-                  .toList();
+              final activeItems = allItems.where((item) {
+                final order = activeOrderMap[item.orderId];
+                if (order == null) return false;
+
+                if (currentUser?.role == UserRole.staff) {
+                  // Staff member sees tasks explicitly assigned to them OR tasks assigned to their order without a specific staff assignment
+                  final isExplicitlyAssigned = item.assignedStaffId == currentUser!.uid;
+                  final isOrderAssigned = item.assignedStaffId == null && order.assignedStaffIds.contains(currentUser.uid);
+                  return isExplicitlyAssigned || isOrderAssigned;
+                }
+
+                // Admin / Founder sees all tasks
+                return true;
+              }).toList();
 
               if (activeItems.isEmpty) {
                 return _buildEmptyState(labelColor);
@@ -111,12 +126,21 @@ class TasksScreen extends ConsumerWidget {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, _) =>
-                Center(child: Text('Error loading orders: $err')),
+            error: (err, stack) => Center(
+              child: Text(
+                'Error loading orders: $err',
+                style: TextStyle(color: labelColor),
+              ),
+            ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error loading tasks: $err')),
+        error: (err, stack) => Center(
+          child: Text(
+            'Error loading tasks: $err',
+            style: TextStyle(color: labelColor),
+          ),
+        ),
       ),
     );
   }
@@ -126,19 +150,20 @@ class TasksScreen extends ConsumerWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.checklist_rtl,
-            size: 64,
-            color: labelColor.withValues(alpha: 0.5),
-          ),
+          Icon(Icons.task_alt, size: 64, color: labelColor.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Text(
-            'No tasks found from active orders',
+            'No tasks assigned',
             style: TextStyle(
               fontSize: 16,
+              fontWeight: FontWeight.bold,
               color: labelColor,
-              fontWeight: FontWeight.w500,
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tasks will appear here when events are created or assigned.',
+            style: TextStyle(fontSize: 13, color: labelColor.withValues(alpha: 0.8)),
           ),
         ],
       ),
@@ -156,126 +181,148 @@ class TasksScreen extends ConsumerWidget {
     required Color primaryColor,
     required WidgetRef ref,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12.0, left: 4),
-          child: Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: primaryColor,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  order.eventName.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: labelColor,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-              ),
-              Text(
-                formatNepaliDate(order.eventDate, 'MMM dd'),
-                style: TextStyle(fontSize: 12, color: labelColor),
-              ),
-            ],
-          ),
-        ),
-        ...items.map(
-          (item) => _buildTaskItem(
-            item: item,
-            isDarkMode: isDarkMode,
-            cardColor: cardColor,
-            borderColor: borderColor,
-            textColor: textColor,
-            labelColor: labelColor,
-            primaryColor: primaryColor,
-            ref: ref,
-          ),
-        ),
-        const SizedBox(height: 32),
-      ],
-    );
-  }
+    final completedCount = items.where((i) => i.isCompleted).length;
+    final progress = items.isEmpty ? 0.0 : completedCount / items.length;
 
-  Widget _buildTaskItem({
-    required OrderItemEntity item,
-    required bool isDarkMode,
-    required Color cardColor,
-    required Color borderColor,
-    required Color textColor,
-    required Color labelColor,
-    required Color primaryColor,
-    required WidgetRef ref,
-  }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
+            color: Colors.black.withValues(alpha: isDarkMode ? 0.2 : 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildItemCheckbox(item, ref),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
+          // Order Header
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  item.itemName,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: item.isCompleted ? labelColor : textColor,
-                    decoration: item.isCompleted
-                        ? TextDecoration.lineThrough
-                        : null,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.eventName,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today, size: 12, color: labelColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            formatNepaliDate(order.eventDate, 'dd MMM yyyy'),
+                            style: TextStyle(fontSize: 12, color: labelColor),
+                          ),
+                          const SizedBox(width: 12),
+                          Icon(Icons.location_on, size: 12, color: labelColor),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              order.venue,
+                              style: TextStyle(fontSize: 12, color: labelColor),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${item.vendor} | ${item.specification}',
-                  style: TextStyle(fontSize: 12, color: labelColor),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '$completedCount/${items.length} Done',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${item.quantity} ${item.unit}',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
+
+          // Progress Bar
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: borderColor.withValues(alpha: 0.3),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              progress == 1.0 ? Colors.green : primaryColor,
+            ),
+            minHeight: 3,
+          ),
+
+          // Item List
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: items.length,
+            separatorBuilder: (context, index) => Divider(height: 1, color: borderColor.withValues(alpha: 0.5)),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    _buildItemCheckbox(item, ref),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.itemName,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: item.isCompleted ? labelColor : textColor,
+                              decoration: item.isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          if (item.specification.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              item.specification,
+                              style: TextStyle(fontSize: 12, color: labelColor),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    Text(
+                      'Qty: ${item.quantity} ${item.unit}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: labelColor,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              if (item.days > 0)
-                Text(
-                  '${item.days} Days',
-                  style: TextStyle(fontSize: 10, color: labelColor),
-                ),
-            ],
+              );
+            },
           ),
         ],
       ),
@@ -283,25 +330,21 @@ class TasksScreen extends ConsumerWidget {
   }
 
   Widget _buildItemCheckbox(OrderItemEntity item, WidgetRef ref) {
-    return GestureDetector(
+    return InkWell(
       onTap: () async {
-        final updatedItem = item.copyWith(isCompleted: !item.isCompleted);
         await ref
             .read(orderItemNotifierProvider.notifier)
-            .updateItem(updatedItem);
+            .toggleCompletion(item);
       },
+      borderRadius: BorderRadius.circular(6),
       child: Container(
         width: 24,
         height: 24,
         decoration: BoxDecoration(
-          color: item.isCompleted
-              ? const Color(0xFF10b981)
-              : Colors.transparent,
+          color: item.isCompleted ? Colors.green : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: item.isCompleted
-                ? const Color(0xFF10b981)
-                : const Color(0xFFcbd5e1),
+            color: item.isCompleted ? Colors.green : Colors.grey,
             width: 2,
           ),
         ),

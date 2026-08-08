@@ -1,5 +1,5 @@
-import '../../domain/entities/leave_request_entity.dart';
-import '../../domain/repositories/leave_request_repository.dart';
+import 'package:order_app/domain/entities/leave_request_entity.dart';
+import 'package:order_app/domain/repositories/leave_request_repository.dart';
 import '../datasources/remote/firestore_leave_request_datasource.dart';
 
 class LeaveRequestRepositoryImpl implements LeaveRequestRepository {

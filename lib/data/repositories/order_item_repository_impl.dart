@@ -1,7 +1,7 @@
-import '../../domain/entities/order_item_entity.dart';
-import '../../domain/repositories/order_item_repository.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
+import 'package:order_app/domain/repositories/order_item_repository.dart';
 import '../datasources/remote/firestore_order_item_remote_datasource.dart';
-import '../../core/errors/failures.dart';
+import 'package:order_app/core/errors/failures.dart';
 
 class OrderItemRepositoryImpl implements OrderItemRepository {
   final OrderItemRemoteDataSource _remoteDataSource;

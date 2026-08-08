@@ -13,6 +13,8 @@ class OrderItemEntity {
   final double vendorRate;
   final double vendorAmount;
   final bool isCompleted;
+  final String? assignedStaffId;
+  final String? assignedStaffName;
 
   const OrderItemEntity({
     required this.id,
@@ -29,6 +31,8 @@ class OrderItemEntity {
     this.vendorRate = 0.0,
     this.vendorAmount = 0.0,
     this.isCompleted = false,
+    this.assignedStaffId,
+    this.assignedStaffName,
   });
 
   OrderItemEntity copyWith({
@@ -46,6 +50,9 @@ class OrderItemEntity {
     double? vendorRate,
     double? vendorAmount,
     bool? isCompleted,
+    String? assignedStaffId,
+    String? assignedStaffName,
+    bool clearAssignedStaff = false,
   }) {
     return OrderItemEntity(
       id: id ?? this.id,
@@ -62,6 +69,8 @@ class OrderItemEntity {
       vendorRate: vendorRate ?? this.vendorRate,
       vendorAmount: vendorAmount ?? this.vendorAmount,
       isCompleted: isCompleted ?? this.isCompleted,
+      assignedStaffId: clearAssignedStaff ? null : (assignedStaffId ?? this.assignedStaffId),
+      assignedStaffName: clearAssignedStaff ? null : (assignedStaffName ?? this.assignedStaffName),
     );
   }
 
@@ -83,7 +92,9 @@ class OrderItemEntity {
         other.amount == amount &&
         other.vendorRate == vendorRate &&
         other.vendorAmount == vendorAmount &&
-        other.isCompleted == isCompleted;
+        other.isCompleted == isCompleted &&
+        other.assignedStaffId == assignedStaffId &&
+        other.assignedStaffName == assignedStaffName;
   }
 
   @override
@@ -101,6 +112,8 @@ class OrderItemEntity {
         amount.hashCode ^
         vendorRate.hashCode ^
         vendorAmount.hashCode ^
-        isCompleted.hashCode;
+        isCompleted.hashCode ^
+        assignedStaffId.hashCode ^
+        assignedStaffName.hashCode;
   }
 }

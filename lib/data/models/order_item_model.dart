@@ -1,4 +1,4 @@
-import '../../domain/entities/order_item_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
 
 class OrderItemModel extends OrderItemEntity {
   const OrderItemModel({
@@ -16,6 +16,8 @@ class OrderItemModel extends OrderItemEntity {
     super.vendorRate = 0.0,
     super.vendorAmount = 0.0,
     super.isCompleted = false,
+    super.assignedStaffId,
+    super.assignedStaffName,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
@@ -34,6 +36,8 @@ class OrderItemModel extends OrderItemEntity {
       vendorRate: (json['vendorRate'] as num?)?.toDouble() ?? 0.0,
       vendorAmount: (json['vendorAmount'] as num?)?.toDouble() ?? 0.0,
       isCompleted: json['isCompleted'] as bool? ?? false,
+      assignedStaffId: json['assignedStaffId'] as String?,
+      assignedStaffName: json['assignedStaffName'] as String?,
     );
   }
 
@@ -53,6 +57,8 @@ class OrderItemModel extends OrderItemEntity {
       'vendorRate': vendorRate,
       'vendorAmount': vendorAmount,
       'isCompleted': isCompleted,
+      'assignedStaffId': assignedStaffId,
+      'assignedStaffName': assignedStaffName,
     };
   }
 
@@ -72,6 +78,8 @@ class OrderItemModel extends OrderItemEntity {
       vendorRate: entity.vendorRate,
       vendorAmount: entity.vendorAmount,
       isCompleted: entity.isCompleted,
+      assignedStaffId: entity.assignedStaffId,
+      assignedStaffName: entity.assignedStaffName,
     );
   }
 }

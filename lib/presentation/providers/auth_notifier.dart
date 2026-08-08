@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/auth_entity.dart';
-import '../../domain/entities/user_entity.dart';
-import '../../core/services/push_notification_service.dart';
+import 'package:order_app/domain/entities/auth_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/core/services/push_notification_service.dart';
 import 'auth_provider.dart';
 
 class AuthState {
@@ -128,6 +128,28 @@ class AuthNotifier extends Notifier<AuthState> {
       final repository = ref.read(authRepositoryProvider);
       await repository.updatePassword(newPassword);
       state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> deleteAccount() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final currentUser = state.user;
+      if (currentUser != null) {
+        await Future.wait([
+          PushNotificationService.stopListening(),
+          PushNotificationService.unsubscribeFromTopics(
+            userId: currentUser.uid,
+            role: currentUser.role.name,
+          ),
+        ]);
+      }
+      final repository = ref.read(authRepositoryProvider);
+      await repository.deleteAccount();
+      state = const AuthState();
     } catch (e) {
       state = state.copyWith(isLoading: false, errorMessage: e.toString());
       rethrow;

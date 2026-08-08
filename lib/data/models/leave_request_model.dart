@@ -1,4 +1,4 @@
-import '../../domain/entities/leave_request_entity.dart';
+import 'package:order_app/domain/entities/leave_request_entity.dart';
 
 class LeaveRequestModel extends LeaveRequestEntity {
   LeaveRequestModel({

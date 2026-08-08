@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../core/errors/failures.dart';
-import '../../../domain/entities/order_entity.dart';
-import '../../../domain/entities/order_item_entity.dart';
-import '../../../domain/entities/expense_entity.dart';
+import 'package:order_app/core/errors/failures.dart';
+import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
+import 'package:order_app/domain/entities/expense_entity.dart';
 import '../../models/order_model.dart';
 import '../../models/expense_model.dart';
 

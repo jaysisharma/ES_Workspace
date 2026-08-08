@@ -4,8 +4,8 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import '../../domain/entities/employee_profile_entity.dart';
-import '../../domain/entities/user_entity.dart';
+import 'package:order_app/domain/entities/employee_profile_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
 import '../utils/nepali_date_formatter.dart';
 
 class EmployeePdfService {
@@ -16,6 +16,7 @@ class EmployeePdfService {
     String companyName = 'ES WORKSPACE',
     String companyTagline = 'Premier Event Management & Production Solutions',
     String companyAddress = 'Kathmandu, Nepal | Email: hr@esworkspace.com',
+    PdfPageFormat pageFormat = PdfPageFormat.a4,
   }) async {
     final pdf = pw.Document();
 
@@ -52,72 +53,14 @@ class EmployeePdfService {
         ? formatNepaliDate(profile.officeLeavingDate!, 'yyyy-MM-dd')
         : 'Currently Employed';
 
+    final isA5 = pageFormat.width < 500;
+
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
+        pageFormat: pageFormat,
+        margin: isA5 ? const pw.EdgeInsets.all(20) : const pw.EdgeInsets.all(32),
         build: (pw.Context context) {
           return [
-            // ── Header Banner ────────────────────────────────────────────────
-            pw.Container(
-              padding: const pw.EdgeInsets.all(16),
-              decoration: pw.BoxDecoration(
-                color: PdfColors.blue900,
-                borderRadius: pw.BorderRadius.circular(6),
-              ),
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
-                children: [
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        companyName.toUpperCase(),
-                        style: pw.TextStyle(
-                          color: PdfColors.white,
-                          fontSize: 20,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.SizedBox(height: 2),
-                      pw.Text(
-                        companyTagline,
-                        style: const pw.TextStyle(
-                          color: PdfColors.blue100,
-                          fontSize: 9,
-                        ),
-                      ),
-                      pw.SizedBox(height: 2),
-                      pw.Text(
-                        companyAddress,
-                        style: const pw.TextStyle(
-                          color: PdfColors.blue200,
-                          fontSize: 8,
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: pw.BoxDecoration(
-                      color: PdfColors.white,
-                      borderRadius: pw.BorderRadius.circular(4),
-                    ),
-                    child: pw.Text(
-                      'EMPLOYEE DOSSIER',
-                      style: pw.TextStyle(
-                        color: PdfColors.blue900,
-                        fontSize: 9,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            pw.SizedBox(height: 16),
-
             // ── Top Summary Header ──────────────────────────────────────────
             pw.Container(
               padding: const pw.EdgeInsets.all(12),
@@ -180,7 +123,7 @@ class EmployeePdfService {
                         ),
                         pw.SizedBox(height: 2),
                         pw.Text(
-                          'System Role: ${user?.role.name.toUpperCase() ?? "STAFF"}  |  Status: ${user?.isActive == false ? "INACTIVE" : "ACTIVE & CONFIRMED"}',
+                          'Role: ${user?.role.name.toUpperCase() ?? "STAFF"}  |  Status: ${user?.isActive == false ? "INACTIVE" : "ACTIVE & CONFIRMED"}',
                           style: const pw.TextStyle(
                             fontSize: 9,
                             color: PdfColors.grey700,
@@ -202,8 +145,6 @@ class EmployeePdfService {
               _GridItem('Designation', profile.designation.isNotEmpty ? profile.designation : 'Staff Member'),
               _GridItem('Date of Joining', joiningDateStr),
               _GridItem('Employment Status', leavingDateStr),
-              _GridItem('System Email', user?.email ?? 'N/A'),
-              _GridItem('System User ID', profile.userId),
             ]),
             pw.SizedBox(height: 14),
 
@@ -230,21 +171,29 @@ class EmployeePdfService {
             ]),
             pw.SizedBox(height: 14),
 
-            // ── Section 4: Compensation & Salary Breakdown ────────────────────
+            // ── Section 4: Compensation & Payroll Breakdown ────────────────────
             _buildSectionTitle('4. COMPENSATION & PAYROLL BREAKDOWN'),
             pw.SizedBox(height: 6),
-            pw.Table(
-              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-              children: [
-                _buildTableRow('Basic Monthly Salary', 'NPR ${profile.basicSalary.toStringAsFixed(0)}'),
-                _buildTableRow('Dearness / Travel Allowance', 'NPR ${profile.dearnessAllowance.toStringAsFixed(0)}'),
-                _buildTableRow('Performance Bonus / Incentives', 'NPR ${profile.bonus.toStringAsFixed(0)}'),
-                _buildTableRow('Gross Salary', 'NPR ${profile.grossSalary.toStringAsFixed(0)}', isBold: true),
-                _buildTableRow('SSF Contribution (Social Security)', 'NPR ${profile.ssf.toStringAsFixed(0)}', isDeduction: true),
-                _buildTableRow('CIT / Insurance / TDS Deductions', 'NPR ${(profile.cit + profile.insurance + profile.tds).toStringAsFixed(0)}', isDeduction: true),
-                _buildTableRow('NET PAYABLE MONTHLY SALARY', 'NPR ${profile.netSalary.toStringAsFixed(0)}', isHeader: true),
-              ],
-            ),
+            () {
+              final gross = profile.grossSalary;
+              final tdsPct = gross > 0 ? (profile.tds / gross * 100) : 0.0;
+
+              return pw.Table(
+                border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+                children: [
+                  _buildTableRow('Basic Monthly Salary', 'NPR ${profile.basicSalary.toStringAsFixed(0)}'),
+                  _buildTableRow('Dearness / Travel Allowance', 'NPR ${profile.dearnessAllowance.toStringAsFixed(0)}'),
+                  _buildTableRow('Performance Bonus / Incentives', 'NPR ${profile.bonus.toStringAsFixed(0)}'),
+                  _buildTableRow('Gross Salary', 'NPR ${profile.grossSalary.toStringAsFixed(0)}', isBold: true),
+                  _buildTableRow('SSF Contribution (Social Security)', 'NPR ${profile.ssf.toStringAsFixed(0)}', isDeduction: true),
+                  _buildTableRow('Citizen Investment Trust (CIT)', 'NPR ${profile.cit.toStringAsFixed(0)}', isDeduction: true),
+                  _buildTableRow('Insurance Contribution', 'NPR ${profile.insurance.toStringAsFixed(0)}', isDeduction: true),
+                  _buildTableRow('Tax Deducted at Source (TDS)', 'NPR ${profile.tds.toStringAsFixed(0)} (${tdsPct.toStringAsFixed(1)}%)', isDeduction: true),
+                  _buildTableRow('TDS Rate (%)', '${tdsPct.toStringAsFixed(1)}%'),
+                  _buildTableRow('NET PAYABLE MONTHLY SALARY', 'NPR ${profile.netSalary.toStringAsFixed(0)}', isHeader: true),
+                ],
+              );
+            }(),
             pw.SizedBox(height: 14),
 
             // ── Section 5: Leave Allocations ─────────────────────────────────
@@ -328,15 +277,18 @@ class EmployeePdfService {
     required List<EmployeeProfileEntity> profiles,
     List<UserEntity> users = const [],
     String companyName = 'ES WORKSPACE',
+    PdfPageFormat? pageFormat,
   }) async {
     final pdf = pw.Document();
+    final targetFormat = pageFormat ?? PdfPageFormat.a4.landscape;
 
     final userMap = {for (var u in users) u.id: u};
+    final isA5 = targetFormat.width < 500;
 
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4.landscape,
-        margin: const pw.EdgeInsets.all(24),
+        pageFormat: targetFormat,
+        margin: isA5 ? const pw.EdgeInsets.all(16) : const pw.EdgeInsets.all(24),
         build: (pw.Context context) {
           return [
             // Header

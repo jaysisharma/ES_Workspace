@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/utils/nepali_date_formatter.dart';
-import '../../providers/event_providers.dart';
-import '../../../domain/entities/event_entity.dart';
-import '../../../domain/entities/order_item_entity.dart';
-import '../../providers/order_providers.dart';
-import '../common/notifications_screen.dart';
-import '../../providers/notification_notifier.dart';
-import '../common/event_task_detail_screen.dart';
-import '../../widgets/common/shimmer_loading.dart';
-import '../../widgets/leave_request_sheet.dart';
-import '../admin/synology_company_pdf_screen.dart';
+import 'package:order_app/core/utils/nepali_date_formatter.dart';
+import 'package:order_app/presentation/providers/event_providers.dart';
+import 'package:order_app/domain/entities/event_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
+import 'package:order_app/presentation/providers/order_providers.dart';
+import 'package:order_app/presentation/screens/common/utility/notifications_screen.dart';
+import 'package:order_app/presentation/providers/notification_notifier.dart';
+import 'package:order_app/presentation/screens/common/events/event_task_detail_screen.dart';
+import 'package:order_app/presentation/widgets/common/shimmer_loading.dart';
+import 'package:order_app/presentation/widgets/hr_management/leave_request_sheet.dart';
+import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
 
 class StaffDashboard extends ConsumerStatefulWidget {
   const StaffDashboard({super.key});

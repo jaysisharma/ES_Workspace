@@ -10,13 +10,16 @@ class CompanyPdfGenerator {
     String phone = '+977 980-0000000',
     String address = 'Kathmandu, Nepal',
     String website = 'https://esworkspace.com',
+    PdfPageFormat pageFormat = PdfPageFormat.a4,
   }) async {
     final pdf = pw.Document();
 
+    final isA5 = pageFormat.width < 500;
+
     pdf.addPage(
       pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
+        pageFormat: pageFormat,
+        margin: isA5 ? const pw.EdgeInsets.all(20) : const pw.EdgeInsets.all(32),
         build: (pw.Context context) => [
           // Header Banner
           pw.Container(

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../staff/staff_dashboard.dart';
-import '../staff/tasks_screen.dart';
-import '../common/calendar_screen.dart';
-import '../staff/staff_attendance_screen.dart';
-import '../staff/staff_profile_screen.dart';
-import '../admin/synology_company_pdf_screen.dart';
-import '../../widgets/app_drawer.dart';
-import '../../providers/auth_provider.dart';
+import 'package:order_app/presentation/screens/staff/staff_dashboard.dart';
+import 'package:order_app/presentation/screens/staff/tasks_screen.dart';
+import 'package:order_app/presentation/screens/common/events/calendar_screen.dart';
+import 'package:order_app/presentation/screens/staff/staff_attendance_screen.dart';
+import 'package:order_app/presentation/screens/staff/staff_profile_screen.dart';
+import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
+import 'package:order_app/presentation/widgets/common/app_drawer.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 
 class StaffShell extends ConsumerStatefulWidget {
   const StaffShell({super.key});
@@ -106,12 +106,54 @@ class _StaffShellState extends ConsumerState<StaffShell> {
                     child: ListView(
                       padding: EdgeInsets.zero,
                       children: [
-                        _buildNavItem(0, Icons.assignment_outlined, Icons.assignment, 'WORK OVERVIEW', primaryColor, unselectedColor),
-                        _buildNavItem(1, Icons.checklist_outlined, Icons.checklist, 'MY TASKS', primaryColor, unselectedColor),
-                        _buildNavItem(2, Icons.calendar_month_outlined, Icons.calendar_month, 'CALENDAR', primaryColor, unselectedColor),
-                        _buildNavItem(3, Icons.access_time_outlined, Icons.access_time_filled, 'MY ATTENDANCE', primaryColor, unselectedColor),
-                        _buildNavItem(4, Icons.person_outline, Icons.person, 'MY PROFILE', primaryColor, unselectedColor),
-                        _buildNavItem(5, Icons.picture_as_pdf_outlined, Icons.picture_as_pdf, 'COMPANY PROFILE SHARE', primaryColor, unselectedColor),
+                        _buildNavItem(
+                          0,
+                          Icons.assignment_outlined,
+                          Icons.assignment,
+                          'WORK OVERVIEW',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          1,
+                          Icons.checklist_outlined,
+                          Icons.checklist,
+                          'MY TASKS',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          2,
+                          Icons.calendar_month_outlined,
+                          Icons.calendar_month,
+                          'CALENDAR',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          3,
+                          Icons.access_time_outlined,
+                          Icons.access_time_filled,
+                          'MY ATTENDANCE',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          4,
+                          Icons.person_outline,
+                          Icons.person,
+                          'MY PROFILE',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          5,
+                          Icons.picture_as_pdf_outlined,
+                          Icons.picture_as_pdf,
+                          'COMPANY PROFILE',
+                          primaryColor,
+                          unselectedColor,
+                        ),
                       ],
                     ),
                   ),
@@ -166,9 +208,15 @@ class _StaffShellState extends ConsumerState<StaffShell> {
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.logout_rounded, size: 20, color: Colors.redAccent),
+                            icon: const Icon(
+                              Icons.logout_rounded,
+                              size: 20,
+                              color: Colors.redAccent,
+                            ),
                             tooltip: 'Logout',
-                            onPressed: () => ref.read(authNotifierProvider.notifier).logout(),
+                            onPressed: () => ref
+                                .read(authNotifierProvider.notifier)
+                                .logout(),
                           ),
                         ],
                       ),

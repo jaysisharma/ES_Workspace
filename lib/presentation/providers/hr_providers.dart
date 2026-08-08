@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/remote/firestore_leave_request_datasource.dart';
-import '../../data/repositories/leave_request_repository_impl.dart';
-import '../../domain/entities/leave_request_entity.dart';
-import '../../domain/entities/user_entity.dart';
-import '../../domain/repositories/leave_request_repository.dart';
+import 'package:order_app/data/datasources/remote/firestore_leave_request_datasource.dart';
+import 'package:order_app/data/repositories/leave_request_repository_impl.dart';
+import 'package:order_app/domain/entities/leave_request_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/domain/repositories/leave_request_repository.dart';
 import 'auth_provider.dart';
 
 final leaveRequestRemoteDataSourceProvider =

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../core/errors/failures.dart';
-import '../../../domain/entities/revision_entity.dart';
+import 'package:order_app/core/errors/failures.dart';
+import 'package:order_app/domain/entities/revision_entity.dart';
 import '../../models/revision_model.dart';
 
 abstract class RevisionRemoteDataSource {

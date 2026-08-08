@@ -1,4 +1,4 @@
-import '../../domain/entities/change_request_entity.dart';
+import 'package:order_app/domain/entities/change_request_entity.dart';
 
 class ChangeRequestModel extends ChangeRequestEntity {
   const ChangeRequestModel({

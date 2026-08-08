@@ -4,13 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import '../../../data/services/synology_service.dart';
-import '../../../domain/entities/company_document_entity.dart';
-import '../../../domain/entities/user_entity.dart';
-import '../../providers/company_document_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../../core/utils/company_pdf_generator.dart';
-import '../common/pdf_preview_screen.dart';
+import 'package:order_app/data/services/synology_service.dart';
+import 'package:order_app/domain/entities/company_document_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/providers/company_document_provider.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/core/utils/company_pdf_generator.dart';
+import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
 
 class SynologyCompanyPdfScreen extends ConsumerStatefulWidget {
   const SynologyCompanyPdfScreen({super.key});
@@ -74,10 +74,11 @@ class _SynologyCompanyPdfScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Synology Connection Status Card
-              _buildSynologyStatusCard(context, synologyConfig, isStaff),
-
-              const SizedBox(height: 16),
+              // Synology Connection Status Card (Admin & Founder Only)
+              if (!isStaff) ...[
+                _buildSynologyStatusCard(context, synologyConfig),
+                const SizedBox(height: 16),
+              ],
 
               // Upload PDF Action Buttons (Admin & Founder Only)
               if (!isStaff) ...[
@@ -184,7 +185,7 @@ class _SynologyCompanyPdfScreenState
   }
 
   Widget _buildSynologyStatusCard(
-      BuildContext context, SynologyConfig config, bool isStaff) {
+      BuildContext context, SynologyConfig config) {
     final colorScheme = Theme.of(context).colorScheme;
     final isConfigured = config.isConfigured;
 
@@ -262,14 +263,12 @@ class _SynologyCompanyPdfScreenState
               ],
             ),
           ),
-          if (!isStaff) ...[
-            const SizedBox(width: 8),
-            IconButton(
-              onPressed: () => _showSynologyConfigDialog(context, config),
-              icon: const Icon(Icons.edit_outlined),
-              tooltip: 'Edit Settings',
-            ),
-          ],
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: () => _showSynologyConfigDialog(context, config),
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Edit Settings',
+          ),
         ],
       ),
     );

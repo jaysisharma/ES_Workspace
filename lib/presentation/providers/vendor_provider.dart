@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/vendor_entity.dart';
-import '../../domain/repositories/vendor_repository.dart';
-import '../../data/repositories/firestore_vendor_repository.dart';
+import 'package:order_app/domain/entities/vendor_entity.dart';
+import 'package:order_app/domain/repositories/vendor_repository.dart';
+import 'package:order_app/data/repositories/firestore_vendor_repository.dart';
 
 // ── Repository provider ───────────────────────────────────────────────────────
 final vendorRepositoryProvider = Provider<VendorRepository>(

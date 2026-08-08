@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/notification_model.dart';
-import '../../../domain/entities/notification_entity.dart';
-import '../../../domain/entities/user_entity.dart';
+import 'package:order_app/domain/entities/notification_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
 
 abstract class NotificationRemoteDataSource {
   Stream<List<NotificationEntity>> getNotifications();

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../domain/entities/company_document_entity.dart';
-import '../../core/errors/failures.dart';
+import 'package:order_app/domain/entities/company_document_entity.dart';
+import 'package:order_app/core/errors/failures.dart';
 
 class FirestoreCompanyDocumentRepository {
   final FirebaseFirestore _firestore;

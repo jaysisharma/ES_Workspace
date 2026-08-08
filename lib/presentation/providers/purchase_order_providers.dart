@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/purchase_order_entity.dart';
-import '../../domain/repositories/purchase_order_repository.dart';
-import '../../data/repositories/purchase_order_repository_impl.dart';
-import '../../data/datasources/remote/firestore_purchase_order_remote_datasource.dart';
+import 'package:order_app/domain/entities/purchase_order_entity.dart';
+import 'package:order_app/domain/repositories/purchase_order_repository.dart';
+import 'package:order_app/data/repositories/purchase_order_repository_impl.dart';
+import 'package:order_app/data/datasources/remote/firestore_purchase_order_remote_datasource.dart';
 
 // Data Source
 final purchaseOrderRemoteDataSourceProvider =

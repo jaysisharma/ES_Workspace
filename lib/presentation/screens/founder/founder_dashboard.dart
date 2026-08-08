@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/utils/currency_formatter.dart';
-import '../../../domain/entities/order_entity.dart';
-import '../../../domain/entities/order_item_entity.dart';
-import '../../providers/event_providers.dart';
-import '../../providers/founder_navigation_provider.dart';
-import '../../providers/order_providers.dart';
-import '../../providers/settings_provider.dart';
-import '../../widgets/common/shimmer_loading.dart';
-import '../common/order_details_screen.dart';
+import 'package:order_app/core/utils/currency_formatter.dart';
+import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
+import 'package:order_app/presentation/providers/event_providers.dart';
+import 'package:order_app/presentation/providers/founder_navigation_provider.dart';
+import 'package:order_app/presentation/providers/order_providers.dart';
+import 'package:order_app/presentation/providers/settings_provider.dart';
+import 'package:order_app/presentation/widgets/common/shimmer_loading.dart';
+import 'package:order_app/presentation/screens/common/orders/order_details_screen.dart';
 
 class FounderDashboard extends ConsumerStatefulWidget {
   const FounderDashboard({super.key});

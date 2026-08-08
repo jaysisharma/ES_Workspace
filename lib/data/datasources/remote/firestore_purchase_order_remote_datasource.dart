@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../domain/entities/purchase_order_entity.dart';
+import 'package:order_app/domain/entities/purchase_order_entity.dart';
 
 abstract class PurchaseOrderRemoteDataSource {
   Future<void> create(PurchaseOrderEntity po);

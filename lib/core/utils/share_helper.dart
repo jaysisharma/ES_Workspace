@@ -24,9 +24,13 @@ class ShareHelper {
     final isDesktop = !kIsWeb &&
         (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
+    // Sanitize fileName to prevent invalid path characters (slashes, colons, spaces)
+    final safeFileName = fileName.replaceAll(RegExp(r'[^\w\.-]'), '_');
+
     final tempDir = await getTemporaryDirectory();
-    final file = File('${tempDir.path}/$fileName');
-    await file.writeAsBytes(pdfBytes);
+    final file = File('${tempDir.path}/$safeFileName');
+    await file.parent.create(recursive: true);
+    await file.writeAsBytes(pdfBytes, flush: true);
 
     if (isDesktop) {
       if (!context.mounted) return;
@@ -36,7 +40,7 @@ class ShareHelper {
         isScrollControlled: true,
         builder: (_) => _DesktopPdfShareSheet(
           file: file,
-          fileName: fileName,
+          fileName: safeFileName,
           pdfBytes: pdfBytes,
           subject: subject,
           message: message,

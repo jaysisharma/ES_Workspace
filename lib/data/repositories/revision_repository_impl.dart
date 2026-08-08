@@ -1,5 +1,5 @@
-import '../../../domain/entities/revision_entity.dart';
-import '../../../domain/repositories/revision_repository.dart';
+import 'package:order_app/domain/entities/revision_entity.dart';
+import 'package:order_app/domain/repositories/revision_repository.dart';
 import '../datasources/remote/firestore_revision_remote_datasource.dart';
 
 class RevisionRepositoryImpl implements RevisionRepository {

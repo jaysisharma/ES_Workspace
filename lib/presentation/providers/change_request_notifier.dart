@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/change_request_entity.dart';
-import '../../core/services/fcm_sender.dart';
+import 'package:order_app/domain/entities/change_request_entity.dart';
+import 'package:order_app/core/services/fcm_sender.dart';
 import 'change_request_providers.dart';
 import 'notification_notifier.dart';
-import '../../domain/entities/notification_entity.dart';
+import 'package:order_app/domain/entities/notification_entity.dart';
 import 'package:uuid/uuid.dart';
 
 class ChangeRequestState {

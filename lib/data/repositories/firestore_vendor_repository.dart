@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../domain/entities/vendor_entity.dart';
-import '../../domain/repositories/vendor_repository.dart';
-import '../../core/errors/failures.dart';
+import 'package:order_app/domain/entities/vendor_entity.dart';
+import 'package:order_app/domain/repositories/vendor_repository.dart';
+import 'package:order_app/core/errors/failures.dart';
 
 class FirestoreVendorRepository implements VendorRepository {
   final FirebaseFirestore _firestore;

@@ -7,14 +7,14 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
-import '../../../domain/entities/attendance_entity.dart';
-import '../../../data/models/attendance_model.dart';
-import '../../../core/services/geofence_service.dart';
-import '../../providers/attendance_providers.dart';
-import '../../providers/auth_provider.dart';
+import 'package:order_app/domain/entities/attendance_entity.dart';
+import 'package:order_app/data/models/attendance_model.dart';
+import 'package:order_app/core/services/geofence_service.dart';
+import 'package:order_app/presentation/providers/attendance_providers.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
-import '../../widgets/leave_request_sheet.dart';
+import 'package:order_app/presentation/widgets/hr_management/leave_request_sheet.dart';
 
 class StaffAttendanceScreen extends ConsumerStatefulWidget {
   const StaffAttendanceScreen({super.key});

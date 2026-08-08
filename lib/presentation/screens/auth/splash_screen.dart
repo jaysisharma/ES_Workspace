@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../widgets/role_based_router.dart';
-import '../../providers/auth_provider.dart';
+import 'package:order_app/presentation/widgets/common/role_based_router.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});

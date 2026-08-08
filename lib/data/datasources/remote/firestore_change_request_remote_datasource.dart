@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../core/errors/failures.dart';
+import 'package:order_app/core/errors/failures.dart';
 import '../../models/change_request_model.dart';
-import '../../../domain/entities/change_request_entity.dart';
+import 'package:order_app/domain/entities/change_request_entity.dart';
 
 abstract class ChangeRequestRemoteDataSource {
   Future<void> createRequest(ChangeRequestEntity request);

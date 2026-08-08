@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/order_providers.dart';
-import '../../providers/event_providers.dart';
-import '../../providers/dashboard_filter_notifier.dart';
-import '../../../domain/entities/order_entity.dart';
-import '../../../domain/entities/order_item_entity.dart';
-import '../../../domain/entities/event_entity.dart';
-import '../../widgets/dashboard/admin_summary_card.dart';
-import '../../widgets/dashboard/order_card.dart';
-import '../common/notifications_screen.dart';
-import '../common/calendar_screen.dart';
-import 'synology_company_pdf_screen.dart';
-import '../../providers/notification_notifier.dart';
-import '../../providers/settings_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../../domain/entities/user_entity.dart';
-import '../../widgets/common/shimmer_loading.dart';
-import '../../../core/utils/currency_formatter.dart';
+import 'package:order_app/presentation/providers/order_providers.dart';
+import 'package:order_app/presentation/providers/event_providers.dart';
+import 'package:order_app/presentation/providers/dashboard_filter_notifier.dart';
+import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
+import 'package:order_app/domain/entities/event_entity.dart';
+import 'package:order_app/presentation/widgets/dashboard/admin_summary_card.dart';
+import 'package:order_app/presentation/widgets/dashboard/order_card.dart';
+import 'package:order_app/presentation/widgets/dashboard/this_week_events_strip.dart';
+import 'package:order_app/presentation/screens/common/utility/notifications_screen.dart';
+import 'package:order_app/presentation/screens/common/events/calendar_screen.dart';
+import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
+import 'package:order_app/presentation/providers/notification_notifier.dart';
+import 'package:order_app/presentation/providers/settings_provider.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/widgets/common/shimmer_loading.dart';
+import 'package:order_app/core/utils/currency_formatter.dart';
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -318,6 +319,11 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              const SizedBox(height: 8),
+
+                              // This Week's Events Ticker Strip
+                              ThisWeekEventsStrip(events: events),
+
                               // Summary Section
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),

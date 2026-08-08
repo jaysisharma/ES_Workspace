@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import '../../data/models/badge_template_model.dart';
-import '../../domain/entities/event_pass_entity.dart';
+import 'package:order_app/data/models/badge_template_model.dart';
+import 'package:order_app/domain/entities/event_pass_entity.dart';
 
 class BadgeService {
   static const String _storageKey = 'badge_template_config';

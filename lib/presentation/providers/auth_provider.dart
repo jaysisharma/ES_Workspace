@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/repositories/firebase_auth_repository.dart';
-import '../../domain/repositories/auth_repository.dart';
-import '../../domain/usecases/login_usecase.dart';
-import '../../domain/usecases/register_usecase.dart';
-import '../../domain/usecases/get_current_user_usecase.dart';
-import '../../domain/usecases/logout_usecase.dart';
+import 'package:order_app/data/repositories/firebase_auth_repository.dart';
+import 'package:order_app/domain/repositories/auth_repository.dart';
+import 'package:order_app/domain/usecases/login_usecase.dart';
+import 'package:order_app/domain/usecases/register_usecase.dart';
+import 'package:order_app/domain/usecases/get_current_user_usecase.dart';
+import 'package:order_app/domain/usecases/logout_usecase.dart';
 import 'auth_notifier.dart';
 
 // Provides the repository
