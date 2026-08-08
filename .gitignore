@@ -1,4 +1,6 @@
 # Miscellaneous
+# graphify knowledge graph (auto-generated, not for version control)
+graphify-out/
 *.class
 *.log
 *.pyc
