@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/order_item_entity.dart';
@@ -337,6 +338,8 @@ class OrderNotifier extends Notifier<OrderState> {
     List<OrderItemEntity> items,
     List<ExpenseEntity> additionalRevenue,
   ) async {
+    debugPrint('=== [ORDER NOTIFIER FINALIZE REVENUE] ===');
+    debugPrint('Order ID: ${order.id}');
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       final now = DateTime.now();
@@ -379,6 +382,9 @@ class OrderNotifier extends Notifier<OrderState> {
       );
 
       await loadOrders();
+      ref.invalidate(allItemsStreamProvider);
+      ref.invalidate(allAdditionalRevenueStreamProvider);
+      await ref.read(orderItemNotifierProvider.notifier).loadItems(order.id);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;

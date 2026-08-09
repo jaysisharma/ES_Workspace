@@ -52,9 +52,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     super.dispose();
   }
 
-  bool _matchesOrderQuery(OrderEntity o, String rawQuery) {
+  bool _isOrderIdMatch(OrderEntity o, String rawQuery) {
     final query = rawQuery.trim().toLowerCase();
-    if (query.isEmpty) return true;
+    if (query.isEmpty) return false;
 
     final cleanNoSymbols = query.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
     final cleanNoPrefix = query
@@ -68,11 +68,19 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     final orderIdLower = o.id.toLowerCase();
     final orderIdNoSymbols = orderIdLower.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
 
-    final idMatch = orderIdLower.contains(query) ||
+    return orderIdLower == query ||
+        (cleanNoPrefix.isNotEmpty && orderIdLower == cleanNoPrefix) ||
+        (cleanNoSymbols.isNotEmpty && orderIdNoSymbols == cleanNoSymbols) ||
+        orderIdLower.contains(query) ||
         (cleanNoPrefix.isNotEmpty && orderIdLower.contains(cleanNoPrefix)) ||
         (cleanNoSymbols.isNotEmpty && orderIdNoSymbols.contains(cleanNoSymbols));
+  }
 
-    if (idMatch) return true;
+  bool _matchesOrderQuery(OrderEntity o, String rawQuery) {
+    final query = rawQuery.trim().toLowerCase();
+    if (query.isEmpty) return true;
+
+    if (_isOrderIdMatch(o, rawQuery)) return true;
 
     return o.eventName.toLowerCase().contains(query) ||
         o.venue.toLowerCase().contains(query) ||
@@ -548,81 +556,97 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
                               SizedBox(height: 20),
 
-                              if (orders.isEmpty)
-                                Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 40),
-                                    child: Text(
-                                      'No orders yet',
-                                      style: TextStyle(color: labelColor),
-                                    ),
-                                  ),
-                                )
-                              else ...[
-                                Consumer(
-                                  builder: (context, ref, _) {
-                                    final filterState = ref.watch(
-                                      dashboardFilterNotifierProvider,
-                                    );
-                                    final filteredOrders = orders.where((o) {
-                                      final isArchivedFilter =
-                                          filterState.selectedFilter.toLowerCase() == 'archived';
-                                      final isSearching = _searchQuery.trim().isNotEmpty;
+                              Consumer(
+                                builder: (context, ref, _) {
+                                  final filterState = ref.watch(
+                                    dashboardFilterNotifierProvider,
+                                  );
+                                  final isSearching = _searchQuery.trim().isNotEmpty;
+                                  final initialSource = isSearching ? allOrders : orders;
+                                  final List<OrderEntity> sourceOrders;
+                                  if (isSearching) {
+                                    final idMatches = initialSource
+                                        .where((o) => _isOrderIdMatch(o, _searchQuery))
+                                        .toList();
+                                    sourceOrders =
+                                        idMatches.isNotEmpty ? idMatches : initialSource;
+                                  } else {
+                                    sourceOrders = initialSource;
+                                  }
 
-                                      final archiveMatch = isArchivedFilter
-                                          ? o.isArchived
-                                          : (isSearching ? true : !o.isArchived);
-
-                                      final matchesFilter = isArchivedFilter
-                                          ? true
-                                          : (filterState.selectedFilter == 'ALL' ||
-                                              isSearching ||
-                                              o.status.name == filterState.selectedFilter);
-
-                                      final matchesSearch = _matchesOrderQuery(o, _searchQuery);
-
-                                      return archiveMatch && matchesFilter && matchesSearch;
-                                    }).toList();
-
-                                    if (filteredOrders.isEmpty) {
-                                      return Center(
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 40,
-                                          ),
-                                          child: Text(
-                                            'No orders match selected filter',
-                                            style: TextStyle(color: labelColor),
-                                          ),
+                                  if (sourceOrders.isEmpty) {
+                                    return Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 40),
+                                        child: Text(
+                                          isSearching
+                                              ? 'No orders found matching "$_searchQuery"'
+                                              : 'No orders yet',
+                                          style: TextStyle(color: labelColor),
                                         ),
-                                      );
-                                    }
-
-                                    final allItemsAsync = ref.watch(
-                                      allItemsStreamProvider,
+                                      ),
                                     );
-                                    final allItems = allItemsAsync.maybeWhen(
-                                      data: (items) => items,
-                                      orElse: () => <OrderItemEntity>[],
-                                    );
+                                  }
 
-                                    return Column(
-                                      children: [
-                                        ..._buildGroupedOrderList(
-                                          filteredOrders,
-                                          events,
-                                          allItems,
+                                  final filteredOrders = sourceOrders.where((o) {
+                                    final isArchivedFilter =
+                                        filterState.selectedFilter.toLowerCase() == 'archived';
+
+                                    final archiveMatch = isArchivedFilter
+                                        ? o.isArchived
+                                        : (isSearching ? true : !o.isArchived);
+
+                                    final matchesFilter = isArchivedFilter
+                                        ? true
+                                        : (filterState.selectedFilter == 'ALL' ||
+                                            isSearching ||
+                                            o.status.name == filterState.selectedFilter);
+
+                                    final matchesSearch = _matchesOrderQuery(o, _searchQuery);
+
+                                    return archiveMatch && matchesFilter && matchesSearch;
+                                  }).toList();
+
+                                  if (filteredOrders.isEmpty) {
+                                    return Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 40,
                                         ),
-                                        if (orderModelState.isLoading && orders.isNotEmpty)
-                                          const Padding(
-                                            padding: EdgeInsets.symmetric(vertical: 20),
-                                            child: Center(child: CircularProgressIndicator()),
-                                          ),
-                                      ],
+                                        child: Text(
+                                          isSearching
+                                              ? 'No orders found matching "$_searchQuery"'
+                                              : 'No orders match selected filter',
+                                          style: TextStyle(color: labelColor),
+                                        ),
+                                      ),
                                     );
-                                  },
-                                ),
-                              ],
+                                  }
+
+                                  final allItemsAsync = ref.watch(
+                                    allItemsStreamProvider,
+                                  );
+                                  final allItems = allItemsAsync.maybeWhen(
+                                    data: (items) => items,
+                                    orElse: () => <OrderItemEntity>[],
+                                  );
+
+                                  return Column(
+                                    children: [
+                                      ..._buildGroupedOrderList(
+                                        filteredOrders,
+                                        events,
+                                        allItems,
+                                      ),
+                                      if (orderModelState.isLoading && orders.isNotEmpty && !isSearching)
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(vertical: 20),
+                                          child: Center(child: CircularProgressIndicator()),
+                                        ),
+                                    ],
+                                  );
+                                },
+                              ),
 
                               const SizedBox(height: 100),
                             ],

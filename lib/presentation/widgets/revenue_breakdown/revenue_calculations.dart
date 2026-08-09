@@ -4,6 +4,31 @@ import 'package:order_app/domain/entities/order_item_entity.dart';
 import 'revenue_financials_card.dart';
 
 class RevenueCalculations {
+  static int parseQuantity(String? text, int fallback) {
+    if (text == null) return fallback;
+    final cleaned = text.trim();
+    if (cleaned.isEmpty) return fallback;
+    final val = double.tryParse(cleaned);
+    if (val == null) return fallback;
+    return val.round();
+  }
+
+  static int parseDays(String? text, int fallback) {
+    if (text == null) return fallback;
+    final cleaned = text.trim();
+    if (cleaned.isEmpty) return fallback;
+    final val = double.tryParse(cleaned);
+    if (val == null) return fallback;
+    return val.round();
+  }
+
+  static double parseRate(String? text, double fallback) {
+    if (text == null) return fallback;
+    final cleaned = text.trim();
+    if (cleaned.isEmpty) return fallback;
+    return double.tryParse(cleaned) ?? fallback;
+  }
+
   static double calculateItemTotal({
     required List<OrderItemEntity> items,
     required Map<String, TextEditingController> itemControllers,
@@ -12,9 +37,9 @@ class RevenueCalculations {
   }) {
     double total = 0;
     for (var item in items) {
-      final rate = double.tryParse(itemControllers[item.id]?.text ?? '') ?? 0.0;
-      final qty = int.tryParse(itemQtyControllers[item.id]?.text ?? '') ?? item.quantity;
-      final days = int.tryParse(itemDaysControllers[item.id]?.text ?? '') ?? item.days;
+      final rate = parseRate(itemControllers[item.id]?.text, item.rate);
+      final qty = parseQuantity(itemQtyControllers[item.id]?.text, item.quantity);
+      final days = parseDays(itemDaysControllers[item.id]?.text, item.days);
       if (item.billingType == 'event') {
         total += rate * qty;
       } else {

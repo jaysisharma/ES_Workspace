@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:order_app/core/errors/failures.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/order_item_entity.dart';
@@ -131,14 +132,34 @@ class FirestoreOrderRemoteDataSource implements OrderRemoteDataSource {
     List<ExpenseEntity> additionalRevenue,
   ) async {
     try {
+      debugPrint('=== [FIRESTORE REMOTE DATASOURCE FINALIZE REVENUE] ===');
+      debugPrint('Order ID: ${order.id}');
+      debugPrint('Updating orders/${order.id}:');
+      debugPrint('  description: ${order.description}');
+      debugPrint('  totalAmount: ${order.totalAmount}');
+      debugPrint('  vatRate: ${order.vatRate}');
+      debugPrint('  advanceReceived: ${order.advanceReceived}');
+      debugPrint('  advanceReferenceNo: ${order.advanceReferenceNo}');
+      debugPrint('  managementCharge: ${order.managementCharge}');
+      debugPrint('  isMgtChargePercent: ${order.isMgtChargePercent}');
+      debugPrint('  discount: ${order.discount}');
+      debugPrint('  isDiscountPercent: ${order.isDiscountPercent}');
+
       final batch = _firestore.batch();
 
-      // Update order - include description, notes, totalAmount, logs, and updatedAt
+      // Update order - include description, notes, totalAmount, vatRate, logs, and updatedAt
       final orderRef = _firestore.collection('orders').doc(order.id);
       batch.update(orderRef, {
         'description': order.description,
         'notes': order.notes,
         'totalAmount': order.totalAmount,
+        'vatRate': order.vatRate,
+        'advanceReceived': order.advanceReceived,
+        'advanceReferenceNo': order.advanceReferenceNo,
+        'managementCharge': order.managementCharge,
+        'isMgtChargePercent': order.isMgtChargePercent,
+        'discount': order.discount,
+        'isDiscountPercent': order.isDiscountPercent,
         'logs': order.logs
             .map(
               (log) => {
@@ -166,13 +187,22 @@ class FirestoreOrderRemoteDataSource implements OrderRemoteDataSource {
         batch.set(revRef, revModel.toJson());
       }
 
-      // Update items - only rate and amount
+      // Update items - rate, quantity, days, billingType, and amount
       for (final item in items) {
+        debugPrint('  Updating order_items/${item.id}: rate=${item.rate}, quantity=${item.quantity}, days=${item.days}, amount=${item.amount}, billingType=${item.billingType}');
         final itemRef = _firestore.collection('order_items').doc(item.id);
-        batch.update(itemRef, {'rate': item.rate, 'amount': item.amount});
+        batch.update(itemRef, {
+          'rate': item.rate,
+          'quantity': item.quantity,
+          'days': item.days,
+          'billingType': item.billingType,
+          'amount': item.amount,
+        });
       }
 
       await batch.commit();
+      debugPrint('Batch commit successful for revenue finalization!');
+      debugPrint('==================================================');
     } catch (e) {
       throw ServerException('Failed to finalize revenue: ${e.toString()}');
     }

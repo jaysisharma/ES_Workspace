@@ -24,6 +24,12 @@ class OrderModel extends OrderEntity {
     super.description = '',
     super.vatRate = 0.0,
     super.isArchived = false,
+    super.advanceReceived = 0.0,
+    super.advanceReferenceNo = '',
+    super.managementCharge = 0.0,
+    super.isMgtChargePercent = true,
+    super.discount = 0.0,
+    super.isDiscountPercent = true,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -63,6 +69,12 @@ class OrderModel extends OrderEntity {
       description: json['description'] as String? ?? '',
       vatRate: (json['vatRate'] as num?)?.toDouble() ?? 0.0,
       isArchived: isArchived,
+      advanceReceived: (json['advanceReceived'] as num?)?.toDouble() ?? 0.0,
+      advanceReferenceNo: json['advanceReferenceNo'] as String? ?? '',
+      managementCharge: (json['managementCharge'] as num?)?.toDouble() ?? 0.0,
+      isMgtChargePercent: json['isMgtChargePercent'] as bool? ?? true,
+      discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
+      isDiscountPercent: json['isDiscountPercent'] as bool? ?? true,
     );
   }
 
@@ -89,6 +101,12 @@ class OrderModel extends OrderEntity {
       'description': description,
       'vatRate': vatRate,
       'isArchived': isArchived,
+      'advanceReceived': advanceReceived,
+      'advanceReferenceNo': advanceReferenceNo,
+      'managementCharge': managementCharge,
+      'isMgtChargePercent': isMgtChargePercent,
+      'discount': discount,
+      'isDiscountPercent': isDiscountPercent,
       'logs': logs
           .map(
             (log) => {
@@ -152,6 +170,12 @@ class OrderModel extends OrderEntity {
       description: entity.description,
       vatRate: entity.vatRate,
       isArchived: entity.isArchived,
+      advanceReceived: entity.advanceReceived,
+      advanceReferenceNo: entity.advanceReferenceNo,
+      managementCharge: entity.managementCharge,
+      isMgtChargePercent: entity.isMgtChargePercent,
+      discount: entity.discount,
+      isDiscountPercent: entity.isDiscountPercent,
     );
   }
 }

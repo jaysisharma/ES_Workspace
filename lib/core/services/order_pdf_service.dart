@@ -77,6 +77,8 @@ class OrderPdfService {
     double discount = 0.0,
     double discountRate = 0.0,
     double? vatRate,
+    double advanceReceived = 0.0,
+    String advanceReferenceNo = '',
     PdfPageFormat pageFormat = PdfPageFormat.a4,
     void Function(String)? onProgress,
   }) async {
@@ -151,6 +153,8 @@ class OrderPdfService {
                 discount: discount,
                 discountRate: discountRate,
                 customVatRate: vatRate,
+                advanceReceived: advanceReceived,
+                advanceReferenceNo: advanceReferenceNo,
               ),
               pw.SizedBox(height: 14),
             ],

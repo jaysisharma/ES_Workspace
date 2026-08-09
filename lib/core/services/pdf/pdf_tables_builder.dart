@@ -15,6 +15,8 @@ class PdfTablesBuilder {
     double discount = 0.0,
     double discountRate = 0.0,
     double? customVatRate,
+    double advanceReceived = 0.0,
+    String advanceReferenceNo = '',
   }) {
     final headers = showFinancials
         ? [
@@ -232,6 +234,21 @@ class PdfTablesBuilder {
                     isBold: true,
                     fontSize: 10,
                   ),
+                  if (advanceReceived > 0) ...[
+                    PdfThemeAndStyles.summaryRow(
+                      advanceReferenceNo.isNotEmpty
+                          ? 'ADVANCE RECEIVED ($advanceReferenceNo)'
+                          : 'ADVANCE RECEIVED',
+                      '- Rs. ${advanceReceived.toStringAsFixed(0)}',
+                    ),
+                    pw.Divider(color: PdfThemeAndStyles.borderColor, thickness: 1),
+                    PdfThemeAndStyles.summaryRow(
+                      'BALANCE DUE',
+                      'Rs. ${(grandTotal - advanceReceived).toStringAsFixed(0)}',
+                      isBold: true,
+                      fontSize: 10,
+                    ),
+                  ],
                 ],
               ),
             ),

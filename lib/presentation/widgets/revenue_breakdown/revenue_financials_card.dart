@@ -6,6 +6,8 @@ class RevenueFinancialsCardWidget extends StatelessWidget {
   final TextEditingController mgtChargeController;
   final TextEditingController discountController;
   final TextEditingController vatRateController;
+  final TextEditingController advanceReceivedController;
+  final TextEditingController advanceRefNoController;
   final bool isMgtChargePercent;
   final bool isDiscountPercent;
   final VatOption vatOption;
@@ -29,6 +31,8 @@ class RevenueFinancialsCardWidget extends StatelessWidget {
     required this.mgtChargeController,
     required this.discountController,
     required this.vatRateController,
+    required this.advanceReceivedController,
+    required this.advanceRefNoController,
     required this.isMgtChargePercent,
     required this.isDiscountPercent,
     required this.vatOption,
@@ -203,6 +207,50 @@ class RevenueFinancialsCardWidget extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
+          // Advance Received (Optional)
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: advanceReceivedController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  onChanged: (_) => onChanged(),
+                  decoration: InputDecoration(
+                    labelText: 'Advance Received (Optional)',
+                    hintText: 'e.g. 10000',
+                    isDense: true,
+                    filled: true,
+                    fillColor: colorScheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.payments_outlined, size: 18),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: advanceRefNoController,
+                  onChanged: (_) => onChanged(),
+                  decoration: InputDecoration(
+                    labelText: 'Ref / Receipt No.',
+                    hintText: 'e.g. RCP-001',
+                    isDense: true,
+                    filled: true,
+                    fillColor: colorScheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    prefixIcon: const Icon(Icons.tag, size: 18),
+                  ),
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+
           // VAT Option Choice Chips
           Text(
             'VAT OPTION',
@@ -351,6 +399,26 @@ class RevenueFinancialsCardWidget extends StatelessWidget {
                   fontSize: 15,
                   color: colorScheme.primary,
                 ),
+                if ((double.tryParse(advanceReceivedController.text.trim()) ?? 0) > 0) ...[
+                  const SizedBox(height: 4),
+                  _summarySummaryRow(
+                    context,
+                    advanceRefNoController.text.trim().isNotEmpty
+                        ? 'Advance Received (${advanceRefNoController.text.trim()})'
+                        : 'Advance Received',
+                    '- $currencyLabel ${(double.tryParse(advanceReceivedController.text.trim()) ?? 0).toStringAsFixed(0)}',
+                    color: Colors.teal.shade700,
+                  ),
+                  const Divider(height: 10),
+                  _summarySummaryRow(
+                    context,
+                    'Balance Due',
+                    '$currencyLabel ${(grandTotalRevenue - (double.tryParse(advanceReceivedController.text.trim()) ?? 0)).toStringAsFixed(0)}',
+                    isBold: true,
+                    fontSize: 15,
+                    color: Colors.deepOrange.shade700,
+                  ),
+                ],
               ],
             ),
           ),

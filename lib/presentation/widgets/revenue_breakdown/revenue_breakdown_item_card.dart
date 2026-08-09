@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:order_app/domain/entities/order_item_entity.dart';
+import 'package:order_app/presentation/widgets/revenue_breakdown/revenue_calculations.dart';
 
 class RevenueItemCardWidget extends StatelessWidget {
   final OrderItemEntity item;
@@ -30,9 +31,9 @@ class RevenueItemCardWidget extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final labelColor = colorScheme.onSurfaceVariant;
 
-    final rate = double.tryParse(rateController.text) ?? 0.0;
-    final qty = int.tryParse(qtyController.text) ?? item.quantity;
-    final days = int.tryParse(daysController.text) ?? item.days;
+    final rate = RevenueCalculations.parseRate(rateController.text, item.rate);
+    final qty = RevenueCalculations.parseQuantity(qtyController.text, item.quantity);
+    final days = RevenueCalculations.parseDays(daysController.text, item.days);
 
     final double subtotal;
     if (item.billingType == 'event') {

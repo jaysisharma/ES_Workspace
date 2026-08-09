@@ -8,6 +8,7 @@ import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/order_item_entity.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
+import 'package:order_app/presentation/widgets/revenue_breakdown/revenue_calculations.dart';
 
 class ExpenseActionsHelper {
   static void showPdfOptions(
@@ -328,9 +329,9 @@ class ExpenseActionsHelper {
     if (proceed != true) return;
 
     final updatedItems = items.map((item) {
-      final rate = double.tryParse(itemControllers[item.id]?.text ?? '') ?? 0.0;
-      final qty = int.tryParse(itemQtyControllers[item.id]?.text ?? '') ?? item.quantity;
-      final days = int.tryParse(itemDaysControllers[item.id]?.text ?? '') ?? item.days;
+      final rate = RevenueCalculations.parseRate(itemControllers[item.id]?.text, item.vendorRate);
+      final qty = RevenueCalculations.parseQuantity(itemQtyControllers[item.id]?.text, item.quantity);
+      final days = RevenueCalculations.parseDays(itemDaysControllers[item.id]?.text, item.days);
       final double amount;
       if (item.billingType == 'event') {
         amount = rate * qty;

@@ -40,6 +40,12 @@ class OrderEntity {
   final String description;
   final double vatRate;
   final bool isArchived;
+  final double advanceReceived;
+  final String advanceReferenceNo;
+  final double managementCharge;
+  final bool isMgtChargePercent;
+  final double discount;
+  final bool isDiscountPercent;
 
   const OrderEntity({
     required this.id,
@@ -64,6 +70,12 @@ class OrderEntity {
     this.description = '',
     this.vatRate = 0.0,
     this.isArchived = false,
+    this.advanceReceived = 0.0,
+    this.advanceReferenceNo = '',
+    this.managementCharge = 0.0,
+    this.isMgtChargePercent = true,
+    this.discount = 0.0,
+    this.isDiscountPercent = true,
   });
 
   OrderEntity copyWith({
@@ -88,6 +100,12 @@ class OrderEntity {
     String? description,
     double? vatRate,
     bool? isArchived,
+    double? advanceReceived,
+    String? advanceReferenceNo,
+    double? managementCharge,
+    bool? isMgtChargePercent,
+    double? discount,
+    bool? isDiscountPercent,
   }) {
     return OrderEntity(
       id: id,
@@ -112,6 +130,12 @@ class OrderEntity {
       description: description ?? this.description,
       vatRate: vatRate ?? this.vatRate,
       isArchived: isArchived ?? this.isArchived,
+      advanceReceived: advanceReceived ?? this.advanceReceived,
+      advanceReferenceNo: advanceReferenceNo ?? this.advanceReferenceNo,
+      managementCharge: managementCharge ?? this.managementCharge,
+      isMgtChargePercent: isMgtChargePercent ?? this.isMgtChargePercent,
+      discount: discount ?? this.discount,
+      isDiscountPercent: isDiscountPercent ?? this.isDiscountPercent,
     );
   }
 
@@ -140,7 +164,13 @@ class OrderEntity {
         other.updatedAt == updatedAt &&
         other.category == category &&
         other.client == client &&
-        other.description == description;
+        other.description == description &&
+        other.advanceReceived == advanceReceived &&
+        other.advanceReferenceNo == advanceReferenceNo &&
+        other.managementCharge == managementCharge &&
+        other.isMgtChargePercent == isMgtChargePercent &&
+        other.discount == discount &&
+        other.isDiscountPercent == isDiscountPercent;
   }
 
   @override
@@ -163,6 +193,12 @@ class OrderEntity {
         updatedAt.hashCode ^
         category.hashCode ^
         client.hashCode ^
-        description.hashCode;
+        description.hashCode ^
+        advanceReceived.hashCode ^
+        advanceReferenceNo.hashCode ^
+        managementCharge.hashCode ^
+        isMgtChargePercent.hashCode ^
+        discount.hashCode ^
+        isDiscountPercent.hashCode;
   }
 }

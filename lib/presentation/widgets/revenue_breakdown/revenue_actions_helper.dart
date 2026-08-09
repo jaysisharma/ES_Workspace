@@ -7,6 +7,7 @@ import 'package:order_app/domain/entities/order_item_entity.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
 import 'package:order_app/core/utils/share_helper.dart';
+import 'package:order_app/presentation/widgets/revenue_breakdown/revenue_calculations.dart';
 
 class RevenueActionsHelper {
   static Future<void> executeRevenuePdf({
@@ -24,6 +25,8 @@ class RevenueActionsHelper {
     required double discountRate,
     required double effectiveVatRate,
     required bool share,
+    double advanceReceived = 0.0,
+    String advanceReferenceNo = '',
   }) async {
     if (items.isEmpty && manualRevenues.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -62,9 +65,9 @@ class RevenueActionsHelper {
 
     try {
       final updatedItems = items.map((item) {
-        final rate = double.tryParse(itemControllers[item.id]?.text ?? '') ?? 0.0;
-        final qty = int.tryParse(itemQtyControllers[item.id]?.text ?? '') ?? item.quantity;
-        final days = int.tryParse(itemDaysControllers[item.id]?.text ?? '') ?? item.days;
+        final rate = RevenueCalculations.parseRate(itemControllers[item.id]?.text, item.rate);
+        final qty = RevenueCalculations.parseQuantity(itemQtyControllers[item.id]?.text, item.quantity);
+        final days = RevenueCalculations.parseDays(itemDaysControllers[item.id]?.text, item.days);
         final double amount;
         if (item.billingType == 'event') {
           amount = rate * qty;
@@ -89,6 +92,8 @@ class RevenueActionsHelper {
         discount: discountAmount,
         discountRate: discountRate,
         vatRate: effectiveVatRate,
+        advanceReceived: advanceReceived,
+        advanceReferenceNo: advanceReferenceNo,
         onProgress: (status) {
           setSnackBarState(() => progressMessage = status);
         },
@@ -131,7 +136,7 @@ class RevenueActionsHelper {
     }
   }
 
-  static Future<void> save({
+  static Future<List<OrderItemEntity>?> save({
     required BuildContext context,
     required WidgetRef ref,
     required OrderEntity order,
@@ -143,11 +148,17 @@ class RevenueActionsHelper {
     required List<ExpenseEntity> manualRevenues,
     required double totalRevenue,
     required double effectiveVatRate,
+    double managementCharge = 0.0,
+    bool isMgtChargePercent = true,
+    double discount = 0.0,
+    bool isDiscountPercent = true,
+    double advanceReceived = 0.0,
+    String advanceReferenceNo = '',
   }) async {
     final updatedItems = items.map((item) {
-      final rate = double.tryParse(itemControllers[item.id]?.text ?? '') ?? 0.0;
-      final qty = int.tryParse(itemQtyControllers[item.id]?.text ?? '') ?? item.quantity;
-      final days = int.tryParse(itemDaysControllers[item.id]?.text ?? '') ?? item.days;
+      final rate = RevenueCalculations.parseRate(itemControllers[item.id]?.text, item.rate);
+      final qty = RevenueCalculations.parseQuantity(itemQtyControllers[item.id]?.text, item.quantity);
+      final days = RevenueCalculations.parseDays(itemDaysControllers[item.id]?.text, item.days);
       final double amount;
       if (item.billingType == 'event') {
         amount = rate * qty;
@@ -166,7 +177,26 @@ class RevenueActionsHelper {
       totalAmount: totalRevenue,
       vatRate: effectiveVatRate,
       description: orderDescription.trim(),
+      managementCharge: managementCharge,
+      isMgtChargePercent: isMgtChargePercent,
+      discount: discount,
+      isDiscountPercent: isDiscountPercent,
+      advanceReceived: advanceReceived,
+      advanceReferenceNo: advanceReferenceNo,
     );
+
+    debugPrint('=== [REVENUE SAVE DEBUG] ===');
+    debugPrint('Order ID: ${order.id}');
+    debugPrint('Description: ${orderDescription.trim()}');
+    debugPrint('Management Charge: $managementCharge (isPercent: $isMgtChargePercent)');
+    debugPrint('Discount: $discount (isPercent: $isDiscountPercent)');
+    debugPrint('VAT Rate: $effectiveVatRate');
+    debugPrint('Advance Received: $advanceReceived (Ref: $advanceReferenceNo)');
+    debugPrint('Total Revenue: $totalRevenue');
+    for (final item in updatedItems) {
+      debugPrint('Item "${item.itemName}" (ID: ${item.id}): rate=${item.rate}, qty=${item.quantity}, days=${item.days}, amount=${item.amount}');
+    }
+    debugPrint('===========================');
 
     try {
       await ref
@@ -182,6 +212,7 @@ class RevenueActionsHelper {
           ),
         );
       }
+      return updatedItems;
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -192,6 +223,7 @@ class RevenueActionsHelper {
           ),
         );
       }
+      return null;
     }
   }
 
@@ -209,6 +241,12 @@ class RevenueActionsHelper {
     required double grandTotalRevenue,
     required double effectiveVatRate,
     required String currencyLabel,
+    double managementCharge = 0.0,
+    bool isMgtChargePercent = true,
+    double discount = 0.0,
+    bool isDiscountPercent = true,
+    double advanceReceived = 0.0,
+    String advanceReferenceNo = '',
   }) async {
     bool? proceed = await showDialog<bool>(
       context: context,
@@ -253,6 +291,12 @@ class RevenueActionsHelper {
       manualRevenues: manualRevenues,
       totalRevenue: grandTotalRevenue,
       effectiveVatRate: effectiveVatRate,
+      managementCharge: managementCharge,
+      isMgtChargePercent: isMgtChargePercent,
+      discount: discount,
+      isDiscountPercent: isDiscountPercent,
+      advanceReceived: advanceReceived,
+      advanceReferenceNo: advanceReferenceNo,
     );
 
     if (context.mounted) {

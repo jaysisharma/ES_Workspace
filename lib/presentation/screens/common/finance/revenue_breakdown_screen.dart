@@ -41,6 +41,8 @@ class _RevenueBreakdownScreenState
   late TextEditingController _mgtChargeController;
   late TextEditingController _discountController;
   late TextEditingController _vatRateController;
+  late TextEditingController _advanceReceivedController;
+  late TextEditingController _advanceRefNoController;
   late VatOption _vatOption;
   bool _isMgtChargePercent = true;
   bool _isDiscountPercent = true;
@@ -68,8 +70,35 @@ class _RevenueBreakdownScreenState
     _orderDescriptionController = TextEditingController(
       text: widget.order.description,
     );
-    _mgtChargeController = TextEditingController();
-    _discountController = TextEditingController();
+    _isMgtChargePercent = widget.order.isMgtChargePercent;
+    _isDiscountPercent = widget.order.isDiscountPercent;
+
+    final mgtVal = widget.order.managementCharge;
+    _mgtChargeController = TextEditingController(
+      text: mgtVal == 0
+          ? ''
+          : (mgtVal.truncateToDouble() == mgtVal
+              ? mgtVal.toStringAsFixed(0)
+              : mgtVal.toStringAsFixed(2)),
+    );
+
+    final discVal = widget.order.discount;
+    _discountController = TextEditingController(
+      text: discVal == 0
+          ? ''
+          : (discVal.truncateToDouble() == discVal
+              ? discVal.toStringAsFixed(0)
+              : discVal.toStringAsFixed(2)),
+    );
+
+    _advanceReceivedController = TextEditingController(
+      text: widget.order.advanceReceived == 0
+          ? ''
+          : widget.order.advanceReceived.toStringAsFixed(0),
+    );
+    _advanceRefNoController = TextEditingController(
+      text: widget.order.advanceReferenceNo,
+    );
 
     if (widget.order.vatRate == 0) {
       _vatOption = VatOption.noVat;
@@ -119,6 +148,8 @@ class _RevenueBreakdownScreenState
     _orderDescriptionController.dispose();
     _mgtChargeController.dispose();
     _discountController.dispose();
+    _advanceReceivedController.dispose();
+    _advanceRefNoController.dispose();
     _vatRateController.dispose();
     super.dispose();
   }
@@ -222,19 +253,32 @@ class _RevenueBreakdownScreenState
         textColor: textColor,
         borderColor: borderColor,
         primaryColor: primaryColor,
-        onSave: () => RevenueActionsHelper.save(
-          context: context,
-          ref: ref,
-          order: widget.order,
-          orderDescription: _orderDescriptionController.text,
-          items: _items,
-          itemControllers: _controllers,
-          itemQtyControllers: _qtyControllers,
-          itemDaysControllers: _daysControllers,
-          manualRevenues: _manualRevenues,
-          totalRevenue: _totalRevenue,
-          effectiveVatRate: _effectiveVatRate,
-        ),
+        onSave: () async {
+          final savedItems = await RevenueActionsHelper.save(
+            context: context,
+            ref: ref,
+            order: widget.order,
+            orderDescription: _orderDescriptionController.text,
+            items: _items,
+            itemControllers: _controllers,
+            itemQtyControllers: _qtyControllers,
+            itemDaysControllers: _daysControllers,
+            manualRevenues: _manualRevenues,
+            totalRevenue: _totalRevenue,
+            effectiveVatRate: _effectiveVatRate,
+            managementCharge: double.tryParse(_mgtChargeController.text.trim()) ?? 0.0,
+            isMgtChargePercent: _isMgtChargePercent,
+            discount: double.tryParse(_discountController.text.trim()) ?? 0.0,
+            isDiscountPercent: _isDiscountPercent,
+            advanceReceived: double.tryParse(_advanceReceivedController.text.trim()) ?? 0.0,
+            advanceReferenceNo: _advanceRefNoController.text.trim(),
+          );
+          if (savedItems != null && mounted) {
+            setState(() {
+              _items = savedItems;
+            });
+          }
+        },
         onPdf: () => RevenueActionsHelper.executeRevenuePdf(
           context: context,
           order: widget.order,
@@ -299,6 +343,8 @@ class _RevenueBreakdownScreenState
                   mgtChargeController: _mgtChargeController,
                   discountController: _discountController,
                   vatRateController: _vatRateController,
+                  advanceReceivedController: _advanceReceivedController,
+                  advanceRefNoController: _advanceRefNoController,
                   isMgtChargePercent: _isMgtChargePercent,
                   isDiscountPercent: _isDiscountPercent,
                   vatOption: _vatOption,
@@ -376,6 +422,12 @@ class _RevenueBreakdownScreenState
               totalRevenue: _totalRevenue,
               grandTotalRevenue: _grandTotalRevenue,
               effectiveVatRate: _effectiveVatRate,
+              managementCharge: double.tryParse(_mgtChargeController.text.trim()) ?? 0.0,
+              isMgtChargePercent: _isMgtChargePercent,
+              discount: double.tryParse(_discountController.text.trim()) ?? 0.0,
+              isDiscountPercent: _isDiscountPercent,
+              advanceReceived: double.tryParse(_advanceReceivedController.text.trim()) ?? 0.0,
+              advanceReferenceNo: _advanceRefNoController.text.trim(),
               currencyLabel: currencyLabel,
             ),
           ),
