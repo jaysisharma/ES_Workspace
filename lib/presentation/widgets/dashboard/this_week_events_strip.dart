@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:order_app/domain/entities/event_entity.dart';
+import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/providers/dashboard_strip_notifier.dart';
 import 'package:order_app/presentation/screens/common/events/calendar_event_detail_screen.dart';
 import 'package:order_app/presentation/screens/common/events/calendar_screen.dart';
@@ -86,45 +89,67 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
     final isAdminOrFounder = authState.user?.role == UserRole.admin ||
         authState.user?.role == UserRole.founder;
 
+    // Fallback: Combine active orders if EventEntity records are not explicitly created
+    final ordersAsync = ref.watch(ordersStreamProvider);
+    final orders = ordersAsync.value ?? [];
+
+    final existingOrderIds = widget.events.map((e) => e.orderId).toSet();
+    final orderEvents = orders
+        .where((o) => !existingOrderIds.contains(o.id))
+        .map((o) => EventEntity(
+              id: 'ord_evt_${o.id}',
+              orderId: o.id,
+              title: o.eventName.isNotEmpty ? o.eventName : 'Event #${o.id}',
+              date: o.eventDate,
+              location: o.venue,
+              role: 'Order',
+              status: o.status.name,
+              completion: 0.0,
+            ))
+        .toList();
+
+    final allEvents = [...widget.events, ...orderEvents];
+
     final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
     // Monday of current week
-    final startOfWeek = DateTime(
-      now.year,
-      now.month,
-      now.day,
-    ).subtract(Duration(days: now.weekday - 1));
+    final startOfWeek = todayStart.subtract(Duration(days: now.weekday - 1));
     // Sunday of current week
     final endOfWeek = startOfWeek.add(
       const Duration(days: 6, hours: 23, minutes: 59, seconds: 59),
     );
 
-    // Filter events based on active mode
+    // Filter events based on active mode with timezone safety
     List<EventEntity> filteredEvents;
     switch (stripState.mode) {
       case DashboardStripMode.thisWeek:
-        filteredEvents = widget.events.where((e) {
+        filteredEvents = allEvents.where((e) {
           if (e.isArchived) return false;
-          return e.date
-                  .isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
-              e.date.isBefore(endOfWeek);
+          final localDate = e.date.toLocal();
+          final eventDay = DateTime(localDate.year, localDate.month, localDate.day);
+          return (eventDay.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
+                  eventDay.isBefore(endOfWeek)) ||
+                 DateUtils.isSameDay(localDate, now);
         }).toList();
         break;
       case DashboardStripMode.upcoming:
-        final todayStart = DateTime(now.year, now.month, now.day);
-        filteredEvents = widget.events.where((e) {
+        filteredEvents = allEvents.where((e) {
           if (e.isArchived) return false;
-          return e.date
-              .isAfter(todayStart.subtract(const Duration(seconds: 1)));
+          final localDate = e.date.toLocal();
+          final eventDay = DateTime(localDate.year, localDate.month, localDate.day);
+          return eventDay.isAfter(todayStart.subtract(const Duration(seconds: 1))) ||
+                 DateUtils.isSameDay(localDate, now);
         }).toList();
         break;
       case DashboardStripMode.custom:
-        filteredEvents = widget.events.where((e) {
+        filteredEvents = allEvents.where((e) {
           if (e.isArchived) return false;
-          return stripState.selectedEventIds.contains(e.id);
+          return stripState.selectedEventIds.contains(e.id) ||
+                 stripState.selectedEventIds.contains(e.orderId);
         }).toList();
         break;
       case DashboardStripMode.all:
-        filteredEvents = widget.events.where((e) => !e.isArchived).toList();
+        filteredEvents = allEvents.where((e) => !e.isArchived).toList();
         break;
     }
 
@@ -233,11 +258,20 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
                           ),
                         ),
                       )
-                    : ListView.separated(
-                        controller: _scrollController,
-                        scrollDirection: Axis.horizontal,
-                        physics: const BouncingScrollPhysics(),
-                        itemCount: displayEvents.length,
+                    : ScrollConfiguration(
+                        behavior: ScrollConfiguration.of(context).copyWith(
+                          dragDevices: {
+                            PointerDeviceKind.touch,
+                            PointerDeviceKind.mouse,
+                            PointerDeviceKind.trackpad,
+                            PointerDeviceKind.stylus,
+                          },
+                        ),
+                        child: ListView.separated(
+                          controller: _scrollController,
+                          scrollDirection: Axis.horizontal,
+                          physics: const ClampingScrollPhysics(),
+                          itemCount: displayEvents.length,
                         separatorBuilder: (context, index) => Container(
                           margin: const EdgeInsets.symmetric(
                             horizontal: 6,
@@ -337,6 +371,7 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
                           );
                         },
                       ),
+                    ),
               ),
 
               // Admin Event Selector Tool Button

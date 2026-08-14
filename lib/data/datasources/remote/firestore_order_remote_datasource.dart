@@ -234,6 +234,15 @@ class FirestoreOrderRemoteDataSource implements OrderRemoteDataSource {
         'updatedAt': order.updatedAt.toIso8601String(),
       });
 
+      // Clear old manual expenses to avoid duplicates/orphans
+      final existingExpenses = await _firestore
+          .collection('expenses')
+          .where('orderId', isEqualTo: order.id)
+          .get();
+      for (final doc in existingExpenses.docs) {
+        batch.delete(doc.reference);
+      }
+
       // Update manual expenses
       for (final expense in expenses) {
         final expenseModel = ExpenseModel.fromEntity(expense);
@@ -243,12 +252,20 @@ class FirestoreOrderRemoteDataSource implements OrderRemoteDataSource {
         batch.set(expenseRef, expenseModel.toJson());
       }
 
-      // Update item-based vendor costs - only vendorRate and vendorAmount
+      // Update item-based vendor costs & all item fields (quantity, days, vendorRate, vendorAmount, rate, amount)
       for (final item in items) {
         final itemRef = _firestore.collection('order_items').doc(item.id);
         batch.update(itemRef, {
+          'quantity': item.quantity,
+          'days': item.days,
           'vendorRate': item.vendorRate,
           'vendorAmount': item.vendorAmount,
+          'rate': item.rate,
+          'amount': item.amount,
+          'vendor': item.vendor,
+          'specification': item.specification,
+          'unit': item.unit,
+          'billingType': item.billingType,
         });
       }
 

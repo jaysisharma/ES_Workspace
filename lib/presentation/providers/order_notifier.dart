@@ -415,6 +415,12 @@ class OrderNotifier extends Notifier<OrderState> {
         items,
       );
 
+      // Force reload item notifier and invalidate streams so UI stays 100% in sync
+      await ref.read(orderItemNotifierProvider.notifier).loadItems(order.id);
+      ref.invalidate(allItemsStreamProvider);
+      ref.invalidate(allExpensesStreamProvider);
+      ref.invalidate(ordersStreamProvider);
+
       // Notify admin + founder
       await ref
           .read(notificationNotifierProvider.notifier)
