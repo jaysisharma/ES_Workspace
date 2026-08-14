@@ -82,6 +82,16 @@ class RevenueActionsHelper {
         );
       }).toList();
 
+      debugPrint('=== [REVENUE PDF GENERATION DEBUG] ===');
+      debugPrint('Order ID: ${order.id}, Event: ${order.eventName}');
+      debugPrint('Items count: ${updatedItems.length}');
+      debugPrint('Additional Revenue count: ${manualRevenues.length}');
+      debugPrint('Management Charge: $managementChargeAmount (Rate: $managementChargeRate%)');
+      debugPrint('Discount: $discountAmount (Rate: $discountRate%)');
+      debugPrint('VAT Rate: $effectiveVatRate');
+      debugPrint('Advance Received: $advanceReceived (Ref: $advanceReferenceNo)');
+      debugPrint('=======================================');
+
       final pdfData = await OrderPdfService.generateOrderPdf(
         order: order.copyWith(description: orderDescription.trim()),
         items: updatedItems,

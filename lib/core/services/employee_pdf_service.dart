@@ -224,7 +224,7 @@ class EmployeePdfService {
             pw.SizedBox(height: 24),
 
             // ── Signatures & Authorization Box ──────────────────────────────
-            pw.Spacer(),
+            pw.SizedBox(height: 24),
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -167,7 +168,7 @@ class _EventPassDetailsScreenState
       await file.writeAsBytes(pngBytes);
 
       // For desktop, use ShareHelper; on mobile use native share
-      final isDesktop = !Platform.isAndroid && !Platform.isIOS;
+      final isDesktop = !kIsWeb && (!Platform.isAndroid && !Platform.isIOS);
       if (isDesktop && mounted) {
         await ShareHelper.sharePdf(
           context: context,
@@ -176,11 +177,22 @@ class _EventPassDetailsScreenState
           subject: 'QR Pass for ${widget.pass.clientName}',
         );
       } else {
-        await Share.shareXFiles(
-          [XFile(file.path)],
-          subject: 'QR Pass for ${widget.pass.clientName}',
-          sharePositionOrigin: rect,
-        );
+        try {
+          await Share.shareXFiles(
+            [XFile(file.path)],
+            subject: 'QR Pass for ${widget.pass.clientName}',
+            sharePositionOrigin: rect,
+          );
+        } catch (e) {
+          if (mounted) {
+            await ShareHelper.sharePdf(
+              context: context,
+              pdfBytes: pngBytes,
+              fileName: 'qr_pass_${widget.pass.clientName.replaceAll(' ', '_')}.png',
+              subject: 'QR Pass for ${widget.pass.clientName}',
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted) {

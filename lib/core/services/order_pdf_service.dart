@@ -133,6 +133,7 @@ class OrderPdfService {
 
     pdf.addPage(
       pw.MultiPage(
+        maxPages: 100,
         pageFormat: pageFormat,
         margin: getAdaptiveMargin(pageFormat),
         header: (context) => PdfThemeAndStyles.buildHeader(logoImage, order, title: title),
@@ -243,6 +244,7 @@ class OrderPdfService {
 
     pdf.addPage(
       pw.MultiPage(
+        maxPages: 100,
         pageFormat: pageFormat,
         margin: getAdaptiveMargin(pageFormat),
         header: (context) =>
@@ -331,14 +333,155 @@ class OrderPdfService {
     PdfPageFormat pageFormat = PdfPageFormat.a4,
     void Function(String)? onProgress,
   }) async {
-    return generateOrderPdf(
-      order: order,
-      items: items,
-      additionalRevenue: additionalRevenue,
-      showFinancials: true,
-      pageFormat: pageFormat,
-      onProgress: onProgress,
+    onProgress?.call('Generating Event Financial Statement...');
+    await _loadAssets();
+
+    final logoImage = pw.MemoryImage(_cachedLogoBytes!);
+    final font = _cachedRegularFont!;
+    final boldFont = _cachedBoldFont!;
+
+    final itemDatas = items
+        .map(
+          (item) => PdfItemData(
+            itemName: item.itemName,
+            specification: item.specification,
+            quantity: item.quantity,
+            unit: item.unit,
+            billingType: item.billingType,
+            days: item.days,
+            rate: item.rate,
+            amount: item.amount,
+            vendor: item.vendor,
+            vendorRate: item.vendorRate,
+            vendorAmount: item.vendorAmount,
+          ),
+        )
+        .toList();
+
+    final revenueDatas = additionalRevenue
+        .map(
+          (e) => PdfRevenueData(
+            category: e.category,
+            description: e.description,
+            quantity: e.quantity.toDouble(),
+            unit: e.unit,
+            billingType: e.billingType,
+            days: e.days,
+            rate: e.rate,
+            amount: e.amount,
+            vendorName: e.vendorName ?? '',
+          ),
+        )
+        .toList();
+
+    final expenseDatas = orderExpenses
+        .map(
+          (e) => PdfExpenseData(
+            category: e.category,
+            description: e.description,
+            specification: e.specification,
+            quantity: e.quantity,
+            unit: e.unit,
+            billingType: e.billingType,
+            days: e.days,
+            rate: e.rate,
+            amount: e.amount,
+            vendorName: e.vendorName ?? '',
+          ),
+        )
+        .toList();
+
+    final double revenueSubtotal = items.fold(0.0, (sum, i) => sum + i.amount) +
+        additionalRevenue.fold(0.0, (sum, e) => sum + e.amount);
+
+    final double computedMgtCharge = order.managementCharge > 0
+        ? (order.isMgtChargePercent ? (revenueSubtotal * order.managementCharge / 100) : order.managementCharge)
+        : 0.0;
+
+    final double computedDiscount = order.discount > 0
+        ? (order.isDiscountPercent ? (revenueSubtotal * order.discount / 100) : order.discount)
+        : 0.0;
+
+    final double netRevenue = revenueSubtotal + computedMgtCharge - computedDiscount;
+    final double computedVat = order.vatRate > 0.0001 ? (netRevenue * order.vatRate) : 0.0;
+    final double totalRevenue = netRevenue + computedVat;
+
+    final double vendorTotal = items.fold(0.0, (sum, item) {
+      final amt = item.vendorAmount > 0
+          ? item.vendorAmount
+          : (item.vendorRate *
+                item.quantity *
+                (item.billingType == 'daily' ? item.days : 1));
+      return sum + amt;
+    });
+
+    final double operationalTotal = orderExpenses.fold(0.0, (sum, exp) => sum + exp.amount);
+    final double totalExpenses = vendorTotal + operationalTotal;
+    final double netProfit = totalRevenue - totalExpenses;
+    final double profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0.0;
+
+    debugPrint('=== [SINGLE EVENT FINANCIAL PDF DEBUG] ===');
+    debugPrint('Order ID: ${order.id}, Event: ${order.eventName}');
+    debugPrint('Item rows: ${itemDatas.length}, Revenue rows: ${revenueDatas.length}, Expense rows: ${expenseDatas.length}');
+    debugPrint('Revenue Subtotal: $revenueSubtotal, Net Rev: $netRevenue, Total Rev: $totalRevenue');
+    debugPrint('Vendor Expenses: $vendorTotal, Operational Expenses: $operationalTotal, Total Expenses: $totalExpenses');
+    debugPrint('Net Profit: $netProfit, Margin: ${profitMargin.toStringAsFixed(2)}%');
+    debugPrint('=========================================');
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(base: font, bold: boldFont),
     );
+
+    pdf.addPage(
+      pw.MultiPage(
+        maxPages: 100,
+        pageFormat: pageFormat,
+        margin: ReportsPdfBuilder.getAdaptiveMargin(pageFormat),
+        header: (context) => PdfThemeAndStyles.buildHeader(
+          logoImage,
+          order,
+          title: 'EVENT FINANCIAL STATEMENT',
+        ),
+        footer: (context) => PdfThemeAndStyles.buildFooter(context),
+        build: (context) {
+          return [
+            pw.SizedBox(height: 12),
+            PdfThemeAndStyles.buildOrderInfoCard(order),
+            pw.SizedBox(height: 12),
+            PdfTablesBuilder.buildGlobalFinancialSummaryCard(
+              totalRevenue,
+              totalExpenses,
+              netProfit,
+              profitMargin,
+            ),
+            pw.SizedBox(height: 14),
+            ...PdfTablesBuilder.buildItemsTableWidgets(
+              order,
+              itemDatas,
+              showFinancials: true,
+              additionalRevenue: revenueDatas,
+              managementCharge: order.managementCharge,
+              managementChargeRate: order.isMgtChargePercent ? order.managementCharge : 0.0,
+              discount: order.discount,
+              discountRate: order.isDiscountPercent ? order.discount : 0.0,
+              customVatRate: order.vatRate,
+              advanceReceived: order.advanceReceived,
+              advanceReferenceNo: order.advanceReferenceNo,
+            ),
+            pw.SizedBox(height: 16),
+            ...PdfTablesBuilder.buildExpenseTableWidgets(
+              itemRows: itemDatas,
+              expenseRows: expenseDatas,
+            ),
+            pw.SizedBox(height: 24),
+            PdfThemeAndStyles.buildSignatureSection(),
+            pw.SizedBox(height: 10),
+          ];
+        },
+      ),
+    );
+
+    return pdf.save();
   }
 
   static Future<Uint8List> generatePurchaseOrderPdf({

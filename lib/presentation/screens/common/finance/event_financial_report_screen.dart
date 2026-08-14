@@ -269,6 +269,12 @@ class __EventFinancialCardWidgetState
         .toList();
 
     Future<void> handlePdfGeneration() async {
+      debugPrint('=== [EVENT FINANCIAL REPORT PDF GENERATION] ===');
+      debugPrint('Order ID: ${order.id}, Event Name: ${order.eventName}');
+      debugPrint('Total Items: ${widget.orderItems.length}, Vendor Items: ${vendorItems.length}');
+      debugPrint('Total Expenses: ${widget.orderExpenses.length}, Additional Revenue: ${widget.additionalRevenue.length}');
+      debugPrint('===============================================');
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Generating Event Financial Statement PDF...'),

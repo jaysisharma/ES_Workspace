@@ -33,6 +33,7 @@ class ReportsPdfBuilder {
 
     pdf.addPage(
       pw.MultiPage(
+        maxPages: 100,
         pageFormat: pageFormat,
         margin: getAdaptiveMargin(pageFormat),
         header: (context) => PdfThemeAndStyles.buildPOHeader(logoImage, po),
@@ -77,6 +78,7 @@ class ReportsPdfBuilder {
 
     pdf.addPage(
       pw.MultiPage(
+        maxPages: 100,
         pageFormat: pageFormat,
         margin: getAdaptiveMargin(pageFormat),
         header: (context) => PdfThemeAndStyles.buildHeader(logoImage, orders.first, title: 'FINANCIAL SUMMARY'),
@@ -91,7 +93,7 @@ class ReportsPdfBuilder {
           ),
           pw.SizedBox(height: 14),
           PdfTablesBuilder.buildOrdersFinancialTable(orders),
-          pw.Spacer(),
+          pw.SizedBox(height: 24),
           PdfThemeAndStyles.buildSignatureSection(),
           pw.SizedBox(height: 10),
         ],
@@ -121,12 +123,13 @@ class ReportsPdfBuilder {
     );
 
     final logoImage = pw.MemoryImage(logoBytes);
-    final headers = ['SN', 'Date', 'Order ID', 'Description', 'Revenue (+)', 'Expense (-)'];
-    final headerWidths = [0.8, 1.8, 1.8, 3.8, 2.0, 2.0];
+    final headers = ['SN', 'Date', 'Order ID', 'Event Name', 'Description', 'Revenue (+)', 'Expense (-)'];
+    final headerWidths = [0.6, 1.5, 1.5, 2.5, 2.5, 1.7, 1.7];
     final isA5 = pageFormat.width < 500;
 
     pdf.addPage(
       pw.MultiPage(
+        maxPages: 100,
         pageFormat: pageFormat,
         margin: getAdaptiveMargin(pageFormat),
         header: (context) => pw.Container(
@@ -210,17 +213,21 @@ class ReportsPdfBuilder {
 
           for (final entry in ledgerEntries) {
             final dateStr = entry['date'] != null
-                ? formatNepaliDate(entry['date'] as DateTime, 'yyyy-MM-dd')
+                ? (entry['date'] is DateTime
+                    ? formatNepaliDate(entry['date'] as DateTime, 'yyyy-MM-dd')
+                    : entry['date'].toString())
                 : '-';
             final orderId = entry['orderId']?.toString() ?? '-';
+            final eventName = entry['eventName']?.toString() ?? '-';
             final desc = entry['description']?.toString() ?? '';
-            final rev = (entry['revenue'] as num?)?.toDouble() ?? 0.0;
-            final exp = (entry['expense'] as num?)?.toDouble() ?? 0.0;
+            final rev = (entry['credit'] as num?)?.toDouble() ?? (entry['revenue'] as num?)?.toDouble() ?? 0.0;
+            final exp = (entry['debit'] as num?)?.toDouble() ?? (entry['expense'] as num?)?.toDouble() ?? 0.0;
 
             tableData.add([
               '${sn++}',
               dateStr,
               orderId,
+              eventName,
               desc,
               rev > 0 ? 'Rs. ${rev.toStringAsFixed(2)}' : '-',
               exp > 0 ? 'Rs. ${exp.toStringAsFixed(2)}' : '-',
@@ -287,8 +294,9 @@ class ReportsPdfBuilder {
                   1: pw.Alignment.center,
                   2: pw.Alignment.center,
                   3: pw.Alignment.centerLeft,
-                  4: pw.Alignment.centerRight,
+                  4: pw.Alignment.centerLeft,
                   5: pw.Alignment.centerRight,
+                  6: pw.Alignment.centerRight,
                 },
               ),
             pw.SizedBox(height: 24),

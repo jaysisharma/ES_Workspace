@@ -138,6 +138,11 @@ class _FinancialReportsScreenState
                       return;
                     }
 
+                    debugPrint('=== [GLOBAL FINANCIAL REPORT EXPORT DEBUG] ===');
+                    debugPrint('Filtered orders count: ${filteredOrders.length}');
+                    debugPrint('Total Revenue: $totalRevenue, Total Expenses: $totalExpenses, Net Profit: $netProfit, Margin: ${margin.toStringAsFixed(2)}%');
+                    debugPrint('==============================================');
+
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text('Generating Financial Summary...'),

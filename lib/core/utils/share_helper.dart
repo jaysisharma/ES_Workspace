@@ -27,7 +27,13 @@ class ShareHelper {
     // Sanitize fileName to prevent invalid path characters (slashes, colons, spaces)
     final safeFileName = fileName.replaceAll(RegExp(r'[^\w\.-]'), '_');
 
-    final tempDir = await getTemporaryDirectory();
+    Directory tempDir;
+    try {
+      tempDir = await getTemporaryDirectory();
+    } catch (e) {
+      debugPrint('getTemporaryDirectory FFI error, falling back to Directory.systemTemp: $e');
+      tempDir = Directory.systemTemp;
+    }
     final file = File('${tempDir.path}/$safeFileName');
     await file.parent.create(recursive: true);
     await file.writeAsBytes(pdfBytes, flush: true);
@@ -47,12 +53,30 @@ class ShareHelper {
         ),
       );
     } else {
-      // Mobile — system share sheet shows WhatsApp natively
-      await Share.shareXFiles(
-        [XFile(file.path, mimeType: 'application/pdf')],
-        subject: subject.isNotEmpty ? subject : null,
-        text: message.isNotEmpty ? message : null,
-      );
+      try {
+        // Mobile — system share sheet shows WhatsApp natively
+        await Share.shareXFiles(
+          [XFile(file.path, mimeType: 'application/pdf')],
+          subject: subject.isNotEmpty ? subject : null,
+          text: message.isNotEmpty ? message : null,
+        );
+      } catch (e) {
+        debugPrint('Share.shareXFiles platform error: $e');
+        if (context.mounted) {
+          await showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.transparent,
+            isScrollControlled: true,
+            builder: (_) => _DesktopPdfShareSheet(
+              file: file,
+              fileName: safeFileName,
+              pdfBytes: pdfBytes,
+              subject: subject,
+              message: message,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -77,7 +101,22 @@ class ShareHelper {
         ),
       );
     } else {
-      await Share.share(message, subject: subject.isNotEmpty ? subject : null);
+      try {
+        await Share.share(message, subject: subject.isNotEmpty ? subject : null);
+      } catch (e) {
+        debugPrint('Share.share platform error: $e');
+        if (context.mounted) {
+          await showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.transparent,
+            isScrollControlled: true,
+            builder: (_) => _DesktopTextShareSheet(
+              message: message,
+              subject: subject,
+            ),
+          );
+        }
+      }
     }
   }
 }
@@ -118,6 +157,12 @@ class _DesktopPdfShareSheet extends StatelessWidget {
           subtitle: 'Preview with your default PDF viewer',
           onTap: () async {
             Navigator.pop(context);
+            if (Platform.isMacOS) {
+              try {
+                final res = await Process.run('open', [file.path]);
+                if (res.exitCode == 0) return;
+              } catch (_) {}
+            }
             await OpenFilex.open(file.path);
           },
         ),

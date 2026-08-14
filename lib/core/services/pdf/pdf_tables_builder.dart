@@ -63,103 +63,51 @@ class PdfTablesBuilder {
 
     final double grandTotal = netTotal + computedVat;
 
+    final dataRows = <List<String>>[];
     int sn = 1;
-    final rows = <pw.TableRow>[
-      pw.TableRow(
-        decoration: const pw.BoxDecoration(color: PdfThemeAndStyles.lightBg),
-        children: headers
-            .map(
-              (h) => pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 6,
-                ),
-                child: pw.Text(
-                  h.toUpperCase(),
-                  style: pw.TextStyle(
-                    fontSize: 8,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfThemeAndStyles.darkColor,
-                  ),
-                ),
-              ),
-            )
-            .toList(),
-      ),
-      ...items.map(
-        (item) => pw.TableRow(
-          children: showFinancials
-              ? [
-                  PdfThemeAndStyles.tableCell((sn++).toString(), align: pw.TextAlign.center),
-                  PdfThemeAndStyles.tableCell(item.vendor.isEmpty ? '-' : item.vendor),
-                  PdfThemeAndStyles.tableCell(item.itemName, bold: true),
-                  PdfThemeAndStyles.tableCell(
-                    item.quantity.toString(),
-                    align: pw.TextAlign.center,
-                  ),
-                  PdfThemeAndStyles.tableCell(item.unit, align: pw.TextAlign.center),
-                  PdfThemeAndStyles.tableCell(
-                    item.billingType == 'daily' ? 'Daily' : 'Event',
-                    align: pw.TextAlign.center,
-                  ),
-                  PdfThemeAndStyles.tableCell(item.days.toString(), align: pw.TextAlign.center),
-                  PdfThemeAndStyles.tableCell(
-                    item.rate.toStringAsFixed(0),
-                    align: pw.TextAlign.right,
-                  ),
-                  PdfThemeAndStyles.tableCell(
-                    item.amount.toStringAsFixed(0),
-                    align: pw.TextAlign.right,
-                  ),
-                ]
-              : [
-                  PdfThemeAndStyles.tableCell((sn++).toString(), align: pw.TextAlign.center),
-                  PdfThemeAndStyles.tableCell(item.vendor.isEmpty ? '-' : item.vendor),
-                  PdfThemeAndStyles.tableCell(item.itemName, bold: true),
-                  PdfThemeAndStyles.tableCell(item.specification),
-                  PdfThemeAndStyles.tableCell(
-                    item.quantity.toString(),
-                    align: pw.TextAlign.center,
-                  ),
-                  PdfThemeAndStyles.tableCell(item.unit),
-                  PdfThemeAndStyles.tableCell(item.days.toString(), align: pw.TextAlign.center),
-                ],
-        ),
-      ),
-      if (showFinancials && additionalRevenue.isNotEmpty)
-        ...additionalRevenue.map(
-          (rev) => pw.TableRow(
-            children: [
-              PdfThemeAndStyles.tableCell((sn++).toString(), align: pw.TextAlign.center),
-              PdfThemeAndStyles.tableCell(rev.vendorName.isEmpty ? '-' : rev.vendorName),
-              PdfThemeAndStyles.tableCell(
-                rev.category == 'Other' && rev.description.isNotEmpty
-                    ? rev.description
-                    : rev.category,
-                bold: true,
-              ),
-              PdfThemeAndStyles.tableCell(
-                rev.quantity.toStringAsFixed(0),
-                align: pw.TextAlign.center,
-              ),
-              PdfThemeAndStyles.tableCell(rev.unit, align: pw.TextAlign.center),
-              PdfThemeAndStyles.tableCell(
-                rev.billingType == 'daily' ? 'Daily' : 'Event',
-                align: pw.TextAlign.center,
-              ),
-              PdfThemeAndStyles.tableCell(rev.days.toString(), align: pw.TextAlign.center),
-              PdfThemeAndStyles.tableCell(
-                rev.rate.toStringAsFixed(0),
-                align: pw.TextAlign.right,
-              ),
-              PdfThemeAndStyles.tableCell(
-                rev.amount.toStringAsFixed(0),
-                align: pw.TextAlign.right,
-              ),
-            ],
-          ),
-        ),
-    ];
+    for (final item in items) {
+      if (showFinancials) {
+        dataRows.add([
+          '${sn++}',
+          item.vendor.isEmpty ? '-' : item.vendor,
+          item.itemName,
+          item.quantity.toString(),
+          item.unit,
+          item.billingType == 'daily' ? 'Daily' : 'Event',
+          item.days.toString(),
+          item.rate.toStringAsFixed(0),
+          item.amount.toStringAsFixed(0),
+        ]);
+      } else {
+        dataRows.add([
+          '${sn++}',
+          item.vendor.isEmpty ? '-' : item.vendor,
+          item.itemName,
+          item.specification,
+          item.quantity.toString(),
+          item.unit,
+          item.days.toString(),
+        ]);
+      }
+    }
+
+    if (showFinancials && additionalRevenue.isNotEmpty) {
+      for (final rev in additionalRevenue) {
+        dataRows.add([
+          '${sn++}',
+          rev.vendorName.isEmpty ? '-' : rev.vendorName,
+          rev.category == 'Other' && rev.description.isNotEmpty
+              ? rev.description
+              : rev.category,
+          rev.quantity.toStringAsFixed(0),
+          rev.unit,
+          rev.billingType == 'daily' ? 'Daily' : 'Event',
+          rev.days.toString(),
+          rev.rate.toStringAsFixed(0),
+          rev.amount.toStringAsFixed(0),
+        ]);
+      }
+    }
 
     return [
       pw.Container(
@@ -180,13 +128,44 @@ class PdfTablesBuilder {
         ),
       ),
       pw.SizedBox(height: 2),
-      pw.Table(
-        columnWidths: {
-          for (int i = 0; i < headerWidths.length; i++)
-            i: pw.FlexColumnWidth(headerWidths[i]),
-        },
+      pw.TableHelper.fromTextArray(
+        headers: headers,
+        data: dataRows,
+        columnWidths: Map.fromIterables(
+          List.generate(headers.length, (i) => i),
+          headerWidths.map((w) => pw.FlexColumnWidth(w)),
+        ),
         border: pw.TableBorder.all(color: PdfThemeAndStyles.borderColor, width: 0.5),
-        children: rows,
+        headerStyle: pw.TextStyle(
+          fontSize: 8,
+          fontWeight: pw.FontWeight.bold,
+          color: PdfThemeAndStyles.darkColor,
+        ),
+        headerDecoration: const pw.BoxDecoration(color: PdfThemeAndStyles.lightBg),
+        cellStyle: const pw.TextStyle(fontSize: 8),
+        cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+        cellAlignment: pw.Alignment.centerLeft,
+        cellAlignments: showFinancials
+            ? {
+                0: pw.Alignment.center,
+                1: pw.Alignment.centerLeft,
+                2: pw.Alignment.centerLeft,
+                3: pw.Alignment.center,
+                4: pw.Alignment.center,
+                5: pw.Alignment.center,
+                6: pw.Alignment.center,
+                7: pw.Alignment.centerRight,
+                8: pw.Alignment.centerRight,
+              }
+            : {
+                0: pw.Alignment.center,
+                1: pw.Alignment.centerLeft,
+                2: pw.Alignment.centerLeft,
+                3: pw.Alignment.centerLeft,
+                4: pw.Alignment.center,
+                5: pw.Alignment.center,
+                6: pw.Alignment.center,
+              },
       ),
       if (showFinancials) ...[
         pw.SizedBox(height: 8),
@@ -275,7 +254,16 @@ class PdfTablesBuilder {
     ];
     final headerWidths = [0.7, 1.8, 2.5, 0.8, 0.9, 1.0, 0.8, 1.4, 1.6];
 
-    final double vendorTotal = itemRows.fold(0.0, (sum, item) {
+    final vendorItemRows = itemRows.where((item) {
+      final amt = item.vendorAmount > 0
+          ? item.vendorAmount
+          : (item.vendorRate *
+                item.quantity *
+                (item.billingType == 'daily' ? item.days : 1));
+      return amt > 0 || item.vendor.isNotEmpty;
+    }).toList();
+
+    final double vendorTotal = vendorItemRows.fold(0.0, (sum, item) {
       final amt = item.vendorAmount > 0
           ? item.vendorAmount
           : (item.vendorRate *
@@ -291,90 +279,44 @@ class PdfTablesBuilder {
 
     final double totalExpenses = vendorTotal + operationalTotal;
 
+    final dataRows = <List<String>>[];
     int sn = 1;
-    final rows = <pw.TableRow>[
-      pw.TableRow(
-        decoration: const pw.BoxDecoration(color: PdfThemeAndStyles.lightBg),
-        children: headers
-            .map(
-              (h) => pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 6,
-                ),
-                child: pw.Text(
-                  h.toUpperCase(),
-                  style: pw.TextStyle(
-                    fontSize: 8,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfThemeAndStyles.darkColor,
-                  ),
-                ),
-              ),
-            )
-            .toList(),
-      ),
-      ...itemRows.map(
-        (item) => pw.TableRow(
-          children: [
-            PdfThemeAndStyles.tableCell((sn++).toString(), align: pw.TextAlign.center),
-            PdfThemeAndStyles.tableCell(item.vendor.isEmpty ? '-' : item.vendor),
-            PdfThemeAndStyles.tableCell(item.itemName, bold: true),
-            PdfThemeAndStyles.tableCell(item.quantity.toString(), align: pw.TextAlign.center),
-            PdfThemeAndStyles.tableCell(item.unit, align: pw.TextAlign.center),
-            PdfThemeAndStyles.tableCell(
-              item.billingType == 'daily' ? 'Daily' : 'Event',
-              align: pw.TextAlign.center,
-            ),
-            PdfThemeAndStyles.tableCell(item.days.toString(), align: pw.TextAlign.center),
-            PdfThemeAndStyles.tableCell(
-              item.vendorRate.toStringAsFixed(0),
-              align: pw.TextAlign.right,
-            ),
-            PdfThemeAndStyles.tableCell(
-              (item.vendorAmount > 0
-                      ? item.vendorAmount
-                      : (item.vendorRate *
-                            item.quantity *
-                            (item.billingType == 'daily' ? item.days : 1)))
-                  .toStringAsFixed(0),
-              align: pw.TextAlign.right,
-            ),
-          ],
-        ),
-      ),
-      ...expenseRows.map(
-        (expense) => pw.TableRow(
-          children: [
-            PdfThemeAndStyles.tableCell((sn++).toString(), align: pw.TextAlign.center),
-            PdfThemeAndStyles.tableCell(expense.vendorName.isEmpty ? '-' : expense.vendorName),
-            PdfThemeAndStyles.tableCell(
-              expense.category == 'Other' && expense.description.isNotEmpty
-                  ? expense.description
-                  : (expense.specification.isNotEmpty
-                        ? '${expense.category} (${expense.specification})'
-                        : expense.category),
-              bold: true,
-            ),
-            PdfThemeAndStyles.tableCell(expense.quantity.toString(), align: pw.TextAlign.center),
-            PdfThemeAndStyles.tableCell(expense.unit, align: pw.TextAlign.center),
-            PdfThemeAndStyles.tableCell(
-              expense.billingType == 'daily' ? 'Daily' : 'Event',
-              align: pw.TextAlign.center,
-            ),
-            PdfThemeAndStyles.tableCell(expense.days.toString(), align: pw.TextAlign.center),
-            PdfThemeAndStyles.tableCell(
-              expense.rate.toStringAsFixed(0),
-              align: pw.TextAlign.right,
-            ),
-            PdfThemeAndStyles.tableCell(
-              expense.amount.toStringAsFixed(0),
-              align: pw.TextAlign.right,
-            ),
-          ],
-        ),
-      ),
-    ];
+    for (final item in vendorItemRows) {
+      final amt = item.vendorAmount > 0
+          ? item.vendorAmount
+          : (item.vendorRate *
+                item.quantity *
+                (item.billingType == 'daily' ? item.days : 1));
+      dataRows.add([
+        '${sn++}',
+        item.vendor.isEmpty ? '-' : item.vendor,
+        item.itemName,
+        item.quantity.toString(),
+        item.unit,
+        item.billingType == 'daily' ? 'Daily' : 'Event',
+        item.days.toString(),
+        item.vendorRate.toStringAsFixed(0),
+        amt.toStringAsFixed(0),
+      ]);
+    }
+
+    for (final expense in expenseRows) {
+      dataRows.add([
+        '${sn++}',
+        expense.vendorName.isEmpty ? '-' : expense.vendorName,
+        expense.category == 'Other' && expense.description.isNotEmpty
+            ? expense.description
+            : (expense.specification.isNotEmpty
+                  ? '${expense.category} (${expense.specification})'
+                  : expense.category),
+        expense.quantity.toString(),
+        expense.unit,
+        expense.billingType == 'daily' ? 'Daily' : 'Event',
+        expense.days.toString(),
+        expense.rate.toStringAsFixed(0),
+        expense.amount.toStringAsFixed(0),
+      ]);
+    }
 
     return [
       pw.Container(
@@ -395,13 +337,34 @@ class PdfTablesBuilder {
         ),
       ),
       pw.SizedBox(height: 2),
-      pw.Table(
-        columnWidths: {
-          for (int i = 0; i < headerWidths.length; i++)
-            i: pw.FlexColumnWidth(headerWidths[i]),
-        },
+      pw.TableHelper.fromTextArray(
+        headers: headers,
+        data: dataRows,
+        columnWidths: Map.fromIterables(
+          List.generate(headers.length, (i) => i),
+          headerWidths.map((w) => pw.FlexColumnWidth(w)),
+        ),
         border: pw.TableBorder.all(color: PdfThemeAndStyles.borderColor, width: 0.5),
-        children: rows,
+        headerStyle: pw.TextStyle(
+          fontSize: 8,
+          fontWeight: pw.FontWeight.bold,
+          color: PdfThemeAndStyles.darkColor,
+        ),
+        headerDecoration: const pw.BoxDecoration(color: PdfThemeAndStyles.lightBg),
+        cellStyle: const pw.TextStyle(fontSize: 8),
+        cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+        cellAlignment: pw.Alignment.centerLeft,
+        cellAlignments: {
+          0: pw.Alignment.center,
+          1: pw.Alignment.centerLeft,
+          2: pw.Alignment.centerLeft,
+          3: pw.Alignment.center,
+          4: pw.Alignment.center,
+          5: pw.Alignment.center,
+          6: pw.Alignment.center,
+          7: pw.Alignment.centerRight,
+          8: pw.Alignment.centerRight,
+        },
       ),
       pw.SizedBox(height: 8),
       pw.Row(
@@ -539,61 +502,51 @@ class PdfTablesBuilder {
     final headerWidths = [0.8, 2.5, 2.5, 1.0, 1.0, 1.0, 1.0, 1.5, 2.0];
 
     int sn = 1;
-    final List<pw.TableRow> rows = [];
-
-    rows.add(
-      pw.TableRow(
-        decoration: const pw.BoxDecoration(color: PdfThemeAndStyles.lightBg),
-        children: headers
-            .map(
-              (h) => pw.Padding(
-                padding: const pw.EdgeInsets.symmetric(
-                  horizontal: 4,
-                  vertical: 6,
-                ),
-                child: pw.Text(
-                  h,
-                  style: pw.TextStyle(
-                    fontSize: 7,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfThemeAndStyles.darkColor,
-                  ),
-                  textAlign: pw.TextAlign.center,
-                ),
-              ),
-            )
-            .toList(),
-      ),
-    );
-
-    for (final item in po.items) {
-      rows.add(
-        pw.TableRow(
-          children: [
-            PdfThemeAndStyles.tableCell((sn++).toString()),
-            PdfThemeAndStyles.tableCell(item.itemName, bold: true),
-            PdfThemeAndStyles.tableCell(item.specification),
-            PdfThemeAndStyles.tableCell(item.quantity.toString()),
-            PdfThemeAndStyles.tableCell(item.unit),
-            PdfThemeAndStyles.tableCell(item.billingType == 'daily' ? 'Daily' : 'Event'),
-            PdfThemeAndStyles.tableCell(item.days.toString()),
-            PdfThemeAndStyles.tableCell(item.rate.toStringAsFixed(0)),
-            PdfThemeAndStyles.tableCell(item.amount.toStringAsFixed(0)),
-          ],
-        ),
-      );
-    }
+    final dataRows = po.items.map((item) {
+      return [
+        '${sn++}',
+        item.itemName,
+        item.specification,
+        item.quantity.toString(),
+        item.unit,
+        item.billingType == 'daily' ? 'Daily' : 'Event',
+        item.days.toString(),
+        item.rate.toStringAsFixed(0),
+        item.amount.toStringAsFixed(0),
+      ];
+    }).toList();
 
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.end,
       children: [
-        pw.Table(
-          columnWidths: {
-            for (int i = 0; i < headerWidths.length; i++)
-              i: pw.FlexColumnWidth(headerWidths[i]),
-          },
+        pw.TableHelper.fromTextArray(
+          headers: headers,
+          data: dataRows,
+          columnWidths: Map.fromIterables(
+            List.generate(headers.length, (i) => i),
+            headerWidths.map((w) => pw.FlexColumnWidth(w)),
+          ),
           border: pw.TableBorder.all(color: PdfThemeAndStyles.borderColor, width: 0.5),
-          children: rows,
+          headerStyle: pw.TextStyle(
+            fontSize: 7,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfThemeAndStyles.darkColor,
+          ),
+          headerDecoration: const pw.BoxDecoration(color: PdfThemeAndStyles.lightBg),
+          cellStyle: const pw.TextStyle(fontSize: 7),
+          cellPadding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          cellAlignment: pw.Alignment.centerLeft,
+          cellAlignments: {
+            0: pw.Alignment.center,
+            1: pw.Alignment.centerLeft,
+            2: pw.Alignment.centerLeft,
+            3: pw.Alignment.center,
+            4: pw.Alignment.center,
+            5: pw.Alignment.center,
+            6: pw.Alignment.center,
+            7: pw.Alignment.centerRight,
+            8: pw.Alignment.centerRight,
+          },
         ),
         pw.SizedBox(height: 16),
         pw.Container(

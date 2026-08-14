@@ -5,6 +5,7 @@ import 'package:excel/excel.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:file_picker/file_picker.dart';
 
 class ExcelExportHelper {
   /// Exports and opens/shares an Excel spreadsheet cleanly across all platforms
@@ -187,7 +188,13 @@ class ExcelExportHelper {
 
       if (!kIsWeb) {
         // Save Excel file to temporary directory
-        final tempDir = await getTemporaryDirectory();
+        Directory tempDir;
+        try {
+          tempDir = await getTemporaryDirectory();
+        } catch (e) {
+          debugPrint('getTemporaryDirectory FFI error, falling back to Directory.systemTemp: $e');
+          tempDir = Directory.systemTemp;
+        }
         if (!await tempDir.exists()) {
           await tempDir.create(recursive: true);
         }
@@ -197,17 +204,58 @@ class ExcelExportHelper {
 
         debugPrint('ExcelExportHelper: Saved Excel file to ${file.path}');
 
-        if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-          // Open Excel file with native viewer (Numbers/Excel)
-          final openResult = await OpenFilex.open(file.path);
-          debugPrint('ExcelExportHelper: OpenFilex result: type=${openResult.type}, message=${openResult.message}');
+        final isDesktop = Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
-          if (openResult.type != ResultType.done) {
-            // Fallback to share sheet if native viewer app cannot open directly
-            await Share.shareXFiles(
-              [XFile(file.path, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')],
-              text: sanitizedFilename,
+        if (isDesktop) {
+          bool opened = false;
+
+          if (Platform.isMacOS) {
+            try {
+              final res = await Process.run('open', [file.path]);
+              if (res.exitCode == 0) {
+                opened = true;
+                debugPrint('ExcelExportHelper: Opened Excel file via macOS native open command');
+              }
+            } catch (e) {
+              debugPrint('ExcelExportHelper: macOS open process error: $e');
+            }
+          } else if (Platform.isWindows) {
+            try {
+              final res = await Process.run('cmd', ['/c', 'start', '', file.path], runInShell: true);
+              if (res.exitCode == 0) {
+                opened = true;
+              }
+            } catch (_) {}
+          } else if (Platform.isLinux) {
+            try {
+              final res = await Process.run('xdg-open', [file.path]);
+              if (res.exitCode == 0) {
+                opened = true;
+              }
+            } catch (_) {}
+          }
+
+          if (!opened) {
+            final openResult = await OpenFilex.open(file.path);
+            debugPrint('ExcelExportHelper: OpenFilex result: type=${openResult.type}, message=${openResult.message}');
+            if (openResult.type == ResultType.done) {
+              opened = true;
+            }
+          }
+
+          if (!opened) {
+            // Desktop fallback: allow user to pick location to save file instead of calling Share.shareXFiles (which throws objective_c FFI errors on desktop)
+            final outputPath = await FilePicker.platform.saveFile(
+              dialogTitle: 'Save Excel Spreadsheet',
+              fileName: sanitizedFilename,
+              type: FileType.custom,
+              allowedExtensions: ['xlsx'],
             );
+            if (outputPath != null) {
+              final outFile = File(outputPath);
+              await outFile.writeAsBytes(fileBytes, flush: true);
+              debugPrint('ExcelExportHelper: Saved Excel to $outputPath');
+            }
           }
         } else {
           // Mobile platforms (iOS, Android) - trigger share sheet to allow "Save to Files" (download)

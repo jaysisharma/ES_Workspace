@@ -424,10 +424,11 @@ class _FinancialLedgerScreenState extends ConsumerState<FinancialLedgerScreen> {
     }
 
     for (final exp in expenseManual) {
+      final o = orders.firstWhere((ord) => ord.id == exp.orderId, orElse: () => orders.first);
       entries.add({
         'date': exp.createdAt,
         'orderId': exp.orderId,
-        'eventName': exp.category,
+        'eventName': o.eventName,
         'category': 'Manual Expense',
         'description': exp.description.isNotEmpty ? exp.description : exp.category,
         'qty': exp.quantity,
