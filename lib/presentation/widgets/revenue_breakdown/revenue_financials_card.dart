@@ -25,6 +25,7 @@ class RevenueFinancialsCardWidget extends StatelessWidget {
   final VoidCallback onChanged;
   final VoidCallback onPreviewPdf;
   final VoidCallback onSharePdf;
+  final VoidCallback? onGenerateInvoice;
 
   const RevenueFinancialsCardWidget({
     super.key,
@@ -50,6 +51,7 @@ class RevenueFinancialsCardWidget extends StatelessWidget {
     required this.onChanged,
     required this.onPreviewPdf,
     required this.onSharePdf,
+    this.onGenerateInvoice,
   });
 
   Widget _summarySummaryRow(
