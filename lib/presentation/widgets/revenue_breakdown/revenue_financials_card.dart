@@ -465,6 +465,28 @@ class RevenueFinancialsCardWidget extends StatelessWidget {
               ),
             ],
           ),
+          if (onGenerateInvoice != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.receipt_long, size: 18),
+                label: const Text(
+                  'GENERATE TAX / PROFORMA INVOICE',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0075db),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: onGenerateInvoice,
+              ),
+            ),
+          ],
         ],
       ),
     );

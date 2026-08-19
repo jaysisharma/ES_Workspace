@@ -14,6 +14,7 @@ import 'package:order_app/presentation/widgets/revenue_breakdown/manual_revenue_
 import 'package:order_app/presentation/widgets/revenue_breakdown/revenue_calculations.dart';
 import 'package:order_app/presentation/widgets/revenue_breakdown/revenue_actions_helper.dart';
 import 'package:order_app/presentation/widgets/revenue_breakdown/revenue_breakdown_app_bar.dart';
+import 'package:order_app/presentation/screens/common/finance/event_invoices_screen.dart';
 
 class RevenueBreakdownScreen extends ConsumerStatefulWidget {
   final OrderEntity order;
@@ -401,6 +402,16 @@ class _RevenueBreakdownScreenState
                     effectiveVatRate: _effectiveVatRate,
                     share: true,
                   ),
+                  onGenerateInvoice: () {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (dialogCtx) => InvoiceCustomizerModal(
+                        order: widget.order,
+                        isPreviewDefault: false,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

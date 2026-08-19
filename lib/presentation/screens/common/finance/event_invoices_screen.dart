@@ -34,7 +34,7 @@ class _EventInvoicesScreenState extends ConsumerState<EventInvoicesScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogCtx) => _InvoiceCustomizerModal(
+      builder: (dialogCtx) => InvoiceCustomizerModal(
         order: order,
         isPreviewDefault: isPreviewOnly,
       ),
@@ -635,22 +635,23 @@ class _EventInvoicesScreenState extends ConsumerState<EventInvoicesScreen> {
 
 // ── Manual Tax Invoice Customizer Dialog ──────────────────────────────────────
 
-class _InvoiceCustomizerModal extends ConsumerStatefulWidget {
+class InvoiceCustomizerModal extends ConsumerStatefulWidget {
   final OrderEntity order;
   final bool isPreviewDefault;
 
-  const _InvoiceCustomizerModal({
+  const InvoiceCustomizerModal({
+    super.key,
     required this.order,
     required this.isPreviewDefault,
   });
 
   @override
-  ConsumerState<_InvoiceCustomizerModal> createState() =>
+  ConsumerState<InvoiceCustomizerModal> createState() =>
       _InvoiceCustomizerModalState();
 }
 
 class _InvoiceCustomizerModalState
-    extends ConsumerState<_InvoiceCustomizerModal> {
+    extends ConsumerState<InvoiceCustomizerModal> {
   late TextEditingController _invNumberCtrl;
   late TextEditingController _buyerNameCtrl;
   late TextEditingController _buyerAddressCtrl;
