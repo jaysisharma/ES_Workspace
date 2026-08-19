@@ -18,6 +18,11 @@ import 'package:order_app/presentation/widgets/hr_management/manage_geofence_dia
 import 'package:order_app/presentation/widgets/dashboard/dashboard_event_selection_dialog.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
 import 'package:order_app/presentation/screens/common/inventory/inventory_management_screen.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:order_app/core/services/export_directory_service.dart';
+import 'package:order_app/presentation/widgets/create_order/manage_categories_dialog.dart';
+import 'package:order_app/presentation/widgets/hr_management/leave_cycle_settings_dialog.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -48,6 +53,7 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: bgColor,
+      floatingActionButton: const BottomRightBackButton(),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(64),
         child: AppBar(
@@ -369,6 +375,38 @@ class SettingsScreen extends ConsumerWidget {
                       dividerColor: dividerColor,
                     ),
                     _buildActionRow(
+                      title: 'Order Categories',
+                      subtitle: 'Add, view & remove event categories',
+                      icon: Icons.category_rounded,
+                      iconColor: Colors.teal,
+                      onTap: () => ManageCategoriesDialog.show(context),
+                      trailing: Icon(
+                        Icons.chevron_right,
+                        color: labelColor.withValues(alpha: 0.5),
+                        size: 18,
+                      ),
+                      isLast: false,
+                      textColor: textColor,
+                      labelColor: labelColor,
+                      dividerColor: dividerColor,
+                    ),
+                    _buildActionRow(
+                      title: 'Leave Reset & Cycle Settings',
+                      subtitle: 'Configure annual leave reset rules or manual cycle',
+                      icon: Icons.event_repeat,
+                      iconColor: const Color(0xFF0075db),
+                      onTap: () => showLeaveCycleSettingsDialog(context, ref),
+                      trailing: Icon(
+                        Icons.chevron_right,
+                        color: labelColor.withValues(alpha: 0.5),
+                        size: 18,
+                      ),
+                      isLast: false,
+                      textColor: textColor,
+                      labelColor: labelColor,
+                      dividerColor: dividerColor,
+                    ),
+                    _buildActionRow(
                       title: 'Backup to Cloud',
                       subtitle: 'Sync with Firebase Storage',
                       icon: Icons.cloud_upload,
@@ -386,6 +424,136 @@ class SettingsScreen extends ConsumerWidget {
                       textColor: textColor,
                       labelColor: labelColor,
                       dividerColor: dividerColor,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Section: Export & Storage Destination
+              _buildSectionTitle('Export & Storage Destination', labelColor),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: _cardDecoration(cardColor, borderColor),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.folder_special_rounded, color: Colors.blue, size: 22),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Destination Export Folder',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textColor),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                settings.exportDestinationDirectory != null
+                                    ? settings.exportDestinationDirectory!
+                                    : 'Default System Downloads Directory',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: settings.exportDestinationDirectory != null ? primaryColor : labelColor,
+                                  fontWeight: settings.exportDestinationDirectory != null ? FontWeight.w600 : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () async {
+                            final selectedDir = await FilePicker.platform.getDirectoryPath(
+                              dialogTitle: 'Select Destination Folder for Exports',
+                            );
+                            if (selectedDir != null && selectedDir.isNotEmpty) {
+                              await ref.read(settingsProvider.notifier).setExportDestinationDirectory(selectedDir);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Export directory set to: $selectedDir'),
+                                    backgroundColor: Colors.green.shade700,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: Colors.white,
+                            visualDensity: VisualDensity.compact,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          icon: const Icon(Icons.drive_folder_upload_rounded, size: 16),
+                          label: const Text('Choose Folder', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                        if (settings.exportDestinationDirectory != null) ...[
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              await ExportDirectoryService.openDirectory(settings.exportDestinationDirectory!);
+                            },
+                            style: OutlinedButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            icon: const Icon(Icons.folder_open_rounded, size: 16),
+                            label: const Text('Open Folder', style: TextStyle(fontSize: 12)),
+                          ),
+                          TextButton.icon(
+                            onPressed: () async {
+                              await ref.read(settingsProvider.notifier).setExportDestinationDirectory(null);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Reset export directory to system default.'),
+                                  ),
+                                );
+                              }
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.redAccent,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            icon: const Icon(Icons.restart_alt_rounded, size: 16),
+                            label: const Text('Reset', style: TextStyle(fontSize: 12)),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    _buildPreferenceRow(
+                      title: 'Auto-Arrange in Subfolders',
+                      subtitle: 'Organizes exports into Attendance/, Orders/, Finance/, Employees/ folders',
+                      textColor: textColor,
+                      labelColor: labelColor,
+                      child: _buildSwitch(
+                        context,
+                        settings.autoArrangeExportFolders,
+                        (val) {
+                          ref.read(settingsProvider.notifier).toggleAutoArrangeExportFolders(val);
+                        },
+                        primaryColor,
+                        isDarkMode,
+                      ),
                     ),
                   ],
                 ),
@@ -476,6 +644,8 @@ class SettingsScreen extends ConsumerWidget {
                           size: 16,
                           color: primaryColor,
                         ),
+
+                        
                         label: Text(
                           'Configure',
                           style: TextStyle(

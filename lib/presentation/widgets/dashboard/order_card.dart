@@ -10,8 +10,18 @@ import 'package:order_app/presentation/screens/common/orders/order_details_scree
 class OrderCard extends ConsumerWidget {
   final OrderEntity order;
   final double completion;
+  final bool isSelectionMode;
+  final bool isSelected;
+  final ValueChanged<bool?>? onSelectionChanged;
 
-  const OrderCard({super.key, required this.order, required this.completion});
+  const OrderCard({
+    super.key,
+    required this.order,
+    required this.completion,
+    this.isSelectionMode = false,
+    this.isSelected = false,
+    this.onSelectionChanged,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -43,16 +53,26 @@ class OrderCard extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        context.pushPage(OrderDetailsScreen(order: order));
+        if (isSelectionMode) {
+          onSelectionChanged?.call(!isSelected);
+        } else {
+          context.pushPage(OrderDetailsScreen(order: order));
+        }
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          color: isSelected
+              ? Colors.red.withValues(alpha: 0.08)
+              : colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: borderColor.withValues(alpha: 0.3),
+            color: isSelected
+                ? Colors.red.shade400
+                : borderColor.withValues(alpha: 0.3),
+            width: isSelected ? 1.8 : 1.0,
           ),
         ),
         child: Column(
@@ -62,6 +82,15 @@ class OrderCard extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (isSelectionMode) ...[
+                  Checkbox(
+                    value: isSelected,
+                    activeColor: Colors.red,
+                    onChanged: (val) => onSelectionChanged?.call(val),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  const SizedBox(width: 8),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

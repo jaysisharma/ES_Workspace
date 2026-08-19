@@ -72,6 +72,16 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
+  Future<void> deleteOrders(List<String> ids) async {
+    try {
+      await _remoteDataSource.deleteOrders(ids);
+    } catch (e) {
+      if (e is ServerException) rethrow;
+      throw ServerException('Failed to delete orders: ${e.toString()}');
+    }
+  }
+
+  @override
   Future<void> finalizeRevenue(
     OrderEntity order,
     List<OrderItemEntity> items,

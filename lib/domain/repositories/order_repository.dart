@@ -9,6 +9,7 @@ abstract class OrderRepository {
   Future<List<OrderEntity>> getAllOrders();
   Future<Map<String, dynamic>> getOrdersPaginated(int limit, {dynamic lastDoc});
   Future<void> deleteOrder(String id);
+  Future<void> deleteOrders(List<String> ids);
   Future<void> finalizeRevenue(
     OrderEntity order,
     List<OrderItemEntity> items,

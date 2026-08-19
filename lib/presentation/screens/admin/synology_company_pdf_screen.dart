@@ -11,6 +11,7 @@ import 'package:order_app/presentation/providers/company_document_provider.dart'
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/core/utils/company_pdf_generator.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
 class SynologyCompanyPdfScreen extends ConsumerStatefulWidget {
   const SynologyCompanyPdfScreen({super.key});
@@ -54,9 +55,15 @@ class _SynologyCompanyPdfScreenState
           ),
         ],
       ),
-      floatingActionButton: isStaff
-          ? null
-          : FloatingActionButton.extended(
+      floatingActionButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (Navigator.canPop(context)) ...[
+            const BottomRightBackButton(),
+            const SizedBox(width: 12),
+          ],
+          if (!isStaff)
+            FloatingActionButton.extended(
               heroTag: 'synology_company_pdf_fab',
               onPressed: docState.isLoading ? null : () => _showUploadCustomDialog(context),
               icon: const Icon(Icons.upload_file_rounded),
@@ -64,6 +71,8 @@ class _SynologyCompanyPdfScreenState
               backgroundColor: colorScheme.primary,
               foregroundColor: Colors.white,
             ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           await ref.read(companyDocumentNotifierProvider.notifier).refresh();
@@ -223,12 +232,15 @@ class _SynologyCompanyPdfScreenState
               children: [
                 Row(
                   children: [
-                    Text(
-                      'Synology NAS Server',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: colorScheme.onSurface,
+                    Flexible(
+                      child: Text(
+                        'Synology NAS Server',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: colorScheme.onSurface,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -494,8 +506,8 @@ class _SynologyCompanyPdfScreenState
                   .read(companyDocumentNotifierProvider.notifier)
                   .saveSynologyConfig(newConfig);
 
-              if (mounted && success) {
-                ScaffoldMessenger.of(context).showSnackBar(
+              if (ctx.mounted && success) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
                   const SnackBar(
                     content: Text('Synology NAS configuration saved successfully!'),
                     backgroundColor: Colors.green,
@@ -608,16 +620,16 @@ class _SynologyCompanyPdfScreenState
                         : titleController.text.trim(),
                     description: descController.text.trim(),
                   );
-              if (mounted) {
+              if (ctx.mounted) {
                 if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(ctx).showSnackBar(
                     const SnackBar(
                       content: Text('PDF uploaded to Synology NAS successfully!'),
                       backgroundColor: Colors.green,
                     ),
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  ScaffoldMessenger.of(ctx).showSnackBar(
                     const SnackBar(
                       content: Text('Failed to upload PDF to Synology NAS'),
                       backgroundColor: Colors.red,

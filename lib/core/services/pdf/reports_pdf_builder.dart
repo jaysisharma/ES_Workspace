@@ -2,8 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
+import 'package:order_app/domain/entities/expense_entity.dart';
 import 'package:order_app/domain/entities/purchase_order_entity.dart';
 import '../../utils/nepali_date_formatter.dart';
+import '../../utils/number_to_words_converter.dart';
 import 'pdf_theme_and_styles.dart';
 import 'pdf_tables_builder.dart';
 
@@ -81,7 +84,7 @@ class ReportsPdfBuilder {
         maxPages: 100,
         pageFormat: pageFormat,
         margin: getAdaptiveMargin(pageFormat),
-        header: (context) => PdfThemeAndStyles.buildHeader(logoImage, orders.first, title: 'FINANCIAL SUMMARY'),
+        header: (context) => PdfThemeAndStyles.buildHeader(logoImage, orders.isEmpty ? null : orders.first, title: 'FINANCIAL SUMMARY'),
         footer: (context) => PdfThemeAndStyles.buildFooter(context),
         build: (context) => [
           pw.SizedBox(height: 16),
@@ -308,5 +311,598 @@ class ReportsPdfBuilder {
     );
 
     return pdf.save();
+  }
+
+  static Future<Uint8List> generateInvoicePdf({
+    required OrderEntity order,
+    required List<OrderItemEntity> items,
+    List<ExpenseEntity> additionalRevenue = const [],
+    required Uint8List logoBytes,
+    required pw.Font font,
+    required pw.Font boldFont,
+    String invoiceType = 'TAX INVOICE', // 'TAX INVOICE' or 'PROFORMA INVOICE'
+    String companyName = 'Event Solution Pvt Ltd',
+    String companyAddress = 'Jwagal - 10, Lalitpur',
+    String companyPhone = 'Ph: 01-5268535, 01-5268103',
+    String companyVatNo = '601234567',
+    String? buyerName,
+    String? buyerAddress,
+    String? buyerVatNo,
+    String paymentTerms = 'Cash / Credit / Cheque',
+    String defaultHsCode = '998399',
+    double discount = 0.0,
+    double discountRate = 0.0,
+    double managementCharge = 0.0,
+    double managementChargeRate = 0.0,
+    double? customVatRate,
+    double advanceReceived = 0.0,
+    String? invoiceNumber,
+    DateTime? invoiceDate,
+    String? manualAmountInWords,
+    PdfPageFormat pageFormat = PdfPageFormat.a4,
+    void Function(String)? onProgress,
+  }) async {
+    final isProforma = invoiceType.toUpperCase().contains('PROFORMA');
+    final docTitle = isProforma ? 'PROFORMA INVOICE' : 'TAX INVOICE';
+    final invPrefix = isProforma ? 'PI' : 'INV';
+
+    onProgress?.call('Generating $docTitle for ${order.eventName}...');
+
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(base: font, bold: boldFont),
+    );
+
+    final logoImage = pw.MemoryImage(logoBytes);
+    final invNum = invoiceNumber ??
+        '$invPrefix-${order.id.length > 8 ? order.id.substring(0, 8).toUpperCase() : order.id.toUpperCase()}';
+    final invDate = invoiceDate ?? DateTime.now();
+    final clientName = (buyerName != null && buyerName.trim().isNotEmpty)
+        ? buyerName.trim()
+        : (order.client.isNotEmpty ? order.client : 'Valued Client');
+    final clientAddr = (buyerAddress != null && buyerAddress.trim().isNotEmpty)
+        ? buyerAddress.trim()
+        : (order.venue.isNotEmpty ? order.venue : 'Kathmandu, Nepal');
+    final clientVat = buyerVatNo?.trim() ?? '';
+
+    final itemSubtotal = items.fold(0.0, (sum, i) => sum + i.amount);
+    final extraSubtotal =
+        additionalRevenue.fold(0.0, (sum, r) => sum + r.amount);
+    final subtotal = itemSubtotal + extraSubtotal;
+
+    final computedDiscount = discount > 0
+        ? discount
+        : (discountRate > 0 ? (subtotal * discountRate / 100) : 0.0);
+
+    final computedMgtCharge = managementCharge > 0
+        ? managementCharge
+        : (managementChargeRate > 0
+            ? ((subtotal - computedDiscount) * managementChargeRate / 100)
+            : 0.0);
+
+    final taxableAmount = subtotal - computedDiscount + computedMgtCharge;
+    final effectiveVatRate = (customVatRate != null && customVatRate >= 0)
+        ? customVatRate
+        : order.vatRate;
+    final computedVat =
+        effectiveVatRate > 0.0001 ? (taxableAmount * effectiveVatRate) : 0.0;
+    final grandTotal = taxableAmount + computedVat;
+    final balanceDue =
+        (grandTotal - advanceReceived).clamp(0.0, double.infinity);
+
+    final wordsText = (manualAmountInWords != null &&
+            manualAmountInWords.trim().isNotEmpty)
+        ? manualAmountInWords.trim()
+        : NumberToWordsConverter.convertToRupees(grandTotal);
+
+    final isA5 = pageFormat.width < 500;
+
+    final headers = [
+      'S.No.',
+      'HS Code',
+      'Description',
+      'Rate (Rs.)',
+      'Qty',
+      'Amount (Rs.)',
+      'Ps.',
+    ];
+    final headerWidths = [0.8, 1.4, 4.0, 1.6, 0.9, 1.8, 0.7];
+
+    final tableData = <List<String>>[];
+    int sn = 1;
+    for (final item in items) {
+      final desc = item.specification.isNotEmpty
+          ? '${item.itemName}\n(${item.specification})'
+          : item.itemName;
+      final amtFloor = item.amount.floor();
+      final amtPs = ((item.amount - amtFloor) * 100).round();
+      tableData.add([
+        '${sn++}',
+        defaultHsCode,
+        desc,
+        item.rate.toStringAsFixed(2),
+        item.quantity.toString(),
+        amtFloor.toString(),
+        amtPs == 0 ? '00' : amtPs.toString().padLeft(2, '0'),
+      ]);
+    }
+    for (final rev in additionalRevenue) {
+      final desc = rev.description.isNotEmpty
+          ? '${rev.category} - ${rev.description}'
+          : rev.category;
+      final amtFloor = rev.amount.floor();
+      final amtPs = ((rev.amount - amtFloor) * 100).round();
+      tableData.add([
+        '${sn++}',
+        defaultHsCode,
+        desc,
+        rev.rate.toStringAsFixed(2),
+        rev.quantity.toString(),
+        amtFloor.toString(),
+        amtPs == 0 ? '00' : amtPs.toString().padLeft(2, '0'),
+      ]);
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        maxPages: 100,
+        pageFormat: pageFormat,
+        margin: getAdaptiveMargin(pageFormat),
+        header: (context) => pw.Container(
+          padding: const pw.EdgeInsets.only(top: 4, bottom: 12),
+          decoration: const pw.BoxDecoration(
+            border: pw.Border(
+              bottom:
+                  pw.BorderSide(color: PdfThemeAndStyles.borderColor, width: 1.5),
+            ),
+          ),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Container(
+                width: 70,
+                height: 70,
+                child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+              ),
+              pw.SizedBox(width: 14),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      companyName.toUpperCase(),
+                      style: pw.TextStyle(
+                        fontSize: 16,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfThemeAndStyles.darkColor,
+                      ),
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text(
+                      companyAddress,
+                      style: const pw.TextStyle(
+                        fontSize: 9.5,
+                        color: PdfThemeAndStyles.labelColor,
+                      ),
+                    ),
+                    pw.Text(
+                      companyPhone,
+                      style: const pw.TextStyle(
+                        fontSize: 9.5,
+                        color: PdfThemeAndStyles.labelColor,
+                      ),
+                    ),
+                    pw.SizedBox(height: 2),
+                    pw.Text(
+                      'VAT / PAN No: $companyVatNo',
+                      style: pw.TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfThemeAndStyles.darkColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: pw.BoxDecoration(
+                      color: isProforma ? PdfThemeAndStyles.lightBg : null,
+                      border: pw.Border.all(
+                        color: PdfThemeAndStyles.borderColor,
+                        width: 1,
+                      ),
+                    ),
+                    child: pw.Text(
+                      docTitle,
+                      style: pw.TextStyle(
+                        fontSize: isProforma ? 12 : 14,
+                        fontWeight: pw.FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                  ),
+                  pw.SizedBox(height: 6),
+                  pw.Text(
+                    isProforma ? 'Proforma No: $invNum' : 'Invoice No: $invNum',
+                    style: pw.TextStyle(
+                      fontSize: 10,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.Text(
+                    'Date: ${formatNepaliDate(invDate, 'yyyy-MM-dd')} (${invDate.toIso8601String().split('T').first})',
+                    style: const pw.TextStyle(
+                      fontSize: 8.5,
+                      color: PdfThemeAndStyles.labelColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        footer: (context) => PdfThemeAndStyles.buildFooter(context),
+        build: (context) => [
+          pw.SizedBox(height: 12),
+          // Buyer & Payment Terms Info Box
+          pw.Container(
+            padding: const pw.EdgeInsets.all(8),
+            decoration: pw.BoxDecoration(
+              color: PdfThemeAndStyles.lightBg,
+              borderRadius: pw.BorderRadius.circular(4),
+              border: pw.Border.all(
+                color: PdfThemeAndStyles.borderColor,
+                width: 0.5,
+              ),
+            ),
+            child: pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  flex: 3,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        "BUYER'S DETAILS:",
+                        style: pw.TextStyle(
+                          fontSize: 8,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfThemeAndStyles.labelColor,
+                        ),
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        clientName,
+                        style: pw.TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.Text(
+                        'Address: $clientAddr',
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
+                      if (clientVat.isNotEmpty)
+                        pw.Text(
+                          "Buyer's PAN/VAT: $clientVat",
+                          style: pw.TextStyle(
+                            fontSize: 8.5,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                      if (order.contactNumber.isNotEmpty)
+                        pw.Text(
+                          'Phone: ${order.contactNumber}',
+                          style: const pw.TextStyle(fontSize: 8.5),
+                        ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(width: 10),
+                pw.Expanded(
+                  flex: 2,
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'PAYMENT & EVENT PARTICULARS:',
+                        style: pw.TextStyle(
+                          fontSize: 8,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfThemeAndStyles.labelColor,
+                        ),
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        'Payment Terms: $paymentTerms',
+                        style: pw.TextStyle(
+                          fontSize: 9.5,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.SizedBox(height: 2),
+                      pw.Text(
+                        'Event: ${order.eventName}',
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
+                      pw.Text(
+                        'Event Date: ${formatNepaliDate(order.eventDate, 'yyyy-MM-dd')}',
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 12),
+
+          // Items Table
+          pw.TableHelper.fromTextArray(
+            headers: headers,
+            data: tableData,
+            columnWidths: Map.fromIterables(
+              List.generate(headers.length, (i) => i),
+              headerWidths.map((w) => pw.FlexColumnWidth(w)),
+            ),
+            border: pw.TableBorder.all(
+              color: PdfThemeAndStyles.borderColor,
+              width: 0.5,
+            ),
+            headerStyle: pw.TextStyle(
+              fontSize: isA5 ? 8 : 8.5,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white,
+            ),
+            headerDecoration:
+                const pw.BoxDecoration(color: PdfThemeAndStyles.darkColor),
+            cellStyle: pw.TextStyle(fontSize: isA5 ? 7 : 7.5),
+            cellPadding:
+                const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3.5),
+            cellAlignments: {
+              0: pw.Alignment.center,
+              1: pw.Alignment.center,
+              2: pw.Alignment.centerLeft,
+              3: pw.Alignment.centerRight,
+              4: pw.Alignment.center,
+              5: pw.Alignment.centerRight,
+              6: pw.Alignment.center,
+            },
+          ),
+          pw.SizedBox(height: 10),
+
+          // Financial Breakdown & Amount in Words
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                flex: 3,
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Container(
+                      width: double.infinity,
+                      padding: const pw.EdgeInsets.all(8),
+                      decoration: pw.BoxDecoration(
+                        color: PdfThemeAndStyles.lightBg,
+                        border: pw.Border.all(
+                          color: PdfThemeAndStyles.borderColor,
+                          width: 0.5,
+                        ),
+                        borderRadius: pw.BorderRadius.circular(4),
+                      ),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'AMOUNT IN WORDS:',
+                            style: pw.TextStyle(
+                              fontSize: 8,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfThemeAndStyles.labelColor,
+                            ),
+                          ),
+                          pw.SizedBox(height: 3),
+                          pw.Text(
+                            wordsText,
+                            style: pw.TextStyle(
+                              fontSize: 8.5,
+                              fontWeight: pw.FontWeight.bold,
+                              fontStyle: pw.FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Container(
+                      width: double.infinity,
+                      padding: const pw.EdgeInsets.all(6),
+                      decoration: pw.BoxDecoration(
+                        border: pw.Border.all(
+                          color: PdfThemeAndStyles.borderColor,
+                          width: 0.5,
+                        ),
+                        borderRadius: pw.BorderRadius.circular(4),
+                      ),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'TERMS & CONDITIONS:',
+                            style: pw.TextStyle(
+                              fontSize: 7.5,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                          pw.Text(
+                            '1. Payment is subject to realized funds in bank account.',
+                            style: const pw.TextStyle(fontSize: 7),
+                          ),
+                          pw.Text(
+                            '2. Goods/Services received in good order and condition.',
+                            style: const pw.TextStyle(fontSize: 7),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(width: 12),
+              pw.Expanded(
+                flex: 2,
+                child: pw.Container(
+                  padding: const pw.EdgeInsets.all(6),
+                  decoration: pw.BoxDecoration(
+                    color: PdfThemeAndStyles.lightBg,
+                    border: pw.Border.all(
+                      color: PdfThemeAndStyles.borderColor,
+                      width: 0.5,
+                    ),
+                    borderRadius: pw.BorderRadius.circular(4),
+                  ),
+                  child: pw.Column(
+                    children: [
+                      _buildSplitRow('Taxable Subtotal:', subtotal),
+                      if (computedDiscount > 0)
+                        _buildSplitRow('Discount:', -computedDiscount),
+                      if (computedMgtCharge > 0)
+                        _buildSplitRow('Management Charge:', computedMgtCharge),
+                      if (computedVat > 0)
+                        _buildSplitRow('13% VAT:', computedVat),
+                      pw.Divider(height: 5, thickness: 0.5),
+                      _buildSplitRow('Grand Total:', grandTotal, isBold: true),
+                      if (advanceReceived > 0)
+                        _buildSplitRow('Advance Received:', -advanceReceived),
+                      pw.Divider(height: 5, thickness: 1),
+                      _buildSplitRow(
+                        'BALANCE DUE:',
+                        balanceDue,
+                        isBold: true,
+                        fontSize: 9.5,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 20),
+
+          // Two Signature Blocks: Received By & Authorized Signatory
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Container(
+                    width: 140,
+                    height: 1,
+                    color: PdfThemeAndStyles.borderColor,
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    'Received By (Signature)',
+                    style: pw.TextStyle(
+                      fontSize: 8,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Container(
+                    width: 160,
+                    height: 1,
+                    color: PdfThemeAndStyles.borderColor,
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    'For: $companyName',
+                    style: pw.TextStyle(
+                      fontSize: 8,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.Text(
+                    'Authorized Signatory',
+                    style: const pw.TextStyle(
+                      fontSize: 7.5,
+                      color: PdfThemeAndStyles.labelColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+        ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  static pw.Widget _buildSplitRow(
+    String label,
+    double amount, {
+    bool isBold = false,
+    double fontSize = 7.5,
+  }) {
+    final isNegative = amount < 0;
+    final absAmount = amount.abs();
+    final floorVal = absAmount.floor();
+    final psVal = ((absAmount - floorVal) * 100).round();
+
+    final rsText = '${isNegative ? "- " : ""}Rs. $floorVal';
+    final psText = psVal == 0 ? '00' : psVal.toString().padLeft(2, '0');
+
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 1.2),
+      child: pw.Row(
+        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+        children: [
+          pw.Text(
+            label,
+            style: pw.TextStyle(
+              fontSize: fontSize,
+              fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+            ),
+          ),
+          pw.Row(
+            mainAxisSize: pw.MainAxisSize.min,
+            children: [
+              pw.Text(
+                rsText,
+                style: pw.TextStyle(
+                  fontSize: fontSize,
+                  fontWeight:
+                      isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+                ),
+              ),
+              pw.Text(
+                '.$psText',
+                style: pw.TextStyle(
+                  fontSize: fontSize * 0.85,
+                  fontWeight:
+                      isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

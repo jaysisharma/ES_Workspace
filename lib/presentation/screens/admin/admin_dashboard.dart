@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +20,7 @@ import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/widgets/common/shimmer_loading.dart';
 import 'package:order_app/core/utils/currency_formatter.dart';
+import 'package:order_app/core/utils/nepali_date_formatter.dart';
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -31,6 +33,8 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   String _searchQuery = '';
+  bool _isSelectionMode = false;
+  final Set<String> _selectedOrderIds = {};
 
   @override
   void initState() {
@@ -49,6 +53,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    Future.microtask(() => ref.read(orderSelectionModeProvider.notifier).setSelectionMode(false));
     super.dispose();
   }
 
@@ -108,10 +113,14 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     );
 
     final settings = ref.watch(settingsProvider);
+    final authState = ref.watch(authNotifierProvider);
+    final isAdminOrFounder = authState.user?.role == UserRole.admin || authState.user?.role == UserRole.founder;
 
     return SafeArea(
-      child: Column(
+      child: Stack(
         children: [
+          Column(
+            children: [
           // Custom Top App Bar
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -167,27 +176,30 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                 ),
                 Row(
                   children: [
-                    OutlinedButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        SlidePageRoute(page: const SynologyCompanyPdfScreen()),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        side: BorderSide(color: colorScheme.primary),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      icon: Icon(Icons.picture_as_pdf_outlined, size: 16, color: colorScheme.primary),
-                      label: Text(
-                        'Company PDF',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.primary,
+                    if (defaultTargetPlatform != TargetPlatform.iOS &&
+                        defaultTargetPlatform != TargetPlatform.android) ...[
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.push(
+                          context,
+                          SlidePageRoute(page: const SynologyCompanyPdfScreen()),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          side: BorderSide(color: colorScheme.primary),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        icon: Icon(Icons.picture_as_pdf_outlined, size: 16, color: colorScheme.primary),
+                        label: Text(
+                          'Company PDF',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.primary,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 8),
+                    ],
                     GestureDetector(
                       onTap: () => Navigator.push(
                         context,
@@ -440,20 +452,66 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                         color: colorScheme.onSurface,
                                       ),
                                     ),
-                                    TextButton(
-                                      onPressed: () => Navigator.push(
-                                        context,
-                                        SlidePageRoute(page: const CalendarScreen()),
-                                      ),
-                                      child: Text(
-                                        'View All',
-                                        style: TextStyle(
-                                          color: colorScheme.primary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
+                                    if (isAdminOrFounder)
+                                      Row(
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(
+                                              _isSelectionMode ? Icons.close_rounded : Icons.checklist_rounded,
+                                              color: _isSelectionMode ? Colors.red : colorScheme.primary,
+                                              size: 22,
+                                            ),
+                                            tooltip: _isSelectionMode ? 'Exit Select Mode' : 'Select Orders',
+                                            onPressed: () {
+                                              setState(() {
+                                                _isSelectionMode = !_isSelectionMode;
+                                                if (!_isSelectionMode) {
+                                                  _selectedOrderIds.clear();
+                                                }
+                                                ref.read(orderSelectionModeProvider.notifier).setSelectionMode(_isSelectionMode);
+                                              });
+                                            },
+                                          ),
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.delete_sweep_rounded,
+                                              color: Colors.red.shade400,
+                                              size: 22,
+                                            ),
+                                            tooltip: 'Date-wise Bulk Delete',
+                                            onPressed: () => _showBulkDateDeleteDialog(context, allOrders),
+                                          ),
+                                          TextButton(
+                                            onPressed: () => Navigator.push(
+                                              context,
+                                              SlidePageRoute(page: const CalendarScreen()),
+                                            ),
+                                            child: Text(
+                                              'View All',
+                                              style: TextStyle(
+                                                color: colorScheme.primary,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    else
+                                      TextButton(
+                                        onPressed: () => Navigator.push(
+                                          context,
+                                          SlidePageRoute(page: const CalendarScreen()),
+                                        ),
+                                        child: Text(
+                                          'View All',
+                                          style: TextStyle(
+                                            color: colorScheme.primary,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
                                         ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -658,7 +716,16 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           ),
         ],
       ),
-    );
+      if (_isSelectionMode)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: _buildBulkSelectionBottomBar(context, orders),
+        ),
+    ],
+  ),
+);
   }
 
   List<Widget> _buildGroupedOrderList(
@@ -697,6 +764,17 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                   child: OrderCard(
                     order: order1,
                     completion: comp1,
+                    isSelectionMode: _isSelectionMode,
+                    isSelected: _selectedOrderIds.contains(order1.id),
+                    onSelectionChanged: (val) {
+                      setState(() {
+                        if (val == true) {
+                          _selectedOrderIds.add(order1.id);
+                        } else {
+                          _selectedOrderIds.remove(order1.id);
+                        }
+                      });
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -705,6 +783,17 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                       ? OrderCard(
                           order: order2,
                           completion: comp2,
+                          isSelectionMode: _isSelectionMode,
+                          isSelected: _selectedOrderIds.contains(order2.id),
+                          onSelectionChanged: (val) {
+                            setState(() {
+                              if (val == true) {
+                                _selectedOrderIds.add(order2!.id);
+                              } else {
+                                _selectedOrderIds.remove(order2!.id);
+                              }
+                            });
+                          },
                         )
                       : const SizedBox(),
                 ),
@@ -729,11 +818,477 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           child: OrderCard(
             order: order,
             completion: completion,
+            isSelectionMode: _isSelectionMode,
+            isSelected: _selectedOrderIds.contains(order.id),
+            onSelectionChanged: (val) {
+              setState(() {
+                if (val == true) {
+                  _selectedOrderIds.add(order.id);
+                } else {
+                  _selectedOrderIds.remove(order.id);
+                }
+              });
+            },
           ),
         ),
       );
     }
     return list;
+  }
+
+  Widget _buildBulkSelectionBottomBar(BuildContext context, List<OrderEntity> visibleOrders) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final allSelected = visibleOrders.isNotEmpty &&
+        visibleOrders.every((o) => _selectedOrderIds.contains(o.id));
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+        border: Border(top: BorderSide(color: colorScheme.outline.withValues(alpha: 0.3))),
+      ),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Checkbox(
+              value: allSelected,
+              activeColor: Colors.red,
+              onChanged: (val) {
+                setState(() {
+                  if (val == true) {
+                    _selectedOrderIds.addAll(visibleOrders.map((o) => o.id));
+                  } else {
+                    _selectedOrderIds.clear();
+                  }
+                });
+              },
+            ),
+            Text(
+              '${_selectedOrderIds.length} Selected',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: colorScheme.onSurface,
+              ),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _isSelectionMode = false;
+                  _selectedOrderIds.clear();
+                  ref.read(orderSelectionModeProvider.notifier).setSelectionMode(false);
+                });
+              },
+              child: const Text('Cancel'),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: _selectedOrderIds.isEmpty
+                  ? null
+                  : () => _confirmBulkDeleteSelected(context),
+              icon: const Icon(Icons.delete_forever_rounded, size: 18),
+              label: Text('DELETE (${_selectedOrderIds.length})'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmBulkDeleteSelected(BuildContext context) async {
+    if (_selectedOrderIds.isEmpty) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final count = _selectedOrderIds.length;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Bulk Order Deletion'),
+        content: Text(
+          'Are you sure you want to permanently delete $count selected orders?\n\nThis operation cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('DELETE ($count) ORDERS'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      final idsToDelete = _selectedOrderIds.toList();
+      setState(() {
+        _isSelectionMode = false;
+        _selectedOrderIds.clear();
+        ref.read(orderSelectionModeProvider.notifier).setSelectionMode(false);
+      });
+
+      try {
+        await ref.read(orderNotifierProvider.notifier).deleteOrders(idsToDelete);
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Successfully deleted $count orders.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete orders: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showBulkDateDeleteDialog(BuildContext context, List<OrderEntity> allOrders) {
+    String selectedPreset = 'till_yesterday';
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    DateTime fromDate = DateTime(2020, 1, 1);
+    DateTime toDate = DateTime(yesterday.year, yesterday.month, yesterday.day);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final colorScheme = Theme.of(context).colorScheme;
+
+            final matchingOrders = allOrders.where((o) {
+              final targetDate = o.eventDate;
+              final start = DateTime(fromDate.year, fromDate.month, fromDate.day);
+              final end = DateTime(toDate.year, toDate.month, toDate.day, 23, 59, 59);
+              return targetDate.isAfter(start.subtract(const Duration(seconds: 1))) &&
+                  targetDate.isBefore(end.add(const Duration(seconds: 1)));
+            }).toList();
+
+            final totalValue = matchingOrders.fold(0.0, (sum, o) => sum + o.totalAmount);
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: colorScheme.outline.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      child: Row(
+                        children: [
+                          Icon(Icons.date_range_rounded, color: Colors.red.shade400, size: 28),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Date-Wise Bulk Delete',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: colorScheme.onSurface,
+                                  ),
+                                ),
+                                Text(
+                                  'Batch delete event orders by date or preset',
+                                  style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(),
+
+                    // Quick Presets Row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            ChoiceChip(
+                              label: const Text('Till Yesterday'),
+                              selected: selectedPreset == 'till_yesterday',
+                              selectedColor: Colors.red.withValues(alpha: 0.2),
+                              labelStyle: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: selectedPreset == 'till_yesterday' ? Colors.red : colorScheme.onSurface,
+                                fontSize: 12,
+                              ),
+                              onSelected: (_) {
+                                setModalState(() {
+                                  selectedPreset = 'till_yesterday';
+                                  final y = DateTime.now().subtract(const Duration(days: 1));
+                                  fromDate = DateTime(2020, 1, 1);
+                                  toDate = DateTime(y.year, y.month, y.day);
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('Older Than 30 Days'),
+                              selected: selectedPreset == 'older_30',
+                              selectedColor: Colors.orange.withValues(alpha: 0.2),
+                              labelStyle: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: selectedPreset == 'older_30' ? Colors.orange.shade800 : colorScheme.onSurface,
+                                fontSize: 12,
+                              ),
+                              onSelected: (_) {
+                                setModalState(() {
+                                  selectedPreset = 'older_30';
+                                  final t = DateTime.now().subtract(const Duration(days: 30));
+                                  fromDate = DateTime(2020, 1, 1);
+                                  toDate = DateTime(t.year, t.month, t.day);
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('Custom Range'),
+                              selected: selectedPreset == 'custom',
+                              labelStyle: const TextStyle(fontSize: 12),
+                              onSelected: (_) async {
+                                final picked = await showDateRangePicker(
+                                  context: context,
+                                  initialDateRange: DateTimeRange(start: fromDate, end: toDate),
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime(2035),
+                                );
+                                if (picked != null) {
+                                  setModalState(() {
+                                    selectedPreset = 'custom';
+                                    fromDate = picked.start;
+                                    toDate = picked.end;
+                                  });
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: InkWell(
+                        onTap: () async {
+                          final picked = await showDateRangePicker(
+                            context: context,
+                            initialDateRange: DateTimeRange(start: fromDate, end: toDate),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime(2035),
+                          );
+                          if (picked != null) {
+                            setModalState(() {
+                              selectedPreset = 'custom';
+                              fromDate = picked.start;
+                              toDate = picked.end;
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Date Range Selected',
+                                      style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${formatNepaliDate(fromDate, "yyyy-MM-dd")}  ➔  ${formatNepaliDate(toDate, "yyyy-MM-dd")}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      color: colorScheme.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Icon(Icons.edit_calendar_rounded, color: colorScheme.primary),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Orders Found: ${matchingOrders.length}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                            ),
+                            Text(
+                              'Total Value: Rs. ${totalValue.toStringAsFixed(0)}',
+                              style: TextStyle(fontWeight: FontWeight.bold, color: colorScheme.onSurface),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: matchingOrders.isEmpty
+                          ? Center(
+                              child: Text(
+                                'No orders found in selected date range',
+                                style: TextStyle(color: colorScheme.onSurfaceVariant),
+                              ),
+                            )
+                          : ListView.separated(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: matchingOrders.length,
+                              separatorBuilder: (itemCtx, itemIdx) => const Divider(height: 1),
+                              itemBuilder: (context, index) {
+                                final order = matchingOrders[index];
+                                final dateToDisplay = order.eventDate;
+                                return ListTile(
+                                  dense: true,
+                                  title: Text(order.eventName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  subtitle: Text(
+                                    '${order.client} • ${formatNepaliDate(dateToDisplay, "yyyy-MM-dd")}',
+                                  ),
+                                  trailing: Text(
+                                    'Rs. ${order.totalAmount.toStringAsFixed(0)}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: matchingOrders.isEmpty
+                              ? null
+                              : () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (dialogCtx) => AlertDialog(
+                                      title: const Text('Confirm Date-Wise Bulk Delete'),
+                                      content: Text(
+                                        'Are you sure you want to permanently delete ALL ${matchingOrders.length} orders from ${formatNepaliDate(fromDate, "yyyy-MM-dd")} to ${formatNepaliDate(toDate, "yyyy-MM-dd")}?\n\nThis operation cannot be undone.',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(dialogCtx, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        ElevatedButton(
+                                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                          onPressed: () => Navigator.pop(dialogCtx, true),
+                                          child: Text('DELETE ALL (${matchingOrders.length})'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirm == true) {
+                                    final idsToDelete = matchingOrders.map((o) => o.id).toList();
+                                    if (ctx.mounted) Navigator.pop(ctx);
+                                    try {
+                                      await ref.read(orderNotifierProvider.notifier).deleteOrders(idsToDelete);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Successfully deleted ${idsToDelete.length} orders.'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Failed to delete orders: $e'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  }
+                                },
+                          icon: const Icon(Icons.delete_forever_rounded),
+                          label: Text(
+                            'DELETE ALL (${matchingOrders.length}) ORDERS IN RANGE',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildShimmerLoading(BuildContext context) {

@@ -219,8 +219,9 @@ class OrderNotifier extends Notifier<OrderState> {
             body: '"${order.eventName}" is now ${_statusLabel(order.status)}.',
           );
         }
-      } else if (oldOrder != null &&
-          oldOrder.totalAmount != order.totalAmount) {
+      }
+
+      if (oldOrder != null && oldOrder.totalAmount != order.totalAmount) {
         newLogs.add(
           OrderLogEntity(
             timestamp: now,
@@ -228,8 +229,9 @@ class OrderNotifier extends Notifier<OrderState> {
                 'Revenue updated to Rs. ${order.totalAmount.toStringAsFixed(0)}',
           ),
         );
-      } else if (oldOrder != null &&
-          oldOrder.totalExpenses != order.totalExpenses) {
+      }
+
+      if (oldOrder != null && oldOrder.totalExpenses != order.totalExpenses) {
         newLogs.add(
           OrderLogEntity(
             timestamp: now,
@@ -237,41 +239,43 @@ class OrderNotifier extends Notifier<OrderState> {
                 'Expenses updated to Rs. ${order.totalExpenses.toStringAsFixed(0)}',
           ),
         );
-        // Check for newly assigned staff members and notify them
-        if (oldOrder != null) {
-          final oldStaffSet = oldOrder.assignedStaffIds.toSet();
-          final newlyAssignedStaff = order.assignedStaffIds
-              .where((id) => !oldStaffSet.contains(id))
-              .toList();
-
-          for (final staffId in newlyAssignedStaff) {
-            await ref
-                .read(notificationNotifierProvider.notifier)
-                .addNotification(
-                  NotificationEntity(
-                    id: const Uuid().v4(),
-                    title: 'You\'ve Been Assigned',
-                    description:
-                        'You have been assigned to work on "${order.eventName}".',
-                    timestamp: now,
-                    type: 'order',
-                    relatedId: order.id,
-                    targetRole: 'staff',
-                    targetUserId: staffId,
-                  ),
-                );
-            FcmSender.sendToUser(
-              userId: staffId,
-              title: 'You\'ve Been Assigned',
-              body: 'You have been assigned to work on "${order.eventName}".',
-            );
-          }
-        }
-
-        final updatedOrder = order.copyWith(logs: newLogs, updatedAt: now);
-        await ref.read(updateOrderUseCaseProvider)(updatedOrder);
-        await loadOrders();
       }
+
+      if (oldOrder != null) {
+        // Check for newly assigned staff members and notify them
+        final oldStaffSet = oldOrder.assignedStaffIds.toSet();
+        final newlyAssignedStaff = order.assignedStaffIds
+            .where((id) => !oldStaffSet.contains(id))
+            .toList();
+
+        for (final staffId in newlyAssignedStaff) {
+          await ref
+              .read(notificationNotifierProvider.notifier)
+              .addNotification(
+                NotificationEntity(
+                  id: const Uuid().v4(),
+                  title: 'You\'ve Been Assigned',
+                  description:
+                      'You have been assigned to work on "${order.eventName}".',
+                  timestamp: now,
+                  type: 'order',
+                  relatedId: order.id,
+                  targetRole: 'staff',
+                  targetUserId: staffId,
+                ),
+              );
+          FcmSender.sendToUser(
+            userId: staffId,
+            title: 'You\'ve Been Assigned',
+            body: 'You have been assigned to work on "${order.eventName}".',
+          );
+        }
+      }
+
+      final updatedOrder = order.copyWith(logs: newLogs, updatedAt: now);
+      await ref.read(updateOrderUseCaseProvider)(updatedOrder);
+      await loadOrders();
+      state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
@@ -330,6 +334,18 @@ class OrderNotifier extends Notifier<OrderState> {
       await loadOrders();
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> deleteOrders(List<String> ids) async {
+    if (ids.isEmpty) return;
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await ref.read(deleteOrderUseCaseProvider).deleteMultiple(ids);
+      await loadOrders();
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
     }
   }
 

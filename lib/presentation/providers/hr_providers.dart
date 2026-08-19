@@ -43,13 +43,18 @@ final usersStreamProvider = StreamProvider<List<UserEntity>>((ref) {
 });
 
 UserRole _roleFromString(String? role) {
-  switch (role) {
+  switch (role?.toLowerCase()) {
     case 'founder':
+    case 'director':
+    case 'ceo':
       return UserRole.founder;
-    case 'staff':
-      return UserRole.staff;
-    default:
+    case 'finance':
+      return UserRole.finance;
+    case 'admin':
       return UserRole.admin;
+    case 'staff':
+    default:
+      return UserRole.staff;
   }
 }
 

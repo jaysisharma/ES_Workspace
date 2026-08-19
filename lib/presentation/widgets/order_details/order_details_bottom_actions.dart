@@ -96,7 +96,7 @@ class OrderDetailsBottomActionsWidget extends ConsumerWidget {
       final isAdmin = authState.user?.role == UserRole.admin ||
           authState.user?.role == UserRole.founder;
 
-      final canComplete = allDone;
+      final canComplete = allDone || isAdmin;
 
       return Column(
         mainAxisSize: MainAxisSize.min,

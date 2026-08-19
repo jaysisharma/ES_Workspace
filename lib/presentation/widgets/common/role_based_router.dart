@@ -4,6 +4,7 @@ import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/screens/shells/admin_shell.dart';
 import 'package:order_app/presentation/screens/shells/founder_shell.dart';
+import 'package:order_app/presentation/screens/shells/finance_shell.dart';
 import 'package:order_app/presentation/screens/auth/login_screen.dart';
 import 'package:order_app/presentation/screens/shells/staff_shell.dart';
 
@@ -23,10 +24,12 @@ class RoleBasedRouter extends ConsumerWidget {
     switch (authState.user!.role) {
       case UserRole.admin:
         return const AdminShell();
-      case UserRole.staff:
-        return const StaffShell();
       case UserRole.founder:
         return const FounderShell();
+      case UserRole.finance:
+        return const FinanceShell();
+      case UserRole.staff:
+        return const StaffShell();
     }
   }
 }

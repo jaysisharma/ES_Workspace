@@ -1,4 +1,24 @@
-enum UserRole { admin, staff, founder }
+enum UserRole {
+  admin,
+  finance,
+  founder, // Director / CEO
+  staff,
+}
+
+extension UserRoleExtension on UserRole {
+  String get displayName {
+    switch (this) {
+      case UserRole.admin:
+        return 'Admin';
+      case UserRole.finance:
+        return 'Finance';
+      case UserRole.founder:
+        return 'Director / CEO';
+      case UserRole.staff:
+        return 'Staff';
+    }
+  }
+}
 
 class UserEntity {
   final String id;

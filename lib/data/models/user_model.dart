@@ -34,9 +34,13 @@ class UserModel extends UserEntity {
     switch (roleStr.toLowerCase()) {
       case 'admin':
         return UserRole.admin;
+      case 'finance':
+        return UserRole.finance;
       case 'staff':
         return UserRole.staff;
       case 'founder':
+      case 'director':
+      case 'ceo':
         return UserRole.founder;
       default:
         return UserRole.staff; // Default fallback

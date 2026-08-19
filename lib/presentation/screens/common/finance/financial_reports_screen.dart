@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:order_app/core/utils/share_helper.dart';
+import 'package:order_app/core/utils/excel_export_helper.dart';
+import 'package:order_app/core/services/export_directory_service.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/core/services/order_pdf_service.dart';
@@ -127,10 +129,101 @@ class _FinancialReportsScreenState
                     letterSpacing: -0.5,
                   ),
                 ),
-                IconButton(
-                  icon: Icon(Icons.download, color: primaryColor),
-                  tooltip: 'Export Summary PDF',
-                  onPressed: () async {
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.table_chart_outlined, color: Colors.green),
+                      tooltip: 'Export Financial Excel (.xlsx)',
+                      onPressed: () async {
+                        if (filteredOrders.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('No orders to export')),
+                          );
+                          return;
+                        }
+
+                        final headers = [
+                          'E.O.',
+                          'Event Name',
+                          'Venue',
+                          'Client Name',
+                          'Event / Rental',
+                          'Event Date (BS)',
+                          'Event Date (AD)',
+                          'Total Revenue (NPR)',
+                          'Total Expenses (NPR)',
+                          'Profit / Loss (NPR)',
+                        ];
+
+                        final sorted = List<OrderEntity>.from(filteredOrders)
+                          ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+
+                        final List<List<dynamic>> rows = [];
+                        double totalRev = 0.0;
+                        double totalExp = 0.0;
+
+                        for (final o in sorted) {
+                          final clientName = o.client.isNotEmpty
+                              ? o.client
+                              : (o.contactPerson.isNotEmpty ? o.contactPerson : 'N/A');
+                          final eventType = o.category.isNotEmpty ? o.category : 'Event';
+                          final rev = o.totalAmount;
+                          final exp = o.totalExpenses;
+                          final profitLoss = rev - exp;
+                          final bsDate = formatNepaliDate(o.eventDate, 'yyyy-MM-dd');
+                          final adDate = DateFormat('yyyy-MM-dd').format(o.eventDate);
+
+                          totalRev += rev;
+                          totalExp += exp;
+
+                          rows.add([
+                            o.id,
+                            o.eventName,
+                            o.venue.isNotEmpty ? o.venue : 'N/A',
+                            clientName,
+                            eventType,
+                            bsDate,
+                            adDate,
+                            rev,
+                            exp,
+                            profitLoss,
+                          ]);
+                        }
+
+                        final netProf = totalRev - totalExp;
+
+                        rows.add([
+                          'TOTAL',
+                          '${sorted.length} Events',
+                          '',
+                          '',
+                          '',
+                          '',
+                          '',
+                          totalRev,
+                          totalExp,
+                          netProf,
+                        ]);
+
+                        final filename =
+                            'Financial_Summary_${formatNepaliDate(DateTime.now(), 'yyyyMMdd')}.xlsx';
+
+                        await ExcelExportHelper.exportAndShareExcel(
+                          context: context,
+                          headers: headers,
+                          rows: rows,
+                          filename: filename,
+                          sheetName: 'Financial Summary',
+                          title: 'Global Financial Summary Report',
+                          category: ExportCategory.finance,
+                        );
+                      },
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.download, color: primaryColor),
+                      tooltip: 'Export Summary PDF',
+                      onPressed: () async {
                     if (filteredOrders.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('No orders to export')),
@@ -183,10 +276,12 @@ class _FinancialReportsScreenState
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
-      body: orderState.isLoading && orderState.orders.isEmpty
+    ),
+  ),
+  body: orderState.isLoading && orderState.orders.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: () =>

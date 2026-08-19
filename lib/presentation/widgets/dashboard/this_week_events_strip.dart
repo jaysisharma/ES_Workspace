@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:order_app/domain/entities/event_entity.dart';
-import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
@@ -12,7 +11,6 @@ import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/providers/dashboard_strip_notifier.dart';
 import 'package:order_app/presentation/screens/common/events/calendar_event_detail_screen.dart';
-import 'package:order_app/presentation/screens/common/events/calendar_screen.dart';
 import 'dashboard_event_selection_dialog.dart';
 
 class ThisWeekEventsStrip extends ConsumerStatefulWidget {
@@ -331,27 +329,16 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
                                           ),
                                         ],
                                       ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.calendar_today_rounded,
-                                            size: 11,
-                                            color: Colors.white,
-                                          ),
-                                          const SizedBox(width: 5),
-                                          Text(
-                                            isToday
-                                                ? 'TODAY · $dateStr'
-                                                : dateStr,
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w900,
-                                              color: Colors.white,
-                                              letterSpacing: 0.3,
-                                            ),
-                                          ),
-                                        ],
+                                      child: Text(
+                                        isToday
+                                            ? 'TODAY · $dateStr'
+                                            : dateStr,
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                          letterSpacing: 0.3,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -389,19 +376,6 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
                   ),
                 ),
 
-              // Calendar Action Button
-              IconButton(
-                icon: Icon(
-                  Icons.calendar_month_outlined,
-                  size: 18,
-                  color: colorScheme.primary,
-                ),
-                tooltip: 'View Full Calendar',
-                onPressed: () => Navigator.push(
-                  context,
-                  SlidePageRoute(page: const CalendarScreen()),
-                ),
-              ),
             ],
           ),
         ),

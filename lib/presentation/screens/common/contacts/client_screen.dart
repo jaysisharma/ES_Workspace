@@ -4,6 +4,7 @@ import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/core/utils/excel_export_helper.dart';
 import 'package:order_app/domain/entities/client_entity.dart';
 import 'package:order_app/presentation/providers/client_provider.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
 // ── Client Screen ──────────────────────────────────────────────────────────────
 
@@ -231,14 +232,31 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Clients',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                      letterSpacing: -0.3,
-                    ),
+                  Row(
+                    children: [
+                      if (Navigator.canPop(context))
+                        IconButton(
+                          icon: Icon(Icons.arrow_back, color: textColor),
+                          onPressed: () => Navigator.pop(context),
+                        )
+                      else if (MediaQuery.of(context).size.width < 768)
+                        Builder(
+                          builder: (context) => IconButton(
+                            icon: Icon(Icons.menu_rounded, color: textColor),
+                            onPressed: () => Scaffold.of(context).openDrawer(),
+                          ),
+                        ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Clients',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ],
                   ),
                   Row(
                     children: [
@@ -438,22 +456,28 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
       ),
 
       // ── FAB ──────────────────────────────────────────────────────────────────
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 72),
-        child: FloatingActionButton.extended(
-          heroTag: 'client_fab',
-          onPressed: clientState.isLoading ? null : _showForm,
-          backgroundColor: primaryColor,
-          elevation: 8,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(999),
+      floatingActionButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (Navigator.canPop(context)) ...[
+            const BottomRightBackButton(),
+            const SizedBox(width: 12),
+          ],
+          FloatingActionButton.extended(
+            heroTag: 'client_fab',
+            onPressed: clientState.isLoading ? null : _showForm,
+            backgroundColor: primaryColor,
+            elevation: 8,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(999),
+            ),
+            icon: const Icon(Icons.add, color: Colors.white),
+            label: const Text(
+              'Add Client',
+              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            ),
           ),
-          icon: const Icon(Icons.add, color: Colors.white),
-          label: const Text(
-            'Add Client',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-        ),
+        ],
       ),
     );
   }

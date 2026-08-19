@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:nepali_utils/nepali_utils.dart';
-import 'custom_nepali_calendar_widget.dart';
-import 'package:order_app/core/utils/nepali_date_formatter.dart';
+import 'package:order_app/core/calendar/nepali_calendar_engine.dart';
+import 'package:order_app/presentation/widgets/calendar/nepali_calendar_view.dart';
 
 class NepaliDatePickerDialog extends StatefulWidget {
   final String title;
@@ -42,38 +42,81 @@ class NepaliDatePickerDialog extends StatefulWidget {
 class _NepaliDatePickerDialogState extends State<NepaliDatePickerDialog> {
   late NepaliDateTime _selectedStart;
   NepaliDateTime? _selectedEnd;
-
-  // false = Single Day, true = Date Range (From - To)
   late bool _isRangeMode;
 
   @override
   void initState() {
     super.initState();
-    _selectedStart = safeDateTimeToNepali(widget.initialStart);
+    _selectedStart = NepaliCalendarEngine.adToBs(widget.initialStart);
     _selectedEnd = widget.initialEnd != null
-        ? safeDateTimeToNepali(widget.initialEnd!)
+        ? NepaliCalendarEngine.adToBs(widget.initialEnd!)
         : null;
-    // Default to Range Mode whenever range is allowed
-    _isRangeMode = widget.allowRange;
+    _isRangeMode = widget.allowRange && widget.initialEnd != null;
+  }
+
+  void _applyPreset(String preset) {
+    final now = NepaliCalendarEngine.now();
+    switch (preset) {
+      case 'today':
+        setState(() {
+          _selectedStart = now;
+          _selectedEnd = null;
+          _isRangeMode = false;
+        });
+        break;
+      case 'this_week':
+        final startOffset = now.weekday - 1; // 0 = Sunday
+        final start = now.subtract(Duration(days: startOffset));
+        final end = start.add(const Duration(days: 6));
+        setState(() {
+          _selectedStart = start;
+          _selectedEnd = end;
+          _isRangeMode = true;
+        });
+        break;
+      case 'this_month':
+        final totalDays = NepaliCalendarEngine.getDaysInMonth(now.year, now.month);
+        setState(() {
+          _selectedStart = NepaliDateTime(now.year, now.month, 1);
+          _selectedEnd = NepaliDateTime(now.year, now.month, totalDays);
+          _isRangeMode = true;
+        });
+        break;
+      case 'last_month':
+        int prevYear = now.year;
+        int prevMonth = now.month - 1;
+        if (prevMonth == 0) {
+          prevMonth = 12;
+          prevYear--;
+        }
+        final totalDays = NepaliCalendarEngine.getDaysInMonth(prevYear, prevMonth);
+        setState(() {
+          _selectedStart = NepaliDateTime(prevYear, prevMonth, 1);
+          _selectedEnd = NepaliDateTime(prevYear, prevMonth, totalDays);
+          _isRangeMode = true;
+        });
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = colorScheme.primary;
+    final primaryColor = const Color(0xFF0075db);
+    final bgColor = isDarkMode ? const Color(0xFF141e28) : Colors.white;
+    final surfaceAccent = isDarkMode ? const Color(0xFF1e2b38) : const Color(0xFFf8fafc);
+    final borderColor = isDarkMode ? const Color(0xFF2a3b4c) : const Color(0xFFe2e8f0);
+    final textColor = isDarkMode ? Colors.white : const Color(0xFF0f172a);
+    final textMuted = isDarkMode ? const Color(0xFF94a3b8) : const Color(0xFF64748b);
 
-    final startStr = formatNepaliDate(
-      _selectedStart.toDateTime(),
-      'MMM dd, yyyy',
-    );
+    final startStr = NepaliCalendarEngine.format(_selectedStart, pattern: 'MMM dd, yyyy');
     final endStr = _selectedEnd != null
-        ? formatNepaliDate(_selectedEnd!.toDateTime(), 'MMM dd, yyyy')
-        : 'Tap a 2nd date to set range';
+        ? NepaliCalendarEngine.format(_selectedEnd!, pattern: 'MMM dd, yyyy')
+        : 'Select End Date';
 
     return Dialog(
-      backgroundColor: isDarkMode ? colorScheme.surface : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: bgColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 440),
@@ -82,418 +125,196 @@ class _NepaliDatePickerDialogState extends State<NepaliDatePickerDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Dialog Header ──────────────────────────────────────────
+              // ── Header ──────────────────────────────────────────
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 14,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 decoration: BoxDecoration(
                   color: primaryColor,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.calendar_today_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                    const Icon(Icons.calendar_today_rounded, color: Colors.white, size: 20),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        widget.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.title,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              fontFamily: 'Manrope',
+                            ),
+                          ),
+                          const Text(
+                            'Nepali Bikram Sambat (BS) Calendar',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
                       onPressed: () => Navigator.pop(context),
-                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
               ),
 
-              Padding(
-                padding: const EdgeInsets.all(16.0),
+              // ── Selection Summary Strip ──────────────────────────
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                color: surfaceAccent,
                 child: Column(
                   children: [
-                    // Mode Switcher: Single Day vs Date Range
-                    if (widget.allowRange) ...[
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest.withValues(
-                            alpha: 0.4,
+                    if (widget.allowRange)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            _isRangeMode ? 'Range Selection (अवधि)' : 'Single Date Selection',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: textColor,
+                            ),
                           ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _isRangeMode = false;
-                                    _selectedEnd = null;
-                                  });
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 180),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: !_isRangeMode
-                                        ? colorScheme.surface
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
-                                    boxShadow: !_isRangeMode
-                                        ? [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.05,
-                                              ),
-                                              blurRadius: 4,
-                                            ),
-                                          ]
-                                        : null,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.today_rounded,
-                                        size: 16,
-                                        color: !_isRangeMode
-                                            ? primaryColor
-                                            : colorScheme.onSurfaceVariant,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Single Day',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: !_isRangeMode
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                          color: !_isRangeMode
-                                              ? primaryColor
-                                              : colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _isRangeMode = true;
-                                  });
-                                },
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 180),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _isRangeMode
-                                        ? colorScheme.surface
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(8),
-                                    boxShadow: _isRangeMode
-                                        ? [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.05,
-                                              ),
-                                              blurRadius: 4,
-                                            ),
-                                          ]
-                                        : null,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.date_range_rounded,
-                                        size: 16,
-                                        color: _isRangeMode
-                                            ? primaryColor
-                                            : colorScheme.onSurfaceVariant,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Date Range (From - To)',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: _isRangeMode
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                          color: _isRangeMode
-                                              ? primaryColor
-                                              : colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                    ],
-
-                    // Selected Date Information Display
-                    if (!_isRangeMode) ...[
-                      // Single Day Mode Display
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: primaryColor.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.event_available,
-                              color: primaryColor,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'Selected Date: ',
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                _isRangeMode = !_isRangeMode;
+                                if (!_isRangeMode) _selectedEnd = null;
+                              });
+                            },
+                            child: Text(
+                              _isRangeMode ? 'Switch to Single' : 'Switch to Range',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              startStr,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
                                 color: primaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ] else ...[
-                      // Range Mode Display Chips
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: primaryColor,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'FROM (Start Date)',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: primaryColor,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    startStr,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: colorScheme.onSurface,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: _selectedEnd != null
-                                    ? primaryColor.withValues(alpha: 0.12)
-                                    : colorScheme.surfaceContainerHighest
-                                          .withValues(alpha: 0.3),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: _selectedEnd != null
-                                      ? primaryColor
-                                      : colorScheme.outline.withValues(
-                                          alpha: 0.2,
-                                        ),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'TO (End Date)',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: _selectedEnd != null
-                                              ? primaryColor
-                                              : colorScheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                      if (_selectedEnd != null)
-                                        GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              _selectedEnd = null;
-                                            });
-                                          },
-                                          child: const Icon(
-                                            Icons.clear,
-                                            size: 14,
-                                            color: Colors.red,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    endStr,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: _selectedEnd != null
-                                          ? colorScheme.onSurface
-                                          : colorScheme.onSurfaceVariant,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
                               ),
                             ),
                           ),
                         ],
                       ),
-                    ],
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: bgColor,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.calendar_month_rounded, size: 16, color: primaryColor),
+                              const SizedBox(width: 8),
+                              Text(
+                                _isRangeMode
+                                    ? '$startStr  →  $endStr'
+                                    : startStr,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
-                    const SizedBox(height: 14),
+              // ── Quick Preset Chips ────────────────────────────────
+              if (widget.allowRange)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildPresetChip('Today', () => _applyPreset('today'), primaryColor, surfaceAccent, borderColor, textColor),
+                        const SizedBox(width: 6),
+                        _buildPresetChip('This Week', () => _applyPreset('this_week'), primaryColor, surfaceAccent, borderColor, textColor),
+                        const SizedBox(width: 6),
+                        _buildPresetChip('This Month', () => _applyPreset('this_month'), primaryColor, surfaceAccent, borderColor, textColor),
+                        const SizedBox(width: 6),
+                        _buildPresetChip('Last Month', () => _applyPreset('last_month'), primaryColor, surfaceAccent, borderColor, textColor),
+                      ],
+                    ),
+                  ),
+                ),
 
-                    // Custom Nepali Calendar Component
-                    CustomNepaliCalendarWidget(
-                      selectedDate: _selectedStart,
-                      rangeStartDate: _isRangeMode ? _selectedStart : null,
-                      rangeEndDate: _isRangeMode ? _selectedEnd : null,
-                      onDateSelected: (nepaliDate) {
-                        setState(() {
-                          if (!_isRangeMode) {
-                            // Single Day Mode
-                            _selectedStart = nepaliDate;
-                            _selectedEnd = null;
-                          } else {
-                            // Date Range Mode
-                            if (_selectedEnd != null) {
-                              // If range is already full, start a new selection
-                              _selectedStart = nepaliDate;
-                              _selectedEnd = null;
-                            } else {
-                              // Selecting second date
-                              if (nepaliDate.isBefore(_selectedStart)) {
-                                _selectedStart = nepaliDate;
-                              } else if (nepaliDate.year ==
-                                      _selectedStart.year &&
-                                  nepaliDate.month == _selectedStart.month &&
-                                  nepaliDate.day == _selectedStart.day) {
-                                _selectedEnd = null;
-                              } else {
-                                _selectedEnd = nepaliDate;
-                              }
-                            }
-                          }
+              // ── Calendar Body ────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: NepaliCalendarView(
+                  selectedDate: _selectedStart,
+                  isRangePicker: _isRangeMode,
+                  rangeStartDate: _selectedStart,
+                  rangeEndDate: _selectedEnd,
+                  onDateSelected: (date) {
+                    setState(() {
+                      _selectedStart = date;
+                      _selectedEnd = null;
+                    });
+                  },
+                  onRangeSelected: (start, end) {
+                    setState(() {
+                      _selectedStart = start;
+                      _selectedEnd = end;
+                    });
+                  },
+                ),
+              ),
+
+              // ── Action Buttons ───────────────────────────────────
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: surfaceAccent,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(18)),
+                  border: Border(top: BorderSide(color: borderColor)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('Cancel', style: TextStyle(color: textMuted)),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        final startAd = NepaliCalendarEngine.bsToAd(_selectedStart);
+                        final endAd = _selectedEnd != null
+                            ? NepaliCalendarEngine.bsToAd(_selectedEnd!)
+                            : null;
+                        Navigator.pop(context, {
+                          'start': startAd,
+                          'end': endAd,
                         });
                       },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Action Buttons
-                    Row(
-                      children: [
-                        if (widget.allowRange && _selectedEnd != null)
-                          TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _selectedEnd = null;
-                              });
-                            },
-                            child: const Text(
-                              'Clear End Date',
-                              style: TextStyle(color: Colors.red, fontSize: 12),
-                            ),
-                          ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Cancel'),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.pop(context, {
-                              'start': safeNepaliToDateTime(_selectedStart),
-                              'end': _isRangeMode && _selectedEnd != null
-                                  ? safeNepaliToDateTime(_selectedEnd!)
-                                  : null,
-                            });
-                          },
-                          child: const Text(
-                            'Apply Date',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text('Confirm', style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ],
                 ),
@@ -502,6 +323,24 @@ class _NepaliDatePickerDialogState extends State<NepaliDatePickerDialog> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPresetChip(
+    String label,
+    VoidCallback onTap,
+    Color primaryColor,
+    Color surfaceAccent,
+    Color borderColor,
+    Color textColor,
+  ) {
+    return ActionChip(
+      label: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textColor)),
+      onPressed: onTap,
+      backgroundColor: surfaceAccent,
+      side: BorderSide(color: borderColor),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: 6),
     );
   }
 }

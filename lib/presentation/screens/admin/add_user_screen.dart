@@ -1,8 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:order_app/core/services/admin_auth_service.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/providers/hr_providers.dart';
 import 'package:order_app/presentation/providers/settings_provider.dart';
 import 'package:order_app/presentation/providers/user_providers.dart';
 
@@ -39,28 +40,17 @@ class _AddUserScreenState extends ConsumerState<AddUserScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // 1. Create the Firebase Auth account (this sets the password)
-      final credential = await FirebaseAuth.instance
-          .createUserWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+      await AdminAuthService.createEmployeeUser(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        name: _nameController.text.trim(),
+        role: _selectedRole,
+        phone: _phoneController.text.trim(),
+        isActive: _accountActive,
+      );
 
-      final uid = credential.user!.uid;
-      final roleString = _selectedRole.name.toLowerCase();
-
-      // 2. Write the Firestore user document with the real Auth UID
-      await FirebaseFirestore.instance.collection('users').doc(uid).set({
-        'id': uid,
-        'name': _nameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'role': roleString,
-        'isActive': _accountActive,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      // 3. Refresh local user list
+      // Refresh local user streams & state
+      ref.invalidate(usersStreamProvider);
       await ref.read(userNotifierProvider.notifier).refresh();
 
       if (mounted) {
@@ -640,7 +630,7 @@ class _AddUserScreenState extends ConsumerState<AddUserScreen> {
           ) {
             return DropdownMenuItem<UserRole>(
               value: role,
-              child: Text(role.name.toUpperCase()),
+              child: Text(role.displayName.toUpperCase()),
             );
           }).toList(),
         ),

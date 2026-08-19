@@ -14,6 +14,7 @@ abstract class OrderRemoteDataSource {
   Future<List<OrderEntity>> getAllOrders();
   Future<Map<String, dynamic>> getOrdersPaginated(int limit, {DocumentSnapshot? lastDoc});
   Future<void> deleteOrder(String id);
+  Future<void> deleteOrders(List<String> ids);
   Future<void> finalizeRevenue(
     OrderEntity order,
     List<OrderItemEntity> items,
@@ -122,6 +123,27 @@ class FirestoreOrderRemoteDataSource implements OrderRemoteDataSource {
       await _firestore.collection('orders').doc(id).delete();
     } catch (e) {
       throw ServerException('Failed to delete order: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<void> deleteOrders(List<String> ids) async {
+    if (ids.isEmpty) return;
+    try {
+      // Chunk into batches of 400 for Firestore safety limit (500 max per batch)
+      const chunkSize = 400;
+      for (var i = 0; i < ids.length; i += chunkSize) {
+        final end = (i + chunkSize < ids.length) ? i + chunkSize : ids.length;
+        final chunk = ids.sublist(i, end);
+        final batch = _firestore.batch();
+        for (final id in chunk) {
+          final docRef = _firestore.collection('orders').doc(id);
+          batch.delete(docRef);
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      throw ServerException('Failed to delete orders: ${e.toString()}');
     }
   }
 

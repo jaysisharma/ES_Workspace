@@ -164,7 +164,10 @@ class CreateOrderInfoCardWidget extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          CreateOrderFormHelpers.buildFieldLabel('Order Description', labelColor),
+          CreateOrderFormHelpers.buildFieldLabel(
+            'Order Description',
+            labelColor,
+          ),
           CreateOrderFormHelpers.buildTextField(
             controller: descriptionController,
             hintText: 'Enter order details/description',
@@ -177,7 +180,10 @@ class CreateOrderInfoCardWidget extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          CreateOrderFormHelpers.buildFieldLabel('VAT (Grand Total)', labelColor),
+          CreateOrderFormHelpers.buildFieldLabel(
+            'VAT (Grand Total)',
+            labelColor,
+          ),
           Row(
             children: [
               CreateOrderFormHelpers.vatChip(

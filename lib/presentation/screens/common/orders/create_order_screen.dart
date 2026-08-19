@@ -11,6 +11,7 @@ import 'package:order_app/presentation/widgets/create_order/create_order_bottom_
 import 'package:order_app/presentation/widgets/create_order/create_order_item_row_widget.dart';
 import 'package:order_app/presentation/widgets/create_order/create_order_submit_helper.dart';
 import 'package:order_app/presentation/widgets/create_order/item_row_model.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
 class CreateOrderScreen extends ConsumerStatefulWidget {
   /// Pass an existing order to enter edit mode.
@@ -211,6 +212,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
+      floatingActionButton: const BottomRightBackButton(),
       appBar: CreateOrderAppBarWidget(
         isEditMode: _isEditMode,
         isSaving: _isSaving,
@@ -274,8 +276,6 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
                   item: item,
                   totalItems: _items.length,
                   onRemove: () => _removeItem(index),
-                  onBillingTypeChanged: (val) =>
-                      setState(() => item.billingType = val),
                   primaryColor: primaryColor,
                   textColor: textColor,
                   labelColor: labelColor,

@@ -6,7 +6,6 @@ import 'package:order_app/domain/entities/order_item_entity.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
-import 'package:order_app/presentation/providers/order_item_notifier.dart';
 
 class TasksScreen extends ConsumerWidget {
   const TasksScreen({super.key});

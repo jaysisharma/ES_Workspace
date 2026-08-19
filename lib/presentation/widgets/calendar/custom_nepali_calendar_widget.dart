@@ -152,122 +152,132 @@ class _CustomNepaliCalendarWidgetState
                 ),
               ),
             ),
-            child: Row(
-              children: [
-                // Month Dropdown
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: colorScheme.outline.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<int>(
-                      value: _currentMonth,
-                      icon: const Icon(Icons.arrow_drop_down, size: 20),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: colorScheme.onSurface,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCompact = constraints.maxWidth < 360;
+                return Row(
+                  children: [
+                    // Month Dropdown
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: colorScheme.outline.withValues(alpha: 0.3),
+                        ),
                       ),
-                      items: List.generate(12, (i) {
-                        final monthNum = i + 1;
-                        return DropdownMenuItem(
-                          value: monthNum,
-                          child: Text(nepaliMonthsEnglish[i]),
-                        );
-                      }),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() => _currentMonth = val);
-                        }
-                      },
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                // Year Dropdown
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: colorScheme.outline.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<int>(
-                      value: _currentYear,
-                      icon: const Icon(Icons.arrow_drop_down, size: 20),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: colorScheme.onSurface,
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: _currentMonth,
+                          isDense: true,
+                          icon: const Icon(Icons.arrow_drop_down, size: 18),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: isCompact ? 12 : 13,
+                            color: colorScheme.onSurface,
+                          ),
+                          items: List.generate(12, (i) {
+                            return DropdownMenuItem(
+                              value: i + 1,
+                              child: Text(nepaliMonthsEnglish[i]),
+                            );
+                          }),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => _currentMonth = val);
+                            }
+                          },
+                        ),
                       ),
-                      items: List.generate(15, (i) {
-                        final y = 2075 + i;
-                        return DropdownMenuItem(
-                          value: y,
-                          child: Text('$y BS'),
-                        );
-                      }),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() => _currentYear = val);
-                        }
-                      },
                     ),
-                  ),
-                ),
 
-                const Spacer(),
+                    SizedBox(width: isCompact ? 4 : 6),
 
-                // Today Button
-                InkWell(
-                  onTap: _goToToday,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
+                    // Year Dropdown
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 8),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: colorScheme.outline.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: _currentYear,
+                          isDense: true,
+                          icon: const Icon(Icons.arrow_drop_down, size: 18),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: isCompact ? 12 : 13,
+                            color: colorScheme.onSurface,
+                          ),
+                          items: List.generate(15, (i) {
+                            final y = 2075 + i;
+                            return DropdownMenuItem(
+                              value: y,
+                              child: Text('$y BS'),
+                            );
+                          }),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => _currentYear = val);
+                            }
+                          },
+                        ),
+                      ),
                     ),
-                    decoration: BoxDecoration(
-                      color: primaryColor,
+
+                    const Spacer(),
+
+                    // Today Button
+                    InkWell(
+                      onTap: _goToToday,
                       borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      'Today',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isCompact ? 6 : 10,
+                          vertical: isCompact ? 5 : 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: primaryColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Today',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: isCompact ? 10 : 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
 
-                const SizedBox(width: 6),
+                    SizedBox(width: isCompact ? 2 : 4),
 
-                // Prev / Next Month Buttons
-                IconButton(
-                  icon: const Icon(Icons.chevron_left, size: 22),
-                  onPressed: _previousMonth,
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Previous Month',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right, size: 22),
-                  onPressed: _nextMonth,
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Next Month',
-                ),
-              ],
+                    // Prev / Next Month Buttons
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left, size: 20),
+                      onPressed: _previousMonth,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                      tooltip: 'Previous Month',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right, size: 20),
+                      onPressed: _nextMonth,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                      tooltip: 'Next Month',
+                    ),
+                  ],
+                );
+              },
             ),
           ),
 
@@ -411,33 +421,36 @@ class _CustomNepaliCalendarWidgetState
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // Main Day Numeral (Nepali BS Day)
-                              Text(
-                                '$dayNumber',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: (isSelected || isStartOfRange || isEndOfRange || isToday)
-                                      ? FontWeight.bold
-                                      : FontWeight.w600,
-                                  color: cellTextColor,
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Main Day Numeral (Nepali BS Day)
+                                Text(
+                                  '$dayNumber',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: (isSelected || isStartOfRange || isEndOfRange || isToday)
+                                        ? FontWeight.bold
+                                        : FontWeight.w600,
+                                    color: cellTextColor,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 1),
+                                const SizedBox(height: 1),
 
-                              // AD Gregorian Subtext (e.g. 15 / Oct)
-                              Text(
-                                '${currentDayAd.day}',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  color: (isSelected || isStartOfRange || isEndOfRange)
-                                      ? Colors.white.withValues(alpha: 0.8)
-                                      : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                                // AD Gregorian Subtext (e.g. 15 / Oct)
+                                Text(
+                                  '${currentDayAd.day}',
+                                  style: TextStyle(
+                                    fontSize: 8.5,
+                                    color: (isSelected || isStartOfRange || isEndOfRange)
+                                        ? Colors.white.withValues(alpha: 0.8)
+                                        : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
 
                           // Event Indicator Dot

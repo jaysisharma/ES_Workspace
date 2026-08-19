@@ -190,13 +190,20 @@ class _AddEditInventoryScreenState
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       initialValue: _selectedCategory,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Category',
                         prefixIcon: Icon(Icons.category_outlined),
                         border: OutlineInputBorder(),
                       ),
                       items: _categories
-                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .map((c) => DropdownMenuItem(
+                                value: c,
+                                child: Text(
+                                  c,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ))
                           .toList(),
                       onChanged: (val) {
                         if (val != null) setState(() => _selectedCategory = val);
@@ -255,13 +262,20 @@ class _AddEditInventoryScreenState
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       initialValue: _selectedStatus,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Status',
                         prefixIcon: Icon(Icons.info_outline),
                         border: OutlineInputBorder(),
                       ),
                       items: _statuses
-                          .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                          .map((s) => DropdownMenuItem(
+                                value: s,
+                                child: Text(
+                                  s,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ))
                           .toList(),
                       onChanged: (val) {
                         if (val != null) setState(() => _selectedStatus = val);

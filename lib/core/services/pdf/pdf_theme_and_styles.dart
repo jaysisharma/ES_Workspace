@@ -12,7 +12,7 @@ class PdfThemeAndStyles {
 
   static pw.Widget buildHeader(
     pw.MemoryImage logo,
-    OrderEntity order, {
+    OrderEntity? order, {
     String title = 'ORDER SUMMARY',
   }) {
     return pw.Container(
@@ -52,7 +52,7 @@ class PdfThemeAndStyles {
             crossAxisAlignment: pw.CrossAxisAlignment.end,
             children: [
               pw.Text(
-                'ORDER ID: ${order.id}',
+                order != null ? 'ORDER ID: ${order.id}' : 'STATEMENT',
                 style: pw.TextStyle(
                   fontSize: 15,
                   color: darkColor,
@@ -61,7 +61,7 @@ class PdfThemeAndStyles {
               ),
               pw.SizedBox(height: 4),
               pw.Text(
-                'Date: ${formatNepaliDate(order.createdAt, 'MMMM dd, yyyy')}',
+                'Date: ${formatNepaliDate(order?.createdAt ?? DateTime.now(), 'MMMM dd, yyyy')}',
                 style: const pw.TextStyle(fontSize: 9, color: darkColor),
               ),
             ],

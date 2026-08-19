@@ -32,6 +32,9 @@ class NotificationNotifier extends Notifier<void> {
   Future<void> addNotification(NotificationEntity notification) =>
       _repo.addNotification(notification);
   Future<void> deleteNotification(String id) => _repo.deleteNotification(id);
+  Future<void> deleteMultipleNotifications(List<String> ids) async {
+    await Future.wait(ids.map((id) => _repo.deleteNotification(id)));
+  }
 }
 
 final notificationNotifierProvider =

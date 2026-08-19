@@ -184,10 +184,18 @@ class _RevenueSummaryScreenState extends ConsumerState<RevenueSummaryScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    IconButton(
-                                      icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
-                                      onPressed: () => Navigator.pop(context),
-                                    ),
+                                    if (Navigator.canPop(context))
+                                      IconButton(
+                                        icon: Icon(Icons.arrow_back, color: colorScheme.onSurface),
+                                        onPressed: () => Navigator.pop(context),
+                                      )
+                                    else if (MediaQuery.of(context).size.width < 768)
+                                      Builder(
+                                        builder: (context) => IconButton(
+                                          icon: Icon(Icons.menu_rounded, color: colorScheme.onSurface),
+                                          onPressed: () => Scaffold.of(context).openDrawer(),
+                                        ),
+                                      ),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Revenue & Financials',

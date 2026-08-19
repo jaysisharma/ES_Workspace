@@ -87,11 +87,16 @@ class FirestoreNotificationRemoteDataSource
   }
 
   static UserRole _roleFromString(String? role) {
-    switch (role) {
+    switch (role?.toLowerCase()) {
       case 'founder':
+      case 'director':
+      case 'ceo':
         return UserRole.founder;
+      case 'finance':
+        return UserRole.finance;
       case 'staff':
         return UserRole.staff;
+      case 'admin':
       default:
         return UserRole.admin;
     }
@@ -101,9 +106,11 @@ class FirestoreNotificationRemoteDataSource
   static List<String> _allowedTargetRoles(UserRole role) {
     switch (role) {
       case UserRole.founder:
-        return ['admin_founder', 'founder', 'all'];
+        return ['admin_founder', 'founder', 'management', 'all'];
       case UserRole.admin:
-        return ['admin_founder', 'admin', 'all'];
+        return ['admin_founder', 'admin', 'management', 'all'];
+      case UserRole.finance:
+        return ['finance', 'management', 'all'];
       case UserRole.staff:
         return ['staff', 'all'];
     }

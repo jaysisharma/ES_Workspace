@@ -11,6 +11,7 @@ import 'package:order_app/domain/entities/expense_entity.dart';
 import 'package:order_app/core/utils/currency_formatter.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:order_app/core/utils/excel_export_helper.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 import 'package:order_app/core/services/order_pdf_service.dart';
 import 'package:order_app/presentation/widgets/calendar/nepali_date_picker_dialog.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
@@ -55,6 +56,7 @@ class _FinancialLedgerScreenState extends ConsumerState<FinancialLedgerScreen> {
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
+      floatingActionButton: const BottomRightBackButton(),
       appBar: AppBar(
         title: const Text(
           'Financial Ledger',

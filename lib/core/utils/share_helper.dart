@@ -1,13 +1,12 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:order_app/core/services/export_directory_service.dart';
 
 /// Unified share helper:
 /// - On Android / iOS  → native system share sheet (WhatsApp visible)
@@ -20,21 +19,35 @@ class ShareHelper {
     required String fileName,
     String subject = '',
     String message = '',
+    ExportCategory? category,
   }) async {
+    Rect? origin;
+    try {
+      final box = context.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0) {
+        origin = box.localToGlobal(Offset.zero) & box.size;
+      }
+    } catch (_) {}
+    if (origin == null || origin.isEmpty) {
+      try {
+        final size = MediaQuery.of(context).size;
+        origin = Rect.fromLTWH(0, 0, size.width, size.height / 2);
+      } catch (_) {
+        origin = const Rect.fromLTWH(0, 0, 100, 100);
+      }
+    }
+
     final isDesktop = !kIsWeb &&
         (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
     // Sanitize fileName to prevent invalid path characters (slashes, colons, spaces)
     final safeFileName = fileName.replaceAll(RegExp(r'[^\w\.-]'), '_');
 
-    Directory tempDir;
-    try {
-      tempDir = await getTemporaryDirectory();
-    } catch (e) {
-      debugPrint('getTemporaryDirectory FFI error, falling back to Directory.systemTemp: $e');
-      tempDir = Directory.systemTemp;
-    }
-    final file = File('${tempDir.path}/$safeFileName');
+    // Resolve directory using ExportDirectoryService (destination folder + auto-arranged subfolders)
+    final effectiveCategory = category ?? ExportDirectoryService.deduceCategory(fileName);
+    final targetDir = await ExportDirectoryService.resolveExportDirectory(category: effectiveCategory);
+
+    final file = File('${targetDir.path}/$safeFileName');
     await file.parent.create(recursive: true);
     await file.writeAsBytes(pdfBytes, flush: true);
 
@@ -59,6 +72,7 @@ class ShareHelper {
           [XFile(file.path, mimeType: 'application/pdf')],
           subject: subject.isNotEmpty ? subject : null,
           text: message.isNotEmpty ? message : null,
+          sharePositionOrigin: origin,
         );
       } catch (e) {
         debugPrint('Share.shareXFiles platform error: $e');
@@ -86,6 +100,22 @@ class ShareHelper {
     required String message,
     String subject = '',
   }) async {
+    Rect? origin;
+    try {
+      final box = context.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0) {
+        origin = box.localToGlobal(Offset.zero) & box.size;
+      }
+    } catch (_) {}
+    if (origin == null || origin.isEmpty) {
+      try {
+        final size = MediaQuery.of(context).size;
+        origin = Rect.fromLTWH(0, 0, size.width, size.height / 2);
+      } catch (_) {
+        origin = const Rect.fromLTWH(0, 0, 100, 100);
+      }
+    }
+
     final isDesktop = !kIsWeb &&
         (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
@@ -102,7 +132,11 @@ class ShareHelper {
       );
     } else {
       try {
-        await Share.share(message, subject: subject.isNotEmpty ? subject : null);
+        await Share.share(
+          message,
+          subject: subject.isNotEmpty ? subject : null,
+          sharePositionOrigin: origin,
+        );
       } catch (e) {
         debugPrint('Share.share platform error: $e');
         if (context.mounted) {
@@ -167,10 +201,20 @@ class _DesktopPdfShareSheet extends StatelessWidget {
           },
         ),
         _ShareTile(
+          icon: Icons.drive_file_move_outline,
+          iconColor: Colors.teal,
+          label: 'Show in Folder',
+          subtitle: file.parent.path,
+          onTap: () async {
+            Navigator.pop(context);
+            await ExportDirectoryService.openDirectory(file.parent.path);
+          },
+        ),
+        _ShareTile(
           icon: Icons.save_alt_rounded,
           iconColor: Colors.orangeAccent,
           label: 'Save As…',
-          subtitle: 'Choose where to save the PDF',
+          subtitle: 'Choose custom location to save PDF',
           onTap: () => _saveAs(context),
         ),
         _ShareTile(

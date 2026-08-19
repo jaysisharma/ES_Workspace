@@ -8,4 +8,8 @@ class DeleteOrderUseCase {
   Future<void> call(String id) async {
     return await repository.deleteOrder(id);
   }
+
+  Future<void> deleteMultiple(List<String> ids) async {
+    return await repository.deleteOrders(ids);
+  }
 }

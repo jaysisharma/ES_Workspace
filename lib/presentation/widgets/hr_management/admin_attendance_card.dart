@@ -21,8 +21,6 @@ class AdminAttendanceCardWidget extends StatelessWidget {
     switch (status) {
       case AttendanceStatus.present:
         return colorScheme.primary;
-      case AttendanceStatus.late:
-        return colorScheme.tertiary;
       case AttendanceStatus.absent:
         return colorScheme.error;
       case AttendanceStatus.halfDay:

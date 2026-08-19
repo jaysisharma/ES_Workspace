@@ -6,9 +6,11 @@ import 'package:order_app/presentation/widgets/common/app_drawer.dart';
 import '../founder/founder_dashboard.dart';
 import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
 import 'package:order_app/presentation/screens/admin/admin_attendance_dashboard.dart';
+import 'package:order_app/presentation/screens/common/contacts/vendor_screen.dart';
+import 'package:order_app/presentation/screens/common/contacts/client_screen.dart';
+import 'package:order_app/presentation/screens/common/finance/event_financial_report_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/revenue_summary_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/financial_ledger_screen.dart';
-import 'package:order_app/presentation/screens/common/finance/event_financial_report_screen.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/settings_screen.dart';
 
@@ -23,9 +25,11 @@ class FounderShell extends ConsumerWidget {
       FounderDashboard(),
       HrManagementScreen(),
       AdminAttendanceDashboard(),
+      VendorScreen(),
+      ClientScreen(),
+      EventFinancialReportScreen(),
       RevenueSummaryScreen(),
       FinancialLedgerScreen(),
-      EventFinancialReportScreen(),
       SynologyCompanyPdfScreen(),
       SettingsScreen(),
     ];
@@ -46,7 +50,7 @@ class FounderShell extends ConsumerWidget {
       return Scaffold(
         body: Row(
           children: [
-            // Left Desktop Navigation Sidebar for Founder
+            // Left Desktop Navigation Sidebar for Founder / Director / CEO
             Container(
               width: 250,
               decoration: BoxDecoration(
@@ -68,6 +72,8 @@ class FounderShell extends ConsumerWidget {
                             width: 36,
                             height: 36,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Icon(Icons.business_center, color: primaryColor, size: 36),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -85,7 +91,7 @@ class FounderShell extends ConsumerWidget {
                                 ),
                               ),
                               Text(
-                                'Executive Suite',
+                                'Executive / Director Suite',
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Color(0xFF64748b),
@@ -141,9 +147,9 @@ class FounderShell extends ConsumerWidget {
                           ref,
                           selectedIndex,
                           3,
-                          Icons.payments_outlined,
-                          Icons.payments,
-                          'FINANCIALS',
+                          Icons.business_outlined,
+                          Icons.business,
+                          'VENDORS',
                           primaryColor,
                           unselectedColor,
                         ),
@@ -151,9 +157,9 @@ class FounderShell extends ConsumerWidget {
                           ref,
                           selectedIndex,
                           4,
-                          Icons.account_balance_wallet_outlined,
-                          Icons.account_balance_wallet,
-                          'FINANCIAL LEDGER',
+                          Icons.people_outline,
+                          Icons.people,
+                          'CLIENTS',
                           primaryColor,
                           unselectedColor,
                         ),
@@ -171,6 +177,26 @@ class FounderShell extends ConsumerWidget {
                           ref,
                           selectedIndex,
                           6,
+                          Icons.payments_outlined,
+                          Icons.payments,
+                          'FINANCIALS',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          ref,
+                          selectedIndex,
+                          7,
+                          Icons.account_balance_wallet_outlined,
+                          Icons.account_balance_wallet,
+                          'FINANCIAL LEDGER',
+                          primaryColor,
+                          unselectedColor,
+                        ),
+                        _buildNavItem(
+                          ref,
+                          selectedIndex,
+                          8,
                           Icons.picture_as_pdf_outlined,
                           Icons.picture_as_pdf,
                           'COMPANY PROFILE',
@@ -180,7 +206,7 @@ class FounderShell extends ConsumerWidget {
                         _buildNavItem(
                           ref,
                           selectedIndex,
-                          7,
+                          9,
                           Icons.settings_outlined,
                           Icons.settings,
                           'SETTINGS',
@@ -209,7 +235,7 @@ class FounderShell extends ConsumerWidget {
                             radius: 16,
                             backgroundColor: primaryColor,
                             child: Text(
-                              (authState.user?.email ?? 'F')[0].toUpperCase(),
+                              (authState.user?.email ?? 'D')[0].toUpperCase(),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -223,7 +249,7 @@ class FounderShell extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  authState.user?.email ?? 'Founder',
+                                  authState.user?.email ?? 'Director / CEO',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
@@ -231,7 +257,7 @@ class FounderShell extends ConsumerWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const Text(
-                                  'Executive / Founder',
+                                  'Director / CEO',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Color(0xFF64748b),
@@ -283,7 +309,7 @@ class FounderShell extends ConsumerWidget {
           border: Border(top: BorderSide(color: borderColor)),
         ),
         child: BottomNavigationBar(
-          currentIndex: selectedIndex < 3 ? selectedIndex : 0,
+          currentIndex: selectedIndex < 5 ? selectedIndex : 0,
           onTap: (index) {
             ref.read(founderNavigationProvider.notifier).setIndex(index);
           },
@@ -295,12 +321,12 @@ class FounderShell extends ConsumerWidget {
           selectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 10,
-            letterSpacing: 1.0,
+            letterSpacing: 0.5,
           ),
           unselectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 10,
-            letterSpacing: 1.0,
+            letterSpacing: 0.5,
           ),
           items: const [
             BottomNavigationBarItem(
@@ -317,24 +343,46 @@ class FounderShell extends ConsumerWidget {
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.payments_outlined, size: 24),
+                child: Icon(Icons.badge_outlined, size: 24),
               ),
               activeIcon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.payments, size: 24),
+                child: Icon(Icons.badge, size: 24),
               ),
-              label: 'FINANCE',
+              label: 'HR',
             ),
             BottomNavigationBarItem(
               icon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.settings_outlined, size: 24),
+                child: Icon(Icons.business_outlined, size: 24),
               ),
               activeIcon: Padding(
                 padding: EdgeInsets.only(bottom: 4),
-                child: Icon(Icons.settings, size: 24),
+                child: Icon(Icons.business, size: 24),
               ),
-              label: 'SETTINGS',
+              label: 'VENDORS',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.people_outline, size: 24),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.people, size: 24),
+              ),
+              label: 'CLIENTS',
+            ),
+            BottomNavigationBarItem(
+              icon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.analytics_outlined, size: 24),
+              ),
+              activeIcon: Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Icon(Icons.analytics, size: 24),
+              ),
+              label: 'REPORTS',
             ),
           ],
         ),

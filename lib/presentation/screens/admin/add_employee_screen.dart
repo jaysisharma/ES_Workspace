@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
@@ -11,6 +10,7 @@ import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/domain/entities/employee_profile_entity.dart';
 import 'package:order_app/presentation/providers/employee_profile_providers.dart';
 import 'package:order_app/presentation/providers/hr_providers.dart';
+import 'package:order_app/core/services/admin_auth_service.dart';
 import 'package:order_app/core/services/synology_storage_service.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/screens/admin/employee_detail_screen.dart';
@@ -20,6 +20,7 @@ class AddEmployeeScreen extends ConsumerStatefulWidget {
   final String userId;
   final String userName;
   final String? userEmail;
+  final UserRole? userRole;
   final bool isNewUser;
   final EmployeeProfileEntity? initialProfile;
 
@@ -28,6 +29,7 @@ class AddEmployeeScreen extends ConsumerStatefulWidget {
     required this.userId,
     required this.userName,
     this.userEmail,
+    this.userRole,
     this.isNewUser = false,
     this.initialProfile,
   });
@@ -42,6 +44,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
 
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
+  late UserRole _selectedRole;
   late TextEditingController _nameController;
   late TextEditingController _designationController;
   late TextEditingController _fatherNameController;
@@ -55,13 +58,16 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
   DateTime? _officeLeavingDate;
 
   late TextEditingController _basicSalaryController;
+  late TextEditingController _fuelAllowanceController;
+  late TextEditingController _communicationAllowanceController;
   late TextEditingController _dearnessAllowanceController;
   late TextEditingController _bonusController;
   late TextEditingController _ssfController;
   late TextEditingController _citController;
-  late TextEditingController _insuranceController;
+  late TextEditingController _lifeInsuranceController;
+  late TextEditingController _healthInsuranceController;
   late TextEditingController _tdsController;
-  late TextEditingController _tdsPercentageController;
+  late TextEditingController _netPayableSalaryController;
 
   late TextEditingController _photoUrlController;
   late TextEditingController _citizenshipNumberController;
@@ -84,6 +90,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
 
     _emailController = TextEditingController(text: widget.userEmail ?? '');
     _passwordController = TextEditingController();
+    _selectedRole = widget.userRole ?? UserRole.staff;
     _nameController = TextEditingController(text: p?.name ?? widget.userName);
     _designationController = TextEditingController(
       text: p?.designation ?? 'Event Specialist',
@@ -101,28 +108,43 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     _officeLeavingDate = p?.officeLeavingDate;
 
     _basicSalaryController = TextEditingController(
-      text: p?.basicSalary.toString() ?? '0',
+      text: (p?.basicSalary != null && p!.basicSalary > 0) ? p.basicSalary.toStringAsFixed(0) : '0',
+    );
+    _fuelAllowanceController = TextEditingController(
+      text: (p?.fuelAllowance != null && p!.fuelAllowance > 0) ? p.fuelAllowance.toStringAsFixed(0) : '0',
+    );
+    _communicationAllowanceController = TextEditingController(
+      text: (p?.communicationAllowance != null && p!.communicationAllowance > 0) ? p.communicationAllowance.toStringAsFixed(0) : '0',
     );
     _dearnessAllowanceController = TextEditingController(
-      text: p?.dearnessAllowance.toString() ?? '0',
+      text: (p?.dearnessAllowance != null && p!.dearnessAllowance > 0) ? p.dearnessAllowance.toStringAsFixed(0) : '0',
     );
-    _bonusController = TextEditingController(text: p?.bonus.toString() ?? '0');
-    _ssfController = TextEditingController(text: p?.ssf.toString() ?? '0');
-    _citController = TextEditingController(text: p?.cit.toString() ?? '0');
-    _insuranceController = TextEditingController(
-      text: p?.insurance.toString() ?? '0',
+    _bonusController = TextEditingController(
+      text: (p?.bonus != null && p!.bonus > 0) ? p.bonus.toStringAsFixed(0) : '0',
     );
-    _tdsController = TextEditingController(text: p?.tds.toString() ?? '0');
-
-    final basicVal = p?.basicSalary ?? 0.0;
-    final daVal = p?.dearnessAllowance ?? 0.0;
-    final bonusVal = p?.bonus ?? 0.0;
-    final grossVal = basicVal + daVal + bonusVal;
-    final tdsVal = p?.tds ?? 0.0;
-    final initTdsPct = (grossVal > 0 && tdsVal > 0) ? (tdsVal / grossVal * 100) : 1.0;
-
-    _tdsPercentageController = TextEditingController(
-      text: initTdsPct.toStringAsFixed(1),
+    _ssfController = TextEditingController(
+      text: (p?.ssf != null && p!.ssf > 0) ? p.ssf.toStringAsFixed(0) : '0',
+    );
+    _citController = TextEditingController(
+      text: (p?.cit != null && p!.cit > 0) ? p.cit.toStringAsFixed(0) : '0',
+    );
+    final initialLife = (p?.lifeInsurance != null && p!.lifeInsurance > 0)
+        ? p.lifeInsurance
+        : (p?.insurance ?? 0.0);
+    _lifeInsuranceController = TextEditingController(
+      text: initialLife > 0 ? initialLife.toStringAsFixed(0) : '0',
+    );
+    _healthInsuranceController = TextEditingController(
+      text: (p?.healthInsurance != null && p!.healthInsurance > 0) ? p.healthInsurance.toStringAsFixed(0) : '0',
+    );
+    _tdsController = TextEditingController(
+      text: (p?.tds != null && p!.tds > 0) ? p.tds.toStringAsFixed(0) : '0',
+    );
+    final initialNet = (p?.netPayableSalary != null && p!.netPayableSalary > 0)
+        ? p.netPayableSalary
+        : (p?.netSalary ?? 0.0);
+    _netPayableSalaryController = TextEditingController(
+      text: initialNet > 0 ? initialNet.toStringAsFixed(0) : '0',
     );
 
     _photoUrlController = TextEditingController(text: p?.photoUrl ?? '');
@@ -153,14 +175,24 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     }
   }
 
-  void _recalculateTdsAmount() {
+  void _calculateSuggestedNet() {
     final basic = double.tryParse(_basicSalaryController.text) ?? 0.0;
+    final fuel = double.tryParse(_fuelAllowanceController.text) ?? 0.0;
+    final comm = double.tryParse(_communicationAllowanceController.text) ?? 0.0;
     final da = double.tryParse(_dearnessAllowanceController.text) ?? 0.0;
     final bonus = double.tryParse(_bonusController.text) ?? 0.0;
-    final gross = basic + da + bonus;
-    final pct = double.tryParse(_tdsPercentageController.text) ?? 0.0;
-    final calculatedTds = gross * (pct / 100.0);
-    _tdsController.text = calculatedTds.toStringAsFixed(0);
+    final gross = basic + fuel + comm + da + bonus;
+
+    final ssf = double.tryParse(_ssfController.text) ?? 0.0;
+    final cit = double.tryParse(_citController.text) ?? 0.0;
+    final life = double.tryParse(_lifeInsuranceController.text) ?? 0.0;
+    final health = double.tryParse(_healthInsuranceController.text) ?? 0.0;
+    final tds = double.tryParse(_tdsController.text) ?? 0.0;
+    final deductions = ssf + cit + life + health + tds;
+
+    final net = (gross - deductions).clamp(0.0, double.infinity);
+    _netPayableSalaryController.text = net.toStringAsFixed(0);
+    setState(() {});
   }
 
   @override
@@ -175,13 +207,16 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     _grandfatherNameController.dispose();
     _addressController.dispose();
     _basicSalaryController.dispose();
+    _fuelAllowanceController.dispose();
+    _communicationAllowanceController.dispose();
     _dearnessAllowanceController.dispose();
     _bonusController.dispose();
     _ssfController.dispose();
     _citController.dispose();
-    _insuranceController.dispose();
+    _lifeInsuranceController.dispose();
+    _healthInsuranceController.dispose();
     _tdsController.dispose();
-    _tdsPercentageController.dispose();
+    _netPayableSalaryController.dispose();
     _photoUrlController.dispose();
     _citizenshipNumberController.dispose();
     _citizenshipFrontController.dispose();
@@ -293,14 +328,16 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
             ),
             const SizedBox(height: 12),
             _buildTextField(
-              'Account Password',
+              'Account Password (Min 6 characters)',
               _passwordController,
               isPassword: true,
             ),
+            const SizedBox(height: 12),
+            _buildRoleSelector(labelColor),
             const Divider(height: 32),
           ] else ...[
             Text(
-              'Account Authentication Details',
+              'Account Authentication & Login Credentials',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -309,10 +346,18 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
             ),
             const SizedBox(height: 8),
             _buildTextField(
-              'Account Email Address (Read-Only)',
+              'Account Email Address',
               _emailController,
-              readOnly: true,
+              keyboardType: TextInputType.emailAddress,
             ),
+            const SizedBox(height: 12),
+            _buildTextField(
+              'Change Password (Optional / Leave blank to keep current)',
+              _passwordController,
+              isPassword: true,
+            ),
+            const SizedBox(height: 12),
+            _buildRoleSelector(labelColor),
             const Divider(height: 32),
           ],
           Text(
@@ -374,6 +419,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
                     DropdownButtonFormField<String>(
                       initialValue: _bloodGroup,
                       isDense: true,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                       ),
@@ -391,7 +437,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
                               ]
                               .map(
                                 (b) =>
-                                    DropdownMenuItem(value: b, child: Text(b)),
+                                    DropdownMenuItem(value: b, child: Text(b, overflow: TextOverflow.ellipsis)),
                               )
                               .toList(),
                       onChanged: (val) {
@@ -509,7 +555,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
           ),
           const Divider(height: 32),
           Text(
-            'Monthly Compensation Breakdown (NPR)',
+            'Monthly Allowances & Earnings (NPR)',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
@@ -521,39 +567,46 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
             'Basic Salary (NPR)',
             _basicSalaryController,
             keyboardType: TextInputType.number,
-            onChanged: (_) {
-              _recalculateTdsAmount();
-              setState(() {});
-            },
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            'Fuel Allowance (NPR)',
+            _fuelAllowanceController,
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            'Communication Allowance (NPR)',
+            _communicationAllowanceController,
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
           _buildTextField(
             'Dearness Allowance (DA)',
             _dearnessAllowanceController,
             keyboardType: TextInputType.number,
-            onChanged: (_) {
-              _recalculateTdsAmount();
-              setState(() {});
-            },
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
           _buildTextField(
             'Bonus / Performance Allowance',
             _bonusController,
             keyboardType: TextInputType.number,
-            onChanged: (_) {
-              _recalculateTdsAmount();
-              setState(() {});
-            },
+            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
           // Computed Gross Salary Box
           Builder(
             builder: (context) {
               final basic = double.tryParse(_basicSalaryController.text) ?? 0.0;
+              final fuel = double.tryParse(_fuelAllowanceController.text) ?? 0.0;
+              final comm = double.tryParse(_communicationAllowanceController.text) ?? 0.0;
               final da = double.tryParse(_dearnessAllowanceController.text) ?? 0.0;
               final bonus = double.tryParse(_bonusController.text) ?? 0.0;
-              final gross = basic + da + bonus;
+              final gross = basic + fuel + comm + da + bonus;
               return Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -565,7 +618,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Gross Salary (Basic + DA + Bonus):',
+                      'Gross Salary (Basic + Fuel + Comm + DA + Bonus):',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: labelColor),
                     ),
                     Text(
@@ -577,9 +630,9 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
               );
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
-            'Deductions & Taxes',
+            'Deductions & Contributions (NPR)',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
@@ -588,51 +641,79 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
           ),
           const SizedBox(height: 12),
           _buildTextField(
-            'SSF Deduction',
+            'SSF Contribution (Social Security)',
             _ssfController,
             keyboardType: TextInputType.number,
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
           _buildTextField(
-            'CIT Contribution',
+            'Life Insurance Premium',
+            _lifeInsuranceController,
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            'Health Insurance Premium',
+            _healthInsuranceController,
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            'CIT Contribution (Citizen Investment Trust)',
             _citController,
             keyboardType: TextInputType.number,
             onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: 12),
           _buildTextField(
-            'Insurance Premium',
-            _insuranceController,
+            'TDS (Tax Deducted at Source)',
+            _tdsController,
             keyboardType: TextInputType.number,
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                flex: 1,
-                child: _buildTextField(
-                  'TDS Rate (%)',
-                  _tdsPercentageController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: (_) {
-                    _recalculateTdsAmount();
-                    setState(() {});
-                  },
+          const SizedBox(height: 20),
+          // Net Payable Monthly Salary (In Hand)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.4), width: 1.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Net Payable Monthly Salary (In Hand)',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
+                    ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.calculate_outlined, size: 16),
+                      label: const Text('Calculate Suggested', style: TextStyle(fontSize: 12)),
+                      onPressed: _calculateSuggestedNet,
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 1,
-                child: _buildTextField(
-                  'TDS Amount (NPR)',
-                  _tdsController,
+                const SizedBox(height: 8),
+                _buildTextField(
+                  'Net In-Hand Salary (NPR)',
+                  _netPayableSalaryController,
                   keyboardType: TextInputType.number,
                   onChanged: (_) => setState(() {}),
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  '💡 Manually enterable. You can edit this directly or click "Calculate Suggested" above.',
+                  style: TextStyle(fontSize: 11, color: labelColor),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -914,6 +995,72 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     );
   }
 
+  Widget _buildRoleSelector(Color labelColor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'System Access Role',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: labelColor,
+          ),
+        ),
+        const SizedBox(height: 4),
+        InputDecorator(
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            isDense: true,
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<UserRole>(
+              value: _selectedRole,
+              isExpanded: true,
+              items: UserRole.values.map((role) {
+                return DropdownMenuItem<UserRole>(
+                  value: role,
+                  child: Row(
+                    children: [
+                      Icon(
+                        role == UserRole.admin
+                            ? Icons.admin_panel_settings
+                            : role == UserRole.founder
+                            ? Icons.stars
+                            : role == UserRole.finance
+                            ? Icons.account_balance
+                            : Icons.badge_outlined,
+                        size: 18,
+                        color: role == UserRole.admin
+                            ? Colors.purple
+                            : role == UserRole.founder
+                            ? Colors.blue
+                            : role == UserRole.finance
+                            ? Colors.orange
+                            : Colors.green,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        role.displayName,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: (newRole) {
+                if (newRole != null) {
+                  setState(() => _selectedRole = newRole);
+                }
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _saveProfile() async {
     setState(() => _isSaving = true);
     try {
@@ -928,22 +1075,14 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
           throw 'Please enter email address and password for the new employee.';
         }
 
-        final credential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(email: email, password: password);
-        finalUserId = credential.user!.uid;
-
-        // Write user document to Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(finalUserId)
-            .set({
-              'id': finalUserId,
-              'name': _nameController.text.trim(),
-              'email': email,
-              'role': 'staff',
-              'isActive': true,
-              'createdAt': FieldValue.serverTimestamp(),
-            });
+        final createdUser = await AdminAuthService.createEmployeeUser(
+          email: email,
+          password: password,
+          name: _nameController.text.trim(),
+          role: _selectedRole,
+          isActive: true,
+        );
+        finalUserId = createdUser.id;
       }
 
       // 2. Save Employee Profile Record
@@ -961,12 +1100,21 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
         officeJoinDate: _officeJoinDate,
         officeLeavingDate: _officeLeavingDate,
         basicSalary: double.tryParse(_basicSalaryController.text) ?? 0.0,
-        dearnessAllowance: double.tryParse(_dearnessAllowanceController.text) ?? 0.0,
+        fuelAllowance: double.tryParse(_fuelAllowanceController.text) ?? 0.0,
+        communicationAllowance:
+            double.tryParse(_communicationAllowanceController.text) ?? 0.0,
+        dearnessAllowance:
+            double.tryParse(_dearnessAllowanceController.text) ?? 0.0,
         bonus: double.tryParse(_bonusController.text) ?? 0.0,
         ssf: double.tryParse(_ssfController.text) ?? 0.0,
         cit: double.tryParse(_citController.text) ?? 0.0,
-        insurance: double.tryParse(_insuranceController.text) ?? 0.0,
+        lifeInsurance: double.tryParse(_lifeInsuranceController.text) ?? 0.0,
+        healthInsurance: double.tryParse(_healthInsuranceController.text) ?? 0.0,
+        insurance: (double.tryParse(_lifeInsuranceController.text) ?? 0.0) +
+            (double.tryParse(_healthInsuranceController.text) ?? 0.0),
         tds: double.tryParse(_tdsController.text) ?? 0.0,
+        netPayableSalary:
+            double.tryParse(_netPayableSalaryController.text) ?? 0.0,
         photoUrl: _photoUrlController.text.trim(),
         citizenshipNumber: _citizenshipNumberController.text.trim(),
         citizenshipPhotoFrontUrl: _citizenshipFrontController.text.trim(),
@@ -988,21 +1136,35 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
           .saveProfile(profile);
 
       if (!widget.isNewUser) {
+        final email = _emailController.text.trim();
+        final password = _passwordController.text.trim();
+
+        if (password.isNotEmpty && password.length < 6) {
+          throw 'Password must be at least 6 characters.';
+        }
+
         await FirebaseFirestore.instance
             .collection('users')
             .doc(widget.userId)
-            .update({'name': _nameController.text.trim()});
+            .update({
+          'name': _nameController.text.trim(),
+          if (email.isNotEmpty) 'email': email,
+          'role': _selectedRole.name,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
       }
 
       ref.invalidate(usersStreamProvider);
 
+      final updatedEmail = _emailController.text.trim().isNotEmpty
+          ? _emailController.text.trim()
+          : (widget.userEmail ?? '');
+
       final newUser = UserEntity(
         id: finalUserId,
         name: _nameController.text.trim(),
-        email: widget.isNewUser
-            ? _emailController.text.trim()
-            : (widget.userEmail ?? ''),
-        role: UserRole.staff,
+        email: updatedEmail,
+        role: _selectedRole,
         isActive: true,
       );
 

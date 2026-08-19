@@ -12,12 +12,17 @@ class EmployeeProfileEntity {
   final DateTime officeJoinDate;
   final DateTime? officeLeavingDate;
   final double basicSalary;
+  final double fuelAllowance;
+  final double communicationAllowance;
   final double dearnessAllowance;
   final double bonus;
   final double ssf;
   final double cit;
   final double insurance;
+  final double lifeInsurance;
+  final double healthInsurance;
   final double tds;
+  final double netPayableSalary;
   final String? photoUrl;
   final String citizenshipNumber;
   final String? citizenshipPhotoFrontUrl;
@@ -53,12 +58,17 @@ class EmployeeProfileEntity {
     required this.officeJoinDate,
     this.officeLeavingDate,
     this.basicSalary = 0.0,
+    this.fuelAllowance = 0.0,
+    this.communicationAllowance = 0.0,
     this.dearnessAllowance = 0.0,
     this.bonus = 0.0,
     this.ssf = 0.0,
     this.cit = 0.0,
     this.insurance = 0.0,
+    this.lifeInsurance = 0.0,
+    this.healthInsurance = 0.0,
     this.tds = 0.0,
+    this.netPayableSalary = 0.0,
     this.photoUrl,
     this.citizenshipNumber = '',
     this.citizenshipPhotoFrontUrl,
@@ -80,10 +90,19 @@ class EmployeeProfileEntity {
     return result;
   }
 
-  double get grossSalary => basicSalary + dearnessAllowance + bonus;
-  double get totalDeductions => ssf + cit + insurance + tds;
-  double get netSalary => (grossSalary - totalDeductions).clamp(0.0, double.infinity);
-  double get totalPackage => grossSalary + ssf + cit + insurance;
+  double get effectiveLifeInsurance =>
+      lifeInsurance > 0 ? lifeInsurance : (insurance > 0 ? insurance : 0.0);
+  double get effectiveHealthInsurance => healthInsurance;
+  double get totalInsurance => effectiveLifeInsurance + effectiveHealthInsurance;
+
+  double get grossSalary =>
+      basicSalary + fuelAllowance + communicationAllowance + dearnessAllowance + bonus;
+  double get totalDeductions =>
+      ssf + cit + totalInsurance + tds;
+  double get netSalary => netPayableSalary > 0
+      ? netPayableSalary
+      : (grossSalary - totalDeductions).clamp(0.0, double.infinity);
+  double get totalPackage => grossSalary + ssf + cit + totalInsurance;
 
   EmployeeProfileEntity copyWith({
     String? id,
@@ -99,12 +118,17 @@ class EmployeeProfileEntity {
     DateTime? officeJoinDate,
     DateTime? officeLeavingDate,
     double? basicSalary,
+    double? fuelAllowance,
+    double? communicationAllowance,
     double? dearnessAllowance,
     double? bonus,
     double? ssf,
     double? cit,
     double? insurance,
+    double? lifeInsurance,
+    double? healthInsurance,
     double? tds,
+    double? netPayableSalary,
     String? photoUrl,
     String? citizenshipNumber,
     String? citizenshipPhotoFrontUrl,
@@ -131,12 +155,18 @@ class EmployeeProfileEntity {
       officeJoinDate: officeJoinDate ?? this.officeJoinDate,
       officeLeavingDate: officeLeavingDate ?? this.officeLeavingDate,
       basicSalary: basicSalary ?? this.basicSalary,
+      fuelAllowance: fuelAllowance ?? this.fuelAllowance,
+      communicationAllowance:
+          communicationAllowance ?? this.communicationAllowance,
       dearnessAllowance: dearnessAllowance ?? this.dearnessAllowance,
       bonus: bonus ?? this.bonus,
       ssf: ssf ?? this.ssf,
       cit: cit ?? this.cit,
       insurance: insurance ?? this.insurance,
+      lifeInsurance: lifeInsurance ?? this.lifeInsurance,
+      healthInsurance: healthInsurance ?? this.healthInsurance,
       tds: tds ?? this.tds,
+      netPayableSalary: netPayableSalary ?? this.netPayableSalary,
       photoUrl: photoUrl ?? this.photoUrl,
       citizenshipNumber: citizenshipNumber ?? this.citizenshipNumber,
       citizenshipPhotoFrontUrl:

@@ -72,6 +72,20 @@ final deleteOrderUseCaseProvider = Provider<DeleteOrderUseCase>((ref) {
   return DeleteOrderUseCase(repository);
 });
 
+class OrderSelectionModeNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setSelectionMode(bool mode) {
+    state = mode;
+  }
+}
+
+final orderSelectionModeProvider =
+    NotifierProvider<OrderSelectionModeNotifier, bool>(() {
+  return OrderSelectionModeNotifier();
+});
+
 final finalizeRevenueUseCaseProvider = Provider<FinalizeRevenueUseCase>((ref) {
   final repository = ref.watch(orderRepositoryProvider);
   return FinalizeRevenueUseCase(repository);

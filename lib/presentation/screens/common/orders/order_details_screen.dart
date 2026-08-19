@@ -5,6 +5,7 @@ import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/change_request_providers.dart';
 import 'package:order_app/presentation/providers/event_providers.dart';
+import 'package:order_app/presentation/providers/event_notifier.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/providers/settings_provider.dart';
 import 'package:order_app/presentation/widgets/order_details/order_details_activity_log.dart';
@@ -45,6 +46,23 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   Future<void> _updateStatus(OrderStatus newStatus) async {
     final updated = _buildUpdatedOrder(newStatus);
     await ref.read(orderNotifierProvider.notifier).updateOrder(updated);
+
+    // Also sync the linked event status in Firestore
+    try {
+      final events = ref.read(eventsStreamProvider).value ?? [];
+      final event = events.where((e) => e.orderId == widget.order.id).firstOrNull;
+      if (event != null) {
+        if (newStatus == OrderStatus.completed) {
+          await ref.read(eventNotifierProvider.notifier).updateStatus(event.id, 'Completed');
+          await ref.read(eventNotifierProvider.notifier).updateCompletion(event.id, 1.0);
+        } else if (newStatus == OrderStatus.inProgress) {
+          await ref.read(eventNotifierProvider.notifier).updateStatus(event.id, 'In Progress');
+        } else if (newStatus == OrderStatus.confirmed) {
+          await ref.read(eventNotifierProvider.notifier).updateStatus(event.id, 'Upcoming');
+        }
+      }
+    } catch (_) {}
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -58,22 +76,20 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
   }
 
   OrderEntity _buildUpdatedOrder(OrderStatus status) {
-    return OrderEntity(
-      id: widget.order.id,
-      eventName: widget.order.eventName,
-      eventDate: widget.order.eventDate,
-      eventEndDate: widget.order.eventEndDate,
-      setupDate: widget.order.setupDate,
-      setupEndDate: widget.order.setupEndDate,
-      venue: widget.order.venue,
-      contactPerson: widget.order.contactPerson,
-      contactNumber: widget.order.contactNumber,
-      notes: widget.order.notes,
+    final latestOrder = ref
+            .read(ordersStreamProvider)
+            .value
+            ?.where((o) => o.id == widget.order.id)
+            .firstOrNull ??
+        ref
+            .read(orderNotifierProvider)
+            .orders
+            .where((o) => o.id == widget.order.id)
+            .firstOrNull ??
+        widget.order;
+
+    return latestOrder.copyWith(
       status: status,
-      assignedStaffIds: widget.order.assignedStaffIds,
-      totalAmount: widget.order.totalAmount,
-      totalExpenses: widget.order.totalExpenses,
-      createdAt: widget.order.createdAt,
       updatedAt: DateTime.now(),
     );
   }

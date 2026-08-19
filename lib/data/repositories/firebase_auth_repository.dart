@@ -63,9 +63,40 @@ class FirebaseAuthRepository implements AuthRepository {
         debugPrint('🔐 [AuthRepo] Parsed user role: $role');
       } else {
         debugPrint(
-          '⚠️ [AuthRepo] Firestore document users/${user.uid} NOT FOUND or EMPTY!',
+          '⚠️ [AuthRepo] Firestore document users/${user.uid} NOT FOUND! Checking by email...',
         );
-        throw ServerException('Login failed: User data not found in database.');
+        final emailQuery = await _firestore
+            .collection('users')
+            .where('email', isEqualTo: (user.email ?? email).trim())
+            .limit(1)
+            .get();
+
+        if (emailQuery.docs.isNotEmpty) {
+          final docData = emailQuery.docs.first.data();
+          role = _parseRole(docData['role'] as String?);
+          await _firestore.collection('users').doc(user.uid).set({
+            ...docData,
+            'id': user.uid,
+          }, SetOptions(merge: true));
+          debugPrint('✅ [AuthRepo] Recovered & linked Firestore profile to UID: ${user.uid}');
+        } else {
+          final targetEmail = user.email ?? email;
+          final defaultRole = targetEmail.toLowerCase().contains('finance')
+              ? UserRole.finance
+              : targetEmail.toLowerCase().contains('admin')
+                  ? UserRole.admin
+                  : UserRole.staff;
+          role = defaultRole;
+          await _firestore.collection('users').doc(user.uid).set({
+            'id': user.uid,
+            'email': targetEmail.trim(),
+            'name': targetEmail.split('@').first,
+            'role': defaultRole.name,
+            'isActive': true,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+          debugPrint('✅ [AuthRepo] Auto-provisioned missing Firestore user doc for UID: ${user.uid} with role: $role');
+        }
       }
 
       authResult = AuthModel(
@@ -172,11 +203,39 @@ class FirebaseAuthRepository implements AuthRepository {
           debugPrint('🔐 [AuthRepo REST API] Parsed role: $role');
         } else {
           debugPrint(
-            '⚠️ [AuthRepo REST API] Firestore document users/$uid NOT FOUND!',
+            '⚠️ [AuthRepo REST API] Firestore document users/$uid NOT FOUND! Checking by email...',
           );
-          throw ServerException(
-            'Login failed: User data not found in database.',
-          );
+          final emailQuery = await _firestore
+              .collection('users')
+              .where('email', isEqualTo: userEmail.trim())
+              .limit(1)
+              .get();
+
+          if (emailQuery.docs.isNotEmpty) {
+            final docData = emailQuery.docs.first.data();
+            role = _parseRole(docData['role'] as String?);
+            await _firestore.collection('users').doc(uid).set({
+              ...docData,
+              'id': uid,
+            }, SetOptions(merge: true));
+            debugPrint('✅ [AuthRepo REST API] Recovered & linked Firestore profile to UID: $uid');
+          } else {
+            final defaultRole = userEmail.toLowerCase().contains('finance')
+                ? UserRole.finance
+                : userEmail.toLowerCase().contains('admin')
+                    ? UserRole.admin
+                    : UserRole.staff;
+            role = defaultRole;
+            await _firestore.collection('users').doc(uid).set({
+              'id': uid,
+              'email': userEmail.trim(),
+              'name': userEmail.split('@').first,
+              'role': defaultRole.name,
+              'isActive': true,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+            debugPrint('✅ [AuthRepo REST API] Auto-provisioned missing Firestore user doc for UID: $uid with role: $role');
+          }
         }
 
         return AuthModel(uid: uid, email: userEmail, role: role);
@@ -400,9 +459,13 @@ class FirebaseAuthRepository implements AuthRepository {
     switch (roleStr.toLowerCase()) {
       case 'admin':
         return UserRole.admin;
+      case 'finance':
+        return UserRole.finance;
       case 'staff':
         return UserRole.staff;
       case 'founder':
+      case 'director':
+      case 'ceo':
         return UserRole.founder;
       default:
         return UserRole.staff;

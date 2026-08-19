@@ -7,16 +7,15 @@ import 'package:order_app/presentation/screens/common/finance/revenue_summary_sc
 import 'package:order_app/presentation/screens/common/events/calendar_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/settings_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/event_financial_report_screen.dart';
+import 'package:order_app/presentation/screens/common/finance/event_invoices_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/financial_ledger_screen.dart';
 import 'package:order_app/presentation/screens/common/orders/purchase_order_list_screen.dart';
 import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
 import 'package:order_app/presentation/screens/admin/admin_attendance_dashboard.dart';
-import 'package:order_app/presentation/screens/staff/staff_attendance_screen.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/screens/common/inventory/inventory_management_screen.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
-import 'package:order_app/presentation/widgets/hr_management/leave_request_sheet.dart';
 
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
@@ -24,6 +23,7 @@ class AppDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final role = ref.watch(authNotifierProvider).user?.role;
 
     return Drawer(
       backgroundColor: colorScheme.surface,
@@ -39,13 +39,11 @@ class AppDrawer extends ConsumerWidget {
                   label: 'Dashboard',
                   onTap: () {
                     Navigator.pop(context);
-                    // Shells usually handle dashboard as index 0
                   },
                 ),
-                if (ref.watch(authNotifierProvider).user?.role ==
-                        UserRole.admin ||
-                    ref.watch(authNotifierProvider).user?.role ==
-                        UserRole.founder) ...[
+                if (role == UserRole.admin ||
+                    role == UserRole.founder ||
+                    role == UserRole.finance) ...[
                   _DrawerTile(
                     icon: Icons.badge_outlined,
                     label: 'HR & Employees',
@@ -54,22 +52,8 @@ class AppDrawer extends ConsumerWidget {
                       context.pushPage(const HrManagementScreen());
                     },
                   ),
-                  _DrawerTile(
-                    icon: Icons.how_to_reg_outlined,
-                    label: 'Mark My Attendance',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.pushPage(const StaffAttendanceScreen());
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.time_to_leave_outlined,
-                    label: 'Request Leave / Off-Duty',
-                    onTap: () {
-                      Navigator.pop(context);
-                      showStaffLeaveRequestSheet(context, ref);
-                    },
-                  ),
+                ],
+                if (role == UserRole.admin || role == UserRole.founder) ...[
                   _DrawerTile(
                     icon: Icons.access_time_outlined,
                     label: 'Attendance & Logs',
@@ -79,34 +63,43 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                 ],
-                _DrawerTile(
-                  icon: Icons.inventory_2_outlined,
-                  label: 'Inventory Management',
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.pushPage(const InventoryManagementScreen());
-                  },
-                ),
-                _DrawerTile(
-                  icon: Icons.picture_as_pdf_outlined,
-                  label: 'Company Profile & Share (Synology)',
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.pushPage(const SynologyCompanyPdfScreen());
-                  },
-                ),
-                _DrawerTile(
-                  icon: Icons.description_outlined,
-                  label: 'Purchase Orders',
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.pushPage(const PurchaseOrderListScreen());
-                  },
-                ),
-                if (ref.watch(authNotifierProvider).user?.role ==
-                        UserRole.admin ||
-                    ref.watch(authNotifierProvider).user?.role ==
-                        UserRole.founder)
+                if (role == UserRole.admin) ...[
+                  _DrawerTile(
+                    icon: Icons.inventory_2_outlined,
+                    label: 'Inventory Management',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushPage(const InventoryManagementScreen());
+                    },
+                  ),
+                  _DrawerTile(
+                    icon: Icons.description_outlined,
+                    label: 'Purchase Orders',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushPage(const PurchaseOrderListScreen());
+                    },
+                  ),
+                ],
+                if (role == UserRole.admin ||
+                    role == UserRole.founder ||
+                    role == UserRole.finance) ...[
+                  _DrawerTile(
+                    icon: Icons.business_outlined,
+                    label: 'Vendors',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushPage(const VendorScreen());
+                    },
+                  ),
+                  _DrawerTile(
+                    icon: Icons.people_outline,
+                    label: 'Clients',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushPage(const ClientScreen());
+                    },
+                  ),
                   _DrawerTile(
                     icon: Icons.description_outlined,
                     label: 'Event Reports',
@@ -115,46 +108,52 @@ class AppDrawer extends ConsumerWidget {
                       context.pushPage(const EventFinancialReportScreen());
                     },
                   ),
+                  _DrawerTile(
+                    icon: Icons.receipt_long_outlined,
+                    label: 'Invoices & Billing',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushPage(const EventInvoicesScreen());
+                    },
+                  ),
+                  _DrawerTile(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: 'Financial Ledger',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushPage(const FinancialLedgerScreen());
+                    },
+                  ),
+                ],
+                if (role == UserRole.founder) ...[
+                  _DrawerTile(
+                    icon: Icons.analytics_outlined,
+                    label: 'Revenue Summary',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushPage(const RevenueSummaryScreen());
+                    },
+                  ),
+                ],
                 _DrawerTile(
-                  icon: Icons.people_outline,
-                  label: 'Clients',
+                  icon: Icons.picture_as_pdf_outlined,
+                  label: 'Company Profile & Share',
                   onTap: () {
                     Navigator.pop(context);
-                    context.pushPage(const ClientScreen());
+                    context.pushPage(const SynologyCompanyPdfScreen());
                   },
                 ),
-                _DrawerTile(
-                  icon: Icons.business_outlined,
-                  label: 'Vendors',
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.pushPage(const VendorScreen());
-                  },
-                ),
-                _DrawerTile(
-                  icon: Icons.analytics_outlined,
-                  label: 'Financials',
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.pushPage(const RevenueSummaryScreen());
-                  },
-                ),
-                _DrawerTile(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'Financial Ledger',
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.pushPage(const FinancialLedgerScreen());
-                  },
-                ),
-                _DrawerTile(
-                  icon: Icons.calendar_today_outlined,
-                  label: 'Calendar',
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.pushPage(const CalendarScreen());
-                  },
-                ),
+                if (role == UserRole.admin ||
+                    role == UserRole.founder ||
+                    role == UserRole.staff)
+                  _DrawerTile(
+                    icon: Icons.calendar_today_outlined,
+                    label: 'Calendar',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushPage(const CalendarScreen());
+                    },
+                  ),
                 const Divider(indent: 16, endIndent: 16),
                 _DrawerTile(
                   icon: Icons.settings_outlined,

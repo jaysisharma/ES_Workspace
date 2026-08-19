@@ -5,6 +5,7 @@ import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/presentation/providers/purchase_order_providers.dart';
 import 'package:order_app/presentation/screens/common/orders/create_purchase_order_screen.dart';
 import 'package:order_app/presentation/screens/common/orders/purchase_order_details_screen.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
 class PurchaseOrderListScreen extends ConsumerWidget {
   const PurchaseOrderListScreen({super.key});
@@ -126,13 +127,22 @@ class PurchaseOrderListScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error: $e')),
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'purchase_order_list_fab',
-        onPressed: () => Navigator.push(
-          context,
-          SlidePageRoute(page: const CreatePurchaseOrderScreen()),
-        ),
-        child: const Icon(Icons.add),
+      floatingActionButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (Navigator.canPop(context)) ...[
+            const BottomRightBackButton(),
+            const SizedBox(width: 12),
+          ],
+          FloatingActionButton(
+            heroTag: 'purchase_order_list_fab',
+            onPressed: () => Navigator.push(
+              context,
+              SlidePageRoute(page: const CreatePurchaseOrderScreen()),
+            ),
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }

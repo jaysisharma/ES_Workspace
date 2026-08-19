@@ -508,6 +508,64 @@ class OrderPdfService {
     return generatePurchaseOrderPdf(po: po, pageFormat: pageFormat, onProgress: onProgress);
   }
 
+  static Future<Uint8List> generateInvoicePdf({
+    required OrderEntity order,
+    required List<OrderItemEntity> items,
+    List<ExpenseEntity> additionalRevenue = const [],
+    String invoiceType = 'TAX INVOICE', // 'TAX INVOICE' or 'PROFORMA INVOICE'
+    String companyName = 'Event Solution Pvt Ltd',
+    String companyAddress = 'Jwagal - 10, Lalitpur',
+    String companyPhone = 'Ph: 01-5268535, 01-5268103',
+    String companyVatNo = '601234567',
+    String? buyerName,
+    String? buyerAddress,
+    String? buyerVatNo,
+    String paymentTerms = 'Cash / Credit / Cheque',
+    String defaultHsCode = '998399',
+    double discount = 0.0,
+    double discountRate = 0.0,
+    double managementCharge = 0.0,
+    double managementChargeRate = 0.0,
+    double? customVatRate,
+    double advanceReceived = 0.0,
+    String? invoiceNumber,
+    DateTime? invoiceDate,
+    String? manualAmountInWords,
+    PdfPageFormat pageFormat = PdfPageFormat.a4,
+    void Function(String)? onProgress,
+  }) async {
+    await _loadAssets();
+    return ReportsPdfBuilder.generateInvoicePdf(
+      order: order,
+      items: items,
+      additionalRevenue: additionalRevenue,
+      logoBytes: _cachedLogoBytes!,
+      font: _cachedRegularFont!,
+      boldFont: _cachedBoldFont!,
+      invoiceType: invoiceType,
+      companyName: companyName,
+      companyAddress: companyAddress,
+      companyPhone: companyPhone,
+      companyVatNo: companyVatNo,
+      buyerName: buyerName,
+      buyerAddress: buyerAddress,
+      buyerVatNo: buyerVatNo,
+      paymentTerms: paymentTerms,
+      defaultHsCode: defaultHsCode,
+      discount: discount,
+      discountRate: discountRate,
+      managementCharge: managementCharge,
+      managementChargeRate: managementChargeRate,
+      customVatRate: customVatRate,
+      advanceReceived: advanceReceived,
+      invoiceNumber: invoiceNumber,
+      invoiceDate: invoiceDate,
+      manualAmountInWords: manualAmountInWords,
+      pageFormat: pageFormat,
+      onProgress: onProgress,
+    );
+  }
+
   static Future<Uint8List> generateFinancialLedgerPdf({
     required List<Map<String, dynamic>> ledgerEntries,
     required double totalRevenue,

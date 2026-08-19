@@ -187,7 +187,7 @@ class _AdminManualAttendanceDialogState
                                   fontWeight: FontWeight.bold,
                                   color: s == AttendanceStatus.present
                                       ? Colors.green
-                                      : s == AttendanceStatus.late
+                                      : s == AttendanceStatus.halfDay
                                           ? Colors.orange
                                           : Colors.red)),
                         ))

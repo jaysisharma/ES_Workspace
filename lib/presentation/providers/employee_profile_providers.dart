@@ -37,6 +37,18 @@ class EmployeeProfileNotifier extends Notifier<void> {
     await repository.saveEmployeeProfile(profile);
     ref.invalidate(employeeProfilesStreamProvider);
   }
+
+  Future<void> deleteProfile(String profileId) async {
+    final repository = ref.read(employeeProfileRepositoryProvider);
+    await repository.deleteEmployeeProfile(profileId);
+    ref.invalidate(employeeProfilesStreamProvider);
+  }
+
+  Future<void> deleteProfileByUserId(String userId) async {
+    final repository = ref.read(employeeProfileRepositoryProvider);
+    await repository.deleteEmployeeProfileByUserId(userId);
+    ref.invalidate(employeeProfilesStreamProvider);
+  }
 }
 
 final employeeProfileNotifierProvider =

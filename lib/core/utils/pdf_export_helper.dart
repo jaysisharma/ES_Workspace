@@ -3,28 +3,28 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
+import 'package:order_app/core/services/export_directory_service.dart';
 
 class PdfExportHelper {
   /// Exports and shares or opens a PDF cleanly across all platforms (macOS, Windows, iOS, Android, Web)
-  /// using OpenFilex to open in native apps (e.g. Preview on macOS).
+  /// using ExportDirectoryService to save into configured destination and categorized subfolders.
   static Future<void> exportAndSharePdf({
     required BuildContext context,
     required Uint8List pdfBytes,
     required String filename,
     bool forcePrintLayout = false,
+    ExportCategory? category,
   }) async {
     final sanitizedFilename = filename.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
 
     try {
       if (!kIsWeb) {
-        // 1. Save PDF file to temporary directory
-        final tempDir = await getTemporaryDirectory();
-        if (!await tempDir.exists()) {
-          await tempDir.create(recursive: true);
-        }
-        final file = File('${tempDir.path}/$sanitizedFilename');
+        // 1. Resolve destination directory using ExportDirectoryService (custom path + auto-arranged subfolders)
+        final effectiveCategory = category ?? ExportDirectoryService.deduceCategory(filename);
+        final targetDir = await ExportDirectoryService.resolveExportDirectory(category: effectiveCategory);
+
+        final file = File('${targetDir.path}/$sanitizedFilename');
         await file.parent.create(recursive: true);
         await file.writeAsBytes(pdfBytes);
         debugPrint('PdfExportHelper: PDF saved to file: ${file.path}');

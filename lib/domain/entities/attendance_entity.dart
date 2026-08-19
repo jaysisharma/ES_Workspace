@@ -1,15 +1,12 @@
 enum AttendanceStatus {
   present,
-  late,
-  absent,
-  halfDay;
+  halfDay,
+  absent;
 
   String get displayName {
     switch (this) {
       case AttendanceStatus.present:
         return 'Present';
-      case AttendanceStatus.late:
-        return 'Late';
       case AttendanceStatus.absent:
         return 'Absent';
       case AttendanceStatus.halfDay:
@@ -20,9 +17,8 @@ enum AttendanceStatus {
   static AttendanceStatus fromString(String value) {
     switch (value.toLowerCase()) {
       case 'present':
-        return AttendanceStatus.present;
       case 'late':
-        return AttendanceStatus.late;
+        return AttendanceStatus.present;
       case 'absent':
         return AttendanceStatus.absent;
       case 'halfday':

@@ -68,7 +68,10 @@ class _AdminAttendanceFilterBarWidgetState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final nepaliDateLabel = formatNepaliDate(widget.selectedDate, 'yyyy MMMM dd');
+    final nepaliDateLabel = formatNepaliDate(
+      widget.selectedDate,
+      'yyyy MMMM dd',
+    );
     final nepaliMonthLabel = formatNepaliDate(widget.selectedDate, 'yyyy MMMM');
 
     // Filter staff list by search query if typed
@@ -89,8 +92,11 @@ class _AdminAttendanceFilterBarWidgetState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Row 1: View Mode Switcher + Nepali Date/Month Picker Trigger
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            runSpacing: 10,
+            spacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               // Segmented View Switcher
               SegmentedButton<AttendanceViewMode>(
@@ -107,7 +113,8 @@ class _AdminAttendanceFilterBarWidgetState
                   ),
                 ],
                 selected: {widget.viewMode},
-                onSelectionChanged: (set) => widget.onViewModeChanged(set.first),
+                onSelectionChanged: (set) =>
+                    widget.onViewModeChanged(set.first),
                 style: const ButtonStyle(
                   visualDensity: VisualDensity.compact,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,

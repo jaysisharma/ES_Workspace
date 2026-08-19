@@ -11,6 +11,8 @@ class AdminAttendanceMonthViewWidget extends StatelessWidget {
   final Function(AttendanceEntity, AttendanceStatus) onStatusChanged;
   final Function(String, String) onSelfieTap;
 
+  final VoidCallback? onExportExcel;
+
   const AdminAttendanceMonthViewWidget({
     super.key,
     required this.monthlyRecords,
@@ -18,6 +20,7 @@ class AdminAttendanceMonthViewWidget extends StatelessWidget {
     required this.selectedStaff,
     required this.onStatusChanged,
     required this.onSelfieTap,
+    this.onExportExcel,
   });
 
   @override
@@ -30,7 +33,6 @@ class AdminAttendanceMonthViewWidget extends StatelessWidget {
     // Aggregate monthly statistics
     final totalRecords = monthlyRecords.length;
     final presentCount = monthlyRecords.where((r) => r.status == AttendanceStatus.present).length;
-    final lateCount = monthlyRecords.where((r) => r.status == AttendanceStatus.late).length;
     final halfDayCount = monthlyRecords.where((r) => r.status == AttendanceStatus.halfDay).length;
     final outOfBoundsCount = monthlyRecords.where((r) => !r.isWithinGeofence).length;
 
@@ -67,15 +69,33 @@ class AdminAttendanceMonthViewWidget extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    selectedStaff != null
-                        ? '${selectedStaff!.name}\'s Monthly Report'
-                        : 'Company Monthly Overview',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          selectedStaff != null
+                              ? '${selectedStaff!.name}\'s Monthly Report'
+                              : 'Company Monthly Overview',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (selectedStaff != null)
+                          Text(
+                            selectedStaff!.role.name.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
@@ -106,8 +126,8 @@ class AdminAttendanceMonthViewWidget extends StatelessWidget {
                   ),
                   _buildStatBadge(
                     context,
-                    'Late / Half',
-                    '${lateCount + halfDayCount}',
+                    'Half Days',
+                    '$halfDayCount',
                     colorScheme.tertiary,
                   ),
                   _buildStatBadge(
@@ -124,6 +144,34 @@ class AdminAttendanceMonthViewWidget extends StatelessWidget {
                   ),
                 ],
               ),
+
+              if (onExportExcel != null && monthlyRecords.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: onExportExcel,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    icon: const Icon(Icons.table_chart_rounded, size: 18),
+                    label: Text(
+                      selectedStaff != null
+                          ? 'Export ${selectedStaff!.name}\'s Month Excel'
+                          : 'Export Monthly Attendance to Excel',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

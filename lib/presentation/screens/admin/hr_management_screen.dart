@@ -15,13 +15,17 @@ import 'package:order_app/presentation/providers/employee_profile_providers.dart
 import 'package:order_app/presentation/providers/hr_providers.dart';
 import 'package:order_app/presentation/providers/notification_notifier.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
+import 'package:order_app/presentation/providers/user_providers.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
 import 'package:order_app/presentation/screens/admin/employee_detail_screen.dart';
 import 'package:order_app/presentation/screens/admin/add_employee_screen.dart';
 import 'package:order_app/presentation/widgets/hr_management/admin_manual_attendance_dialog.dart';
+import 'package:order_app/presentation/widgets/hr_management/leave_cycle_settings_dialog.dart';
 import 'package:order_app/presentation/widgets/calendar/nepali_date_picker_dialog.dart';
 import 'package:order_app/core/services/fcm_sender.dart';
-import 'package:order_app/presentation/widgets/hr_management/hr_metrics_banner.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
+
+import '../../widgets/hr_management/hr_metrics_banner.dart';
 
 class HrManagementScreen extends ConsumerStatefulWidget {
   const HrManagementScreen({super.key});
@@ -66,7 +70,10 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
     super.dispose();
   }
 
-  Future<void> _printSingleEmployeePdf(BuildContext context, UserEntity user) async {
+  Future<void> _printSingleEmployeePdf(
+    BuildContext context,
+    UserEntity user,
+  ) async {
     try {
       final profiles = await ref.read(employeeProfilesStreamProvider.future);
       final profile = profiles.cast<EmployeeProfileEntity>().firstWhere(
@@ -86,7 +93,8 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
         user: user,
       );
 
-      final fileName = 'Employee_Profile_${user.name.replaceAll(RegExp(r'[ ,]+'), '_')}.pdf';
+      final fileName =
+          'Employee_Profile_${user.name.replaceAll(RegExp(r'[ ,]+'), '_')}.pdf';
 
       if (!context.mounted) return;
       await Navigator.push(
@@ -123,7 +131,8 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
         users: users,
       );
 
-      final fileName = 'Staff_Directory_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final fileName =
+          'Staff_Directory_${DateTime.now().millisecondsSinceEpoch}.pdf';
 
       if (!mounted) return;
       await Navigator.push(
@@ -144,6 +153,125 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
           backgroundColor: Colors.red,
         ),
       );
+    }
+  }
+
+  Future<void> _confirmDeleteEmployee(BuildContext context, UserEntity user) async {
+    bool deleteUserAccount = true;
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.delete_forever_rounded, color: Colors.red, size: 24),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Delete Employee Record',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to permanently delete "${user.name}" from employee records?',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                ),
+                child: const Text(
+                  '⚠️ This will permanently remove their HR profile, payroll data, documents, and credentials.',
+                  style: TextStyle(fontSize: 12, color: Colors.redAccent),
+                ),
+              ),
+              const SizedBox(height: 14),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                value: deleteUserAccount,
+                activeColor: Colors.red,
+                title: Text(
+                  'Also remove user login (${user.email})',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                onChanged: (val) {
+                  setDialogState(() {
+                    deleteUserAccount = val ?? false;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              child: const Text('Delete Permanently', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (shouldDelete == true && mounted) {
+      try {
+        await ref
+            .read(employeeProfileNotifierProvider.notifier)
+            .deleteProfileByUserId(user.id);
+
+        if (deleteUserAccount) {
+          await ref
+              .read(userNotifierProvider.notifier)
+              .deleteUser(user.id);
+        }
+
+        ref.invalidate(usersStreamProvider);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Employee "${user.name}" deleted successfully.'),
+              backgroundColor: Colors.green.shade700,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete employee: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -169,32 +297,50 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.picture_as_pdf_outlined, color: colorScheme.primary),
+            icon: Icon(
+              Icons.picture_as_pdf_outlined,
+              color: colorScheme.primary,
+            ),
             tooltip: 'Print Staff Directory PDF',
             onPressed: () => _printStaffDirectoryPdf(usersAsync, profilesAsync),
           ),
+          IconButton(
+            icon: const Icon(Icons.event_repeat),
+            tooltip: 'Leave Cycle & Reset Settings',
+            onPressed: () => showLeaveCycleSettingsDialog(context, ref),
+          ),
+          const SizedBox(width: 8),
           isMobile
               ? IconButton(
                   icon: const Icon(Icons.person_add_alt_1),
                   tooltip: 'New Employee Record',
                   onPressed: () {
-                    context.pushPage(const AddEmployeeScreen(
+                    context.pushPage(
+                      const AddEmployeeScreen(
                         userId: '',
                         userName: '',
-                        isNewUser: true));
+                        isNewUser: true,
+                      ),
+                    );
                   },
                 )
               : ElevatedButton.icon(
                   icon: const Icon(Icons.person_add_alt_1, size: 16),
                   label: const Text('New Employee Record'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                   onPressed: () {
-                    context.pushPage(const AddEmployeeScreen(
+                    context.pushPage(
+                      const AddEmployeeScreen(
                         userId: '',
                         userName: '',
-                        isNewUser: true));
+                        isNewUser: true,
+                      ),
+                    );
                   },
                 ),
           const SizedBox(width: 12),
@@ -216,13 +362,11 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
           ],
         ),
       ),
+      floatingActionButton: const BottomRightBackButton(),
       body: usersAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error loading users: $e')),
         data: (users) {
-          final staffUsers = users
-              .where((u) => u.role == UserRole.staff)
-              .toList();
           final allUsers = users;
 
           final todayAttendance = attendanceAsync.maybeWhen(
@@ -259,7 +403,7 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
             children: [
               // Top Metric Banner
               HrMetricsBannerWidget(
-                totalStaff: staffUsers.length,
+                totalStaff: allUsers.length,
                 checkedIn: checkedInCount,
                 onLeave: onLeaveToday,
                 pendingLeaves: pendingLeaves.length,
@@ -286,7 +430,7 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                     // Tab 4: Payroll & Metrics
                     _buildPayrollMetricsTab(
                       context,
-                      staffUsers,
+                      allUsers,
                       orders,
                       todayAttendance,
                     ),
@@ -299,8 +443,6 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
       ),
     );
   }
-
-
 
   // TAB 1: Staff Directory
   Widget _buildStaffDirectoryTab(
@@ -373,29 +515,29 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
 
                       final isMobile = MediaQuery.of(context).size.width < 600;
 
+                      final roleColor = u.role == UserRole.admin
+                          ? Colors.purple
+                          : u.role == UserRole.founder
+                          ? Colors.blue
+                          : u.role == UserRole.finance
+                          ? Colors.orange
+                          : Colors.green;
+
                       final roleBadge = Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: u.role == UserRole.admin
-                              ? Colors.purple.withValues(alpha: 0.1)
-                              : u.role == UserRole.founder
-                              ? Colors.blue.withValues(alpha: 0.1)
-                              : Colors.green.withValues(alpha: 0.1),
+                          color: roleColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          u.role.name.toUpperCase(),
+                          u.role.displayName.toUpperCase(),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: u.role == UserRole.admin
-                                ? Colors.purple
-                                : u.role == UserRole.founder
-                                ? Colors.blue
-                                : Colors.green,
+                            color: roleColor,
                           ),
                         ),
                       );
@@ -423,21 +565,31 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                                   Row(
                                     children: [
                                       (() {
-                                        final profile = profiles.where((p) => p.userId == u.id).firstOrNull;
+                                        final profile = profiles
+                                            .where((p) => p.userId == u.id)
+                                            .firstOrNull;
                                         final photoUrl = profile?.photoUrl;
                                         return CircleAvatar(
-                                          backgroundColor: colorScheme.primaryContainer,
-                                          foregroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                                          backgroundColor:
+                                              colorScheme.primaryContainer,
+                                          foregroundImage:
+                                              (photoUrl != null &&
+                                                  photoUrl.isNotEmpty)
                                               ? NetworkImage(photoUrl)
                                               : null,
-                                          onForegroundImageError: (photoUrl != null && photoUrl.isNotEmpty)
+                                          onForegroundImageError:
+                                              (photoUrl != null &&
+                                                  photoUrl.isNotEmpty)
                                               ? (_, __) {}
                                               : null,
                                           child: Text(
-                                            u.name.isNotEmpty ? u.name[0].toUpperCase() : 'U',
+                                            u.name.isNotEmpty
+                                                ? u.name[0].toUpperCase()
+                                                : 'U',
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
-                                              color: colorScheme.onPrimaryContainer,
+                                              color: colorScheme
+                                                  .onPrimaryContainer,
                                             ),
                                           ),
                                         );
@@ -455,11 +607,13 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                                                   child: Text(
                                                     u.name,
                                                     style: const TextStyle(
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       fontSize: 15,
                                                     ),
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                   ),
                                                 ),
                                                 const SizedBox(width: 8),
@@ -506,9 +660,14 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                                         ),
                                       ),
                                       IconButton(
-                                        icon: Icon(Icons.picture_as_pdf_outlined, size: 18, color: colorScheme.primary),
+                                        icon: Icon(
+                                          Icons.picture_as_pdf_outlined,
+                                          size: 18,
+                                          color: colorScheme.primary,
+                                        ),
                                         tooltip: 'Print Employee PDF',
-                                        onPressed: () => _printSingleEmployeePdf(context, u),
+                                        onPressed: () =>
+                                            _printSingleEmployeePdf(context, u),
                                       ),
                                       TextButton.icon(
                                         icon: const Icon(
@@ -517,8 +676,20 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                                         ),
                                         label: const Text('View HR File'),
                                         onPressed: () {
-                                          context.pushPage(EmployeeDetailScreen(user: u));
+                                          context.pushPage(
+                                            EmployeeDetailScreen(user: u),
+                                          );
                                         },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 18,
+                                          color: Colors.redAccent,
+                                        ),
+                                        tooltip: 'Delete Employee Record',
+                                        onPressed: () =>
+                                            _confirmDeleteEmployee(context, u),
                                       ),
                                     ],
                                   ),
@@ -540,18 +711,24 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                         ),
                         child: ListTile(
                           leading: (() {
-                            final profile = profiles.where((p) => p.userId == u.id).firstOrNull;
+                            final profile = profiles
+                                .where((p) => p.userId == u.id)
+                                .firstOrNull;
                             final photoUrl = profile?.photoUrl;
                             return CircleAvatar(
                               backgroundColor: colorScheme.primaryContainer,
-                              foregroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                              foregroundImage:
+                                  (photoUrl != null && photoUrl.isNotEmpty)
                                   ? NetworkImage(photoUrl)
                                   : null,
-                              onForegroundImageError: (photoUrl != null && photoUrl.isNotEmpty)
+                              onForegroundImageError:
+                                  (photoUrl != null && photoUrl.isNotEmpty)
                                   ? (_, __) {}
                                   : null,
                               child: Text(
-                                u.name.isNotEmpty ? u.name[0].toUpperCase() : 'U',
+                                u.name.isNotEmpty
+                                    ? u.name[0].toUpperCase()
+                                    : 'U',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: colorScheme.onPrimaryContainer,
@@ -584,9 +761,14 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon: Icon(Icons.picture_as_pdf_outlined, size: 18, color: colorScheme.primary),
+                                icon: Icon(
+                                  Icons.picture_as_pdf_outlined,
+                                  size: 18,
+                                  color: colorScheme.primary,
+                                ),
                                 tooltip: 'Print Employee PDF',
-                                onPressed: () => _printSingleEmployeePdf(context, u),
+                                onPressed: () =>
+                                    _printSingleEmployeePdf(context, u),
                               ),
                               OutlinedButton.icon(
                                 icon: const Icon(
@@ -601,10 +783,22 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                                   ),
                                 ),
                                 onPressed: () {
-                                  context.pushPage(EmployeeDetailScreen(user: u));
+                                  context.pushPage(
+                                    EmployeeDetailScreen(user: u),
+                                  );
                                 },
                               ),
-                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 18,
+                                  color: Colors.redAccent,
+                                ),
+                                tooltip: 'Delete Employee Record',
+                                onPressed: () =>
+                                    _confirmDeleteEmployee(context, u),
+                              ),
+                              const SizedBox(width: 4),
                               Switch(
                                 value: u.isActive,
                                 onChanged: (val) async {
@@ -694,18 +888,18 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                             backgroundColor:
                                 item.status == AttendanceStatus.present
                                 ? Colors.green.withValues(alpha: 0.1)
-                                : item.status == AttendanceStatus.late
+                                : item.status == AttendanceStatus.halfDay
                                 ? Colors.orange.withValues(alpha: 0.1)
                                 : Colors.red.withValues(alpha: 0.1),
                             child: Icon(
                               item.status == AttendanceStatus.present
                                   ? Icons.check
-                                  : item.status == AttendanceStatus.late
-                                  ? Icons.schedule
+                                  : item.status == AttendanceStatus.halfDay
+                                  ? Icons.timelapse
                                   : Icons.close,
                               color: item.status == AttendanceStatus.present
                                   ? Colors.green
-                                  : item.status == AttendanceStatus.late
+                                  : item.status == AttendanceStatus.halfDay
                                   ? Colors.orange
                                   : Colors.red,
                             ),
@@ -768,17 +962,30 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
 
     // Filter requests
     final filtered = requests.where((l) {
-      final matchesSearch =
-          l.staffName.toLowerCase().contains(_leaveSearchQuery.toLowerCase());
+      final matchesSearch = l.staffName.toLowerCase().contains(
+        _leaveSearchQuery.toLowerCase(),
+      );
 
       if (!matchesSearch) return false;
 
       if (_leaveStartDate != null && _leaveEndDate != null) {
         // Normalizing date ranges to only check date parts
-        final startL = DateTime(l.startDate.year, l.startDate.month, l.startDate.day);
+        final startL = DateTime(
+          l.startDate.year,
+          l.startDate.month,
+          l.startDate.day,
+        );
         final endL = DateTime(l.endDate.year, l.endDate.month, l.endDate.day);
-        final startQ = DateTime(_leaveStartDate!.year, _leaveStartDate!.month, _leaveStartDate!.day);
-        final endQ = DateTime(_leaveEndDate!.year, _leaveEndDate!.month, _leaveEndDate!.day);
+        final startQ = DateTime(
+          _leaveStartDate!.year,
+          _leaveStartDate!.month,
+          _leaveStartDate!.day,
+        );
+        final endQ = DateTime(
+          _leaveEndDate!.year,
+          _leaveEndDate!.month,
+          _leaveEndDate!.day,
+        );
 
         // Standard overlap: !(l.startDate > Q.end || l.endDate < Q.start)
         final overlaps = !(startL.isAfter(endQ) || endL.isBefore(startQ));
@@ -792,10 +999,22 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
     if (_leaveStartDate != null && _leaveEndDate != null) {
       for (final l in filtered) {
         if (l.status == LeaveStatus.approved) {
-          final startL = DateTime(l.startDate.year, l.startDate.month, l.startDate.day);
+          final startL = DateTime(
+            l.startDate.year,
+            l.startDate.month,
+            l.startDate.day,
+          );
           final endL = DateTime(l.endDate.year, l.endDate.month, l.endDate.day);
-          final startQ = DateTime(_leaveStartDate!.year, _leaveStartDate!.month, _leaveStartDate!.day);
-          final endQ = DateTime(_leaveEndDate!.year, _leaveEndDate!.month, _leaveEndDate!.day);
+          final startQ = DateTime(
+            _leaveStartDate!.year,
+            _leaveStartDate!.month,
+            _leaveStartDate!.day,
+          );
+          final endQ = DateTime(
+            _leaveEndDate!.year,
+            _leaveEndDate!.month,
+            _leaveEndDate!.day,
+          );
 
           final overlapStart = startL.isAfter(startQ) ? startL : startQ;
           final overlapEnd = endL.isBefore(endQ) ? endL : endQ;
@@ -861,7 +1080,10 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                   style: const TextStyle(fontSize: 12),
                 ),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 12,
+                  ),
                 ),
               ),
               if (_leaveSearchQuery.isNotEmpty || _leaveStartDate != null) ...[
@@ -915,10 +1137,7 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                         const SizedBox(height: 2),
                         Text(
                           'Period: ${formatNepaliDate(_leaveStartDate!, "dd MMM yyyy")} to ${formatNepaliDate(_leaveEndDate!, "dd MMM yyyy")}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: labelColor,
-                          ),
+                          style: TextStyle(fontSize: 11, color: labelColor),
                         ),
                       ],
                     ),
@@ -936,9 +1155,23 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
             ),
           ],
 
-          Text(
-            'Leave & Absence Requests (${filtered.length})',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Leave & Absence Requests (${filtered.length})',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.event_repeat, size: 14),
+                label: const Text('Leave Reset / Cycle', style: TextStyle(fontSize: 12)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: () => showLeaveCycleSettingsDialog(context, ref),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -956,9 +1189,7 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                       if (index == paginatedList.length) {
                         return const Padding(
                           padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Center(
-                            child: CircularProgressIndicator(),
-                          ),
+                          child: Center(child: CircularProgressIndicator()),
                         );
                       }
                       final l = paginatedList[index];
@@ -1137,7 +1368,9 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                 final bonus = profile?.bonus ?? 0.0;
                 final gross = profile?.grossSalary ?? (basic + da + bonus);
                 final tds = profile?.tds ?? 0.0;
-                final net = profile?.netSalary ?? (gross - (profile?.totalDeductions ?? 0.0));
+                final net =
+                    profile?.netSalary ??
+                    (gross - (profile?.totalDeductions ?? 0.0));
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 10),

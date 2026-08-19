@@ -14,7 +14,7 @@ import 'core/services/push_notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GoogleFonts.config.allowRuntimeFetching = false;
+  GoogleFonts.config.allowRuntimeFetching = true;
 
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:order_app/core/calendar/nepali_calendar_engine.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/share_helper.dart';
@@ -12,6 +14,8 @@ import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/domain/entities/leave_request_entity.dart';
 import 'package:order_app/presentation/providers/employee_profile_providers.dart';
 import 'package:order_app/presentation/providers/hr_providers.dart';
+import 'package:order_app/presentation/providers/settings_provider.dart';
+import 'package:order_app/presentation/providers/user_providers.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
 import 'package:order_app/presentation/screens/admin/add_employee_screen.dart';
 
@@ -72,6 +76,313 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     }
   }
 
+  Future<void> _confirmDeleteEmployee(BuildContext context, EmployeeProfileEntity profile) async {
+    bool deleteUserAccount = true;
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.delete_forever_rounded, color: Colors.red, size: 24),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Delete Employee Record',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to permanently delete "${profile.name}" from employee records?',
+                style: const TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                ),
+                child: const Text(
+                  '⚠️ This will permanently remove their HR profile, payroll data, documents, and credentials.',
+                  style: TextStyle(fontSize: 12, color: Colors.redAccent),
+                ),
+              ),
+              const SizedBox(height: 14),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                value: deleteUserAccount,
+                activeColor: Colors.red,
+                title: Text(
+                  'Also remove user login (${widget.user.email})',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                onChanged: (val) {
+                  setDialogState(() {
+                    deleteUserAccount = val ?? false;
+                  });
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              child: const Text('Delete Permanently', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (shouldDelete == true && mounted) {
+      try {
+        await ref
+            .read(employeeProfileNotifierProvider.notifier)
+            .deleteProfileByUserId(widget.user.id);
+
+        if (deleteUserAccount) {
+          await ref
+              .read(userNotifierProvider.notifier)
+              .deleteUser(widget.user.id);
+        }
+
+        ref.invalidate(usersStreamProvider);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Employee "${profile.name}" deleted successfully.'),
+              backgroundColor: Colors.green.shade700,
+            ),
+          );
+          Navigator.pop(context);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete employee: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _showChangeCredentialsDialog(
+    BuildContext context,
+    EmployeeProfileEntity profile,
+  ) async {
+    final emailController = TextEditingController(text: widget.user.email);
+    final passwordController = TextEditingController();
+    UserRole selectedRole = widget.user.role;
+    bool isSaving = false;
+    bool obscurePassword = true;
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Row(
+            children: [
+              Icon(Icons.lock_reset, color: Color(0xFF0075db)),
+              SizedBox(width: 8),
+              Text('Account & Access Role',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Admin can update the login email, change password, and reassign system access roles directly.',
+                  style: TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Login Email Address',
+                    prefixIcon: Icon(Icons.email_outlined, size: 20),
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: passwordController,
+                  obscureText: obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'New Password (Optional / Min 6 chars)',
+                    hintText: 'Leave blank to keep current password',
+                    prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        size: 20,
+                      ),
+                      onPressed: () =>
+                          setDialogState(() => obscurePassword = !obscurePassword),
+                    ),
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'System Access Role',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    isDense: true,
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<UserRole>(
+                      value: selectedRole,
+                      isExpanded: true,
+                      items: UserRole.values.map((role) {
+                        return DropdownMenuItem<UserRole>(
+                          value: role,
+                          child: Row(
+                            children: [
+                              Icon(
+                                role == UserRole.admin
+                                    ? Icons.admin_panel_settings
+                                    : role == UserRole.founder
+                                    ? Icons.stars
+                                    : role == UserRole.finance
+                                    ? Icons.account_balance
+                                    : Icons.badge_outlined,
+                                size: 18,
+                                color: role == UserRole.admin
+                                    ? Colors.purple
+                                    : role == UserRole.founder
+                                    ? Colors.blue
+                                    : role == UserRole.finance
+                                    ? Colors.orange
+                                    : Colors.green,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(role.displayName),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (newRole) {
+                        if (newRole != null) {
+                          setDialogState(() => selectedRole = newRole);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0075db),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      final newEmail = emailController.text.trim();
+                      final newPassword = passwordController.text.trim();
+
+                      if (newPassword.isNotEmpty && newPassword.length < 6) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content:
+                                  Text('Password must be at least 6 characters.')),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isSaving = true);
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(widget.user.id)
+                            .update({
+                          if (newEmail.isNotEmpty) 'email': newEmail,
+                          'role': selectedRole.name,
+                          'updatedAt': FieldValue.serverTimestamp(),
+                        });
+
+                        ref.invalidate(usersStreamProvider);
+                        if (context.mounted) {
+                          Navigator.pop(dialogCtx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Account details and role updated successfully!'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isSaving = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text('Error updating account: $e'),
+                                backgroundColor: Colors.red),
+                          );
+                        }
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -109,6 +420,11 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             onPressed: () => _printEmployeePdf(profile, share: true),
           ),
           IconButton(
+            icon: const Icon(Icons.lock_reset, color: Color(0xFF0075db)),
+            tooltip: 'Change Password & Role',
+            onPressed: () => _showChangeCredentialsDialog(context, profile),
+          ),
+          IconButton(
             icon: const Icon(Icons.edit_note),
             tooltip: 'Edit HR Profile',
             onPressed: () {
@@ -116,8 +432,14 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   userId: widget.user.id,
                   userName: widget.user.name,
                   userEmail: widget.user.email,
+                  userRole: widget.user.role,
                   initialProfile: profile));
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+            tooltip: 'Delete Employee Record',
+            onPressed: () => _confirmDeleteEmployee(context, profile),
           ),
           const SizedBox(width: 8),
         ],
@@ -415,16 +737,30 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         CurrencyFormatter.formatWithLabel(profile.basicSalary, 'NPR'),
                         labelColor,
                         textColor),
-                    _buildDetailRow(
-                        'Dearness Allowance (DA)',
-                        CurrencyFormatter.formatWithLabel(profile.dearnessAllowance, 'NPR'),
-                        labelColor,
-                        textColor),
-                    _buildDetailRow(
-                        'Bonus / Allowances',
-                        CurrencyFormatter.formatWithLabel(profile.bonus, 'NPR'),
-                        labelColor,
-                        textColor),
+                    if (profile.fuelAllowance > 0)
+                      _buildDetailRow(
+                          'Fuel Allowance',
+                          CurrencyFormatter.formatWithLabel(profile.fuelAllowance, 'NPR'),
+                          labelColor,
+                          textColor),
+                    if (profile.communicationAllowance > 0)
+                      _buildDetailRow(
+                          'Communication Allowance',
+                          CurrencyFormatter.formatWithLabel(profile.communicationAllowance, 'NPR'),
+                          labelColor,
+                          textColor),
+                    if (profile.dearnessAllowance > 0)
+                      _buildDetailRow(
+                          'Dearness Allowance (DA)',
+                          CurrencyFormatter.formatWithLabel(profile.dearnessAllowance, 'NPR'),
+                          labelColor,
+                          textColor),
+                    if (profile.bonus > 0)
+                      _buildDetailRow(
+                          'Bonus / Allowances',
+                          CurrencyFormatter.formatWithLabel(profile.bonus, 'NPR'),
+                          labelColor,
+                          textColor),
                     Container(
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       padding: const EdgeInsets.all(10),
@@ -450,23 +786,31 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     ),
                     const SizedBox(height: 6),
                     _buildDetailRow(
-                        'SSF Deduction',
+                        'SSF Contribution',
                         CurrencyFormatter.formatWithLabel(profile.ssf, 'NPR'),
                         labelColor,
                         textColor),
-                    _buildDetailRow(
-                        'CIT Contribution',
-                        CurrencyFormatter.formatWithLabel(profile.cit, 'NPR'),
-                        labelColor,
-                        textColor),
-                    _buildDetailRow(
-                        'Insurance Premium',
-                        CurrencyFormatter.formatWithLabel(profile.insurance, 'NPR'),
-                        labelColor,
-                        textColor),
+                    if (profile.effectiveLifeInsurance > 0)
+                      _buildDetailRow(
+                          'Life Insurance',
+                          CurrencyFormatter.formatWithLabel(profile.effectiveLifeInsurance, 'NPR'),
+                          labelColor,
+                          textColor),
+                    if (profile.effectiveHealthInsurance > 0)
+                      _buildDetailRow(
+                          'Health Insurance',
+                          CurrencyFormatter.formatWithLabel(profile.effectiveHealthInsurance, 'NPR'),
+                          labelColor,
+                          textColor),
+                    if (profile.cit > 0)
+                      _buildDetailRow(
+                          'CIT Contribution',
+                          CurrencyFormatter.formatWithLabel(profile.cit, 'NPR'),
+                          labelColor,
+                          textColor),
                     _buildDetailRow(
                         'TDS (Tax Deducted at Source)',
-                        '${CurrencyFormatter.formatWithLabel(profile.tds, 'NPR')} (${tdsPct.toStringAsFixed(1)}%)',
+                        '${CurrencyFormatter.formatWithLabel(profile.tds, 'NPR')}${tdsPct > 0 ? ' (${tdsPct.toStringAsFixed(1)}%)' : ''}',
                         labelColor,
                         textColor),
                   ],
@@ -476,7 +820,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Net Payable Monthly Salary',
+                  const Text('Net Payable Monthly Salary (In Hand)',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                   Text(
                     CurrencyFormatter.formatWithLabel(profile.netSalary, 'NPR'),
@@ -723,9 +1067,23 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     Color labelColor,
     Color textColor,
   ) {
+    final settings = ref.watch(settingsProvider);
+    final cycleLabel = NepaliCalendarEngine.getLeaveCycleLabel(
+      cycleType: settings.leaveResetCycle,
+      manualStartDate: settings.customLeaveCycleStartDate,
+    );
     final leaveRequestsAsync = ref.watch(leaveRequestsStreamProvider);
     final leaveRequests = leaveRequestsAsync.maybeWhen(
-      data: (list) => list.where((l) => l.staffId == widget.user.id && l.status == LeaveStatus.approved).toList(),
+      data: (list) => list
+          .where((l) =>
+              l.staffId == widget.user.id &&
+              l.status == LeaveStatus.approved &&
+              NepaliCalendarEngine.isWithinActiveLeaveCycle(
+                l.startDate,
+                cycleType: settings.leaveResetCycle,
+                manualStartDate: settings.customLeaveCycleStartDate,
+              ))
+          .toList(),
       orElse: () => <LeaveRequestEntity>[],
     );
 
@@ -733,7 +1091,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       return leaveRequests
           .where((l) => l.leaveType == leaveType)
           .map((l) => l.endDate.difference(l.startDate).inDays + 1)
-          .fold(0, (sum, days) => sum + days);
+          .fold(0, (total, days) => total + days);
     }
 
     final effectiveAllocations = profile.effectiveAllowedLeaves;
@@ -742,7 +1100,34 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.event_repeat, size: 18, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Annual Leave Entitlements ($cycleLabel)',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
               final isMobile = constraints.maxWidth < 600;

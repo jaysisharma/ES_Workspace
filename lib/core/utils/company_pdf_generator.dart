@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -12,7 +13,20 @@ class CompanyPdfGenerator {
     String website = 'https://esworkspace.com',
     PdfPageFormat pageFormat = PdfPageFormat.a4,
   }) async {
-    final pdf = pw.Document();
+    pw.Font? font;
+    pw.Font? boldFont;
+    try {
+      final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+      font = pw.Font.ttf(fontData);
+      final boldData = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
+      boldFont = pw.Font.ttf(boldData);
+    } catch (_) {}
+
+    final pdf = pw.Document(
+      theme: (font != null && boldFont != null)
+          ? pw.ThemeData.withFont(base: font, bold: boldFont)
+          : null,
+    );
 
     final isA5 = pageFormat.width < 500;
 

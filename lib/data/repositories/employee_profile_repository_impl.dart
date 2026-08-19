@@ -21,4 +21,14 @@ class EmployeeProfileRepositoryImpl implements EmployeeProfileRepository {
   Future<void> saveEmployeeProfile(EmployeeProfileEntity profile) {
     return remoteDataSource.saveEmployeeProfile(profile);
   }
+
+  @override
+  Future<void> deleteEmployeeProfile(String profileId) {
+    return remoteDataSource.deleteEmployeeProfile(profileId);
+  }
+
+  @override
+  Future<void> deleteEmployeeProfileByUserId(String userId) {
+    return remoteDataSource.deleteEmployeeProfileByUserId(userId);
+  }
 }

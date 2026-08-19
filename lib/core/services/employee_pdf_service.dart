@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -13,12 +14,36 @@ class EmployeePdfService {
     required EmployeeProfileEntity profile,
     UserEntity? user,
     Uint8List? photoBytes,
-    String companyName = 'ES WORKSPACE',
-    String companyTagline = 'Premier Event Management & Production Solutions',
-    String companyAddress = 'Kathmandu, Nepal | Email: hr@esworkspace.com',
+    String companyName = 'EVENT SOLUTION',
+    String companyTagline = '',
+    String companyAddress = '',
     PdfPageFormat pageFormat = PdfPageFormat.a4,
   }) async {
-    final pdf = pw.Document();
+    pw.Font? font;
+    pw.Font? boldFont;
+    try {
+      final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+      font = pw.Font.ttf(fontData);
+      final boldData = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
+      boldFont = pw.Font.ttf(boldData);
+    } catch (_) {}
+
+    final pdf = pw.Document(
+      theme: (font != null && boldFont != null)
+          ? pw.ThemeData.withFont(base: font, bold: boldFont)
+          : null,
+    );
+
+    pw.MemoryImage? companyLogoImage;
+    try {
+      final logoData = await rootBundle.load('assets/images/event_solution_logo.jpeg');
+      companyLogoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+    } catch (_) {
+      try {
+        final logoData = await rootBundle.load('assets/ESWORKSPACE_app/event_solution_logo.jpeg');
+        companyLogoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+      } catch (_) {}
+    }
 
     pw.MemoryImage? profileImage;
     if (photoBytes != null && photoBytes.isNotEmpty) {
@@ -61,6 +86,97 @@ class EmployeePdfService {
         margin: isA5 ? const pw.EdgeInsets.all(20) : const pw.EdgeInsets.all(32),
         build: (pw.Context context) {
           return [
+            // ── Top Company Brand Header with Logo ───────────────────────────
+            pw.Container(
+              margin: const pw.EdgeInsets.only(bottom: 12),
+              padding: const pw.EdgeInsets.only(bottom: 10),
+              decoration: const pw.BoxDecoration(
+                border: pw.Border(
+                  bottom: pw.BorderSide(color: PdfColors.blue900, width: 1.5),
+                ),
+              ),
+              child: pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Row(
+                    crossAxisAlignment: pw.CrossAxisAlignment.center,
+                    children: [
+                      if (companyLogoImage != null) ...[
+                        pw.Container(
+                          width: 44,
+                          height: 44,
+                          margin: const pw.EdgeInsets.only(right: 12),
+                          decoration: pw.BoxDecoration(
+                            borderRadius: pw.BorderRadius.circular(6),
+                            border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                          ),
+                          child: pw.ClipRRect(
+                            horizontalRadius: 6,
+                            verticalRadius: 6,
+                            child: pw.Image(
+                              companyLogoImage,
+                              width: 44,
+                              height: 44,
+                              fit: pw.BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ],
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            companyName,
+                            style: pw.TextStyle(
+                              fontSize: 16,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.blue900,
+                            ),
+                          ),
+                          if (companyTagline.isNotEmpty) ...[
+                            pw.SizedBox(height: 2),
+                            pw.Text(
+                              companyTagline,
+                              style: const pw.TextStyle(
+                                fontSize: 8,
+                                color: PdfColors.grey700,
+                              ),
+                            ),
+                          ],
+                          if (companyAddress.isNotEmpty) ...[
+                            pw.SizedBox(height: 1),
+                            pw.Text(
+                              companyAddress,
+                              style: const pw.TextStyle(
+                                fontSize: 7.5,
+                                color: PdfColors.grey600,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: pw.BoxDecoration(
+                      color: PdfColors.blue900,
+                      borderRadius: pw.BorderRadius.circular(4),
+                    ),
+                    child: pw.Text(
+                      'EMPLOYEE RECORD',
+                      style: pw.TextStyle(
+                        fontSize: 8.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
             // ── Top Summary Header ──────────────────────────────────────────
             pw.Container(
               padding: const pw.EdgeInsets.all(12),
@@ -182,15 +298,25 @@ class EmployeePdfService {
                 border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
                 children: [
                   _buildTableRow('Basic Monthly Salary', 'NPR ${profile.basicSalary.toStringAsFixed(0)}'),
-                  _buildTableRow('Dearness / Travel Allowance', 'NPR ${profile.dearnessAllowance.toStringAsFixed(0)}'),
-                  _buildTableRow('Performance Bonus / Incentives', 'NPR ${profile.bonus.toStringAsFixed(0)}'),
+                  if (profile.fuelAllowance > 0)
+                    _buildTableRow('Fuel Allowance', 'NPR ${profile.fuelAllowance.toStringAsFixed(0)}'),
+                  if (profile.communicationAllowance > 0)
+                    _buildTableRow('Communication Allowance', 'NPR ${profile.communicationAllowance.toStringAsFixed(0)}'),
+                  if (profile.dearnessAllowance > 0)
+                    _buildTableRow('Dearness / Travel Allowance', 'NPR ${profile.dearnessAllowance.toStringAsFixed(0)}'),
+                  if (profile.bonus > 0)
+                    _buildTableRow('Performance Bonus / Incentives', 'NPR ${profile.bonus.toStringAsFixed(0)}'),
                   _buildTableRow('Gross Salary', 'NPR ${profile.grossSalary.toStringAsFixed(0)}', isBold: true),
                   _buildTableRow('SSF Contribution (Social Security)', 'NPR ${profile.ssf.toStringAsFixed(0)}', isDeduction: true),
-                  _buildTableRow('Citizen Investment Trust (CIT)', 'NPR ${profile.cit.toStringAsFixed(0)}', isDeduction: true),
-                  _buildTableRow('Insurance Contribution', 'NPR ${profile.insurance.toStringAsFixed(0)}', isDeduction: true),
-                  _buildTableRow('Tax Deducted at Source (TDS)', 'NPR ${profile.tds.toStringAsFixed(0)} (${tdsPct.toStringAsFixed(1)}%)', isDeduction: true),
-                  _buildTableRow('TDS Rate (%)', '${tdsPct.toStringAsFixed(1)}%'),
-                  _buildTableRow('NET PAYABLE MONTHLY SALARY', 'NPR ${profile.netSalary.toStringAsFixed(0)}', isHeader: true),
+                  if (profile.effectiveLifeInsurance > 0)
+                    _buildTableRow('Life Insurance Premium', 'NPR ${profile.effectiveLifeInsurance.toStringAsFixed(0)}', isDeduction: true),
+                  if (profile.effectiveHealthInsurance > 0)
+                    _buildTableRow('Health Insurance Premium', 'NPR ${profile.effectiveHealthInsurance.toStringAsFixed(0)}', isDeduction: true),
+                  if (profile.cit > 0)
+                    _buildTableRow('Citizen Investment Trust (CIT)', 'NPR ${profile.cit.toStringAsFixed(0)}', isDeduction: true),
+                  if (profile.tds > 0)
+                    _buildTableRow('Tax Deducted at Source (TDS)', 'NPR ${profile.tds.toStringAsFixed(0)}${tdsPct > 0 ? ' (${tdsPct.toStringAsFixed(1)}%)' : ''}', isDeduction: true),
+                  _buildTableRow('NET PAYABLE MONTHLY SALARY (IN HAND)', 'NPR ${profile.netSalary.toStringAsFixed(0)}', isHeader: true),
                 ],
               );
             }(),
@@ -276,10 +402,34 @@ class EmployeePdfService {
   static Future<Uint8List> generateStaffListPdf({
     required List<EmployeeProfileEntity> profiles,
     List<UserEntity> users = const [],
-    String companyName = 'ES WORKSPACE',
+    String companyName = 'EVENT SOLUTION',
     PdfPageFormat? pageFormat,
   }) async {
-    final pdf = pw.Document();
+    pw.Font? font;
+    pw.Font? boldFont;
+    try {
+      final fontData = await rootBundle.load('assets/fonts/Roboto-Regular.ttf');
+      font = pw.Font.ttf(fontData);
+      final boldData = await rootBundle.load('assets/fonts/Roboto-Bold.ttf');
+      boldFont = pw.Font.ttf(boldData);
+    } catch (_) {}
+
+    pw.MemoryImage? companyLogoImage;
+    try {
+      final logoData = await rootBundle.load('assets/images/event_solution_logo.jpeg');
+      companyLogoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+    } catch (_) {
+      try {
+        final logoData = await rootBundle.load('assets/ESWORKSPACE_app/event_solution_logo.jpeg');
+        companyLogoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+      } catch (_) {}
+    }
+
+    final pdf = pw.Document(
+      theme: (font != null && boldFont != null)
+          ? pw.ThemeData.withFont(base: font, bold: boldFont)
+          : null,
+    );
     final targetFormat = pageFormat ?? PdfPageFormat.a4.landscape;
 
     final userMap = {for (var u in users) u.id: u};
@@ -293,7 +443,7 @@ class EmployeePdfService {
           return [
             // Header
             pw.Container(
-              padding: const pw.EdgeInsets.all(12),
+              padding: const pw.EdgeInsets.all(10),
               decoration: pw.BoxDecoration(
                 color: PdfColors.blue900,
                 borderRadius: pw.BorderRadius.circular(4),
@@ -301,13 +451,38 @@ class EmployeePdfService {
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text(
-                    '$companyName - ALL EMPLOYEES & STAFF DIRECTORY',
-                    style: pw.TextStyle(
-                      color: PdfColors.white,
-                      fontSize: 14,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
+                  pw.Row(
+                    children: [
+                      if (companyLogoImage != null) ...[
+                        pw.Container(
+                          width: 28,
+                          height: 28,
+                          margin: const pw.EdgeInsets.only(right: 10),
+                          decoration: pw.BoxDecoration(
+                            color: PdfColors.white,
+                            borderRadius: pw.BorderRadius.circular(4),
+                          ),
+                          child: pw.ClipRRect(
+                            horizontalRadius: 4,
+                            verticalRadius: 4,
+                            child: pw.Image(
+                              companyLogoImage,
+                              width: 28,
+                              height: 28,
+                              fit: pw.BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      ],
+                      pw.Text(
+                        '$companyName - ALL EMPLOYEES & STAFF DIRECTORY',
+                        style: pw.TextStyle(
+                          color: PdfColors.white,
+                          fontSize: 13,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                   pw.Text(
                     'TOTAL STAFF: ${profiles.length}',

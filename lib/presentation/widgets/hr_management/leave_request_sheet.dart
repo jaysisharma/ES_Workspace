@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:order_app/core/calendar/nepali_calendar_engine.dart';
 import 'package:order_app/domain/entities/employee_profile_entity.dart';
 import 'package:order_app/domain/entities/leave_request_entity.dart';
 import 'package:order_app/domain/entities/notification_entity.dart';
@@ -10,6 +11,7 @@ import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/employee_profile_providers.dart';
 import 'package:order_app/presentation/providers/hr_providers.dart';
 import 'package:order_app/presentation/providers/notification_notifier.dart';
+import 'package:order_app/presentation/providers/settings_provider.dart';
 import 'package:order_app/presentation/widgets/calendar/nepali_date_picker_dialog.dart';
 
 void showStaffLeaveRequestSheet(BuildContext context, WidgetRef ref) {
@@ -82,12 +84,18 @@ void showLeaveRequestSheet({
                 orElse: () => null,
               );
 
+              final settings = ref.watch(settingsProvider);
               final myLeaveRequests = leaveRequestsAsync.maybeWhen(
                 data: (list) => list
                     .where(
                       (l) =>
                           l.staffId == userId &&
-                          l.status == LeaveStatus.approved,
+                          l.status == LeaveStatus.approved &&
+                          NepaliCalendarEngine.isWithinActiveLeaveCycle(
+                            l.startDate,
+                            cycleType: settings.leaveResetCycle,
+                            manualStartDate: settings.customLeaveCycleStartDate,
+                          ),
                     )
                     .toList(),
                 orElse: () => <LeaveRequestEntity>[],

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/core/utils/currency_formatter.dart';
 import 'package:order_app/core/utils/share_helper.dart';
+import 'package:order_app/core/utils/excel_export_helper.dart';
+import 'package:order_app/core/services/export_directory_service.dart';
 import 'package:order_app/core/services/order_pdf_service.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/order_item_entity.dart';
@@ -10,6 +12,7 @@ import 'package:order_app/domain/entities/expense_entity.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/providers/settings_provider.dart';
 import 'package:order_app/presentation/widgets/calendar/nepali_date_picker_dialog.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
 class EventFinancialReportScreen extends ConsumerStatefulWidget {
   const EventFinancialReportScreen({super.key});
@@ -23,6 +26,104 @@ class _EventFinancialReportScreenState
     extends ConsumerState<EventFinancialReportScreen> {
   String _searchQuery = '';
   DateTimeRange? _selectedDateRange;
+  String _filterLabel = 'All Events';
+
+  @override
+  void initState() {
+    super.initState();
+    // Default to current month (BS)
+    _selectCurrentMonth();
+  }
+
+  void _selectCurrentMonth() {
+    final now = DateTime.now();
+    // Start of approx month window (first day of current month)
+    final start = DateTime(now.year, now.month, 1);
+    final end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+    setState(() {
+      _selectedDateRange = DateTimeRange(start: start, end: end);
+      _filterLabel = formatNepaliDate(now, 'yyyy MMMM');
+    });
+  }
+
+  Future<void> _exportEventsFinancialExcel(List<OrderEntity> orders) async {
+    if (orders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No event records to export.')),
+      );
+      return;
+    }
+
+    final headers = [
+      'E.O.',
+      'Event Name',
+      'Venue',
+      'Client Name',
+      'Event / Rental',
+      'Total Revenue (NPR)',
+      'Total Expenses (NPR)',
+      'Profit / Loss (NPR)',
+    ];
+
+    final sorted = List<OrderEntity>.from(orders)
+      ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+
+    final List<List<dynamic>> rows = [];
+    double totalRev = 0.0;
+    double totalExp = 0.0;
+
+    for (final o in sorted) {
+      final clientName = o.client.isNotEmpty
+          ? o.client
+          : (o.contactPerson.isNotEmpty ? o.contactPerson : 'N/A');
+      final eventType = o.category.isNotEmpty ? o.category : 'Event';
+      final rev = o.totalAmount;
+      final exp = o.totalExpenses;
+      final profitLoss = rev - exp;
+
+      totalRev += rev;
+      totalExp += exp;
+
+      rows.add([
+        o.id,
+        o.eventName,
+        o.venue.isNotEmpty ? o.venue : 'N/A',
+        clientName,
+        eventType,
+        rev,
+        exp,
+        profitLoss,
+      ]);
+    }
+
+    final netProfit = totalRev - totalExp;
+
+    // Totals / Summary Row at the bottom
+    rows.add([
+      'TOTAL',
+      '${sorted.length} Events',
+      '',
+      '',
+      '',
+      totalRev,
+      totalExp,
+      netProfit,
+    ]);
+
+    final cleanLabel = _filterLabel.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+    final filename = 'Event_Financial_Report_$cleanLabel.xlsx';
+    final reportTitle = 'Event Monthly Financial Report - $_filterLabel';
+
+    await ExcelExportHelper.exportAndShareExcel(
+      context: context,
+      headers: headers,
+      rows: rows,
+      filename: filename,
+      sheetName: 'Event Financial Report',
+      title: reportTitle,
+      category: ExportCategory.finance,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +145,7 @@ class _EventFinancialReportScreenState
 
     return Scaffold(
       backgroundColor: bgColor,
+      floatingActionButton: const BottomRightBackButton(),
       appBar: AppBar(
         title: const Text(
           'Event Financial Reports',
@@ -51,7 +153,17 @@ class _EventFinancialReportScreenState
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.table_chart_outlined, color: Colors.greenAccent),
+            tooltip: 'Export to Excel',
+            onPressed: () {
+              final orders = ordersAsync.value ?? [];
+              final filtered = _getFilteredOrders(orders);
+              _exportEventsFinancialExcel(filtered);
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.date_range_outlined),
+            tooltip: 'Filter Date Range',
             onPressed: () async {
               final picked = await NepaliDatePickerDialog.show(
                 context: context,
@@ -61,11 +173,12 @@ class _EventFinancialReportScreenState
                 allowRange: true,
               );
               if (picked != null && picked['start'] != null) {
+                final start = picked['start']!;
+                final end = picked['end'] ?? picked['start']!;
                 setState(() {
-                  _selectedDateRange = DateTimeRange(
-                    start: picked['start']!,
-                    end: picked['end'] ?? picked['start']!,
-                  );
+                  _selectedDateRange = DateTimeRange(start: start, end: end);
+                  _filterLabel =
+                      '${formatNepaliDate(start, 'yyyy-MM-dd')} to ${formatNepaliDate(end, 'yyyy-MM-dd')}';
                 });
               }
             },
@@ -73,31 +186,17 @@ class _EventFinancialReportScreenState
           if (_selectedDateRange != null)
             IconButton(
               icon: const Icon(Icons.clear),
-              onPressed: () => setState(() => _selectedDateRange = null),
+              tooltip: 'Clear Filter',
+              onPressed: () => setState(() {
+                _selectedDateRange = null;
+                _filterLabel = 'All Events';
+              }),
             ),
         ],
       ),
       body: ordersAsync.when(
         data: (orders) {
-          final filteredOrders = orders.where((o) {
-            final query = _searchQuery.trim().toLowerCase();
-            final nameMatch = o.eventName.toLowerCase().contains(query);
-            final idMatch = o.id.toLowerCase().contains(query);
-            final venueMatch = o.venue.toLowerCase().contains(query);
-            final matchesQuery = nameMatch || idMatch || venueMatch;
-
-            bool dateMatch = true;
-            if (_selectedDateRange != null) {
-              dateMatch =
-                  o.eventDate.isAfter(
-                    _selectedDateRange!.start.subtract(const Duration(days: 1)),
-                  ) &&
-                  o.eventDate.isBefore(
-                    _selectedDateRange!.end.add(const Duration(days: 1)),
-                  );
-            }
-            return matchesQuery && dateMatch && o.status != OrderStatus.draft;
-          }).toList();
+          final filteredOrders = _getFilteredOrders(orders);
 
           double totalRevenue = 0;
           double totalExpenses = 0;
@@ -109,9 +208,9 @@ class _EventFinancialReportScreenState
 
           return Column(
             children: [
-              // Search Bar
+              // Search & Filter Bar
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: TextField(
                   decoration: InputDecoration(
                     hintText:
@@ -122,18 +221,73 @@ class _EventFinancialReportScreenState
                     ),
                     filled: true,
                     fillColor: cardColor,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),
                   onChanged: (val) => setState(() => _searchQuery = val),
                 ),
               ),
 
-              // Summary Banner
+              // Date Selection Chips Bar
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    FilterChip(
+                      selected: _selectedDateRange != null && _filterLabel.contains(formatNepaliDate(DateTime.now(), 'MMMM')),
+                      avatar: const Icon(Icons.calendar_month_rounded, size: 16),
+                      label: Text('This Month (${formatNepaliDate(DateTime.now(), "MMMM")})'),
+                      onSelected: (_) => _selectCurrentMonth(),
+                    ),
+                    const SizedBox(width: 8),
+                    FilterChip(
+                      selected: _selectedDateRange != null && !_filterLabel.contains(formatNepaliDate(DateTime.now(), 'MMMM')),
+                      avatar: const Icon(Icons.tune_rounded, size: 16),
+                      label: Text(_selectedDateRange != null && !_filterLabel.contains(formatNepaliDate(DateTime.now(), 'MMMM'))
+                          ? _filterLabel
+                          : 'Pick Date Range'),
+                      onSelected: (_) async {
+                        final picked = await NepaliDatePickerDialog.show(
+                          context: context,
+                          title: 'Filter Event Date Range',
+                          initialStart: _selectedDateRange?.start ?? DateTime.now(),
+                          initialEnd: _selectedDateRange?.end ?? DateTime.now(),
+                          allowRange: true,
+                        );
+                        if (picked != null && picked['start'] != null) {
+                          final start = picked['start']!;
+                          final end = picked['end'] ?? picked['start']!;
+                          setState(() {
+                            _selectedDateRange = DateTimeRange(start: start, end: end);
+                            _filterLabel =
+                                '${formatNepaliDate(start, 'yyyy-MM-dd')} to ${formatNepaliDate(end, 'yyyy-MM-dd')}';
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    FilterChip(
+                      selected: _selectedDateRange == null,
+                      avatar: const Icon(Icons.all_inclusive_rounded, size: 16),
+                      label: const Text('All Time'),
+                      onSelected: (_) => setState(() {
+                        _selectedDateRange = null;
+                        _filterLabel = 'All Events';
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Summary Banner with Export Button
               _buildSummaryBanner(
                 context,
                 totalRevenue,
                 totalExpenses,
                 totalProfit,
                 currencyLabel,
+                filteredOrders,
               ),
 
               Expanded(
@@ -180,12 +334,36 @@ class _EventFinancialReportScreenState
     );
   }
 
+  List<OrderEntity> _getFilteredOrders(List<OrderEntity> orders) {
+    return orders.where((o) {
+      final query = _searchQuery.trim().toLowerCase();
+      final nameMatch = o.eventName.toLowerCase().contains(query);
+      final idMatch = o.id.toLowerCase().contains(query);
+      final venueMatch = o.venue.toLowerCase().contains(query);
+      final clientMatch = o.client.toLowerCase().contains(query) ||
+          o.contactPerson.toLowerCase().contains(query);
+      final matchesQuery = nameMatch || idMatch || venueMatch || clientMatch;
+
+      bool dateMatch = true;
+      if (_selectedDateRange != null) {
+        dateMatch = o.eventDate.isAfter(
+              _selectedDateRange!.start.subtract(const Duration(days: 1)),
+            ) &&
+            o.eventDate.isBefore(
+              _selectedDateRange!.end.add(const Duration(days: 1)),
+            );
+      }
+      return matchesQuery && dateMatch && o.status != OrderStatus.draft;
+    }).toList();
+  }
+
   Widget _buildSummaryBanner(
     BuildContext context,
     double revenue,
     double expenses,
     double profit,
     String currency,
+    List<OrderEntity> orders,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -197,26 +375,48 @@ class _EventFinancialReportScreenState
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
         children: [
-          _SummaryItem(
-            label: 'REV',
-            value: revenue,
-            currency: currency,
-            color: colorScheme.primary,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _SummaryItem(
+                label: 'REV',
+                value: revenue,
+                currency: currency,
+                color: colorScheme.primary,
+              ),
+              _SummaryItem(
+                label: 'EXP',
+                value: expenses,
+                currency: currency,
+                color: colorScheme.error,
+              ),
+              _SummaryItem(
+                label: 'NET',
+                value: profit,
+                currency: currency,
+                color: const Color(0xFF4ade80),
+              ),
+            ],
           ),
-          _SummaryItem(
-            label: 'EXP',
-            value: expenses,
-            currency: currency,
-            color: colorScheme.error,
-          ),
-          _SummaryItem(
-            label: 'NET',
-            value: profit,
-            currency: currency,
-            color: const Color(0xFF4ade80),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _exportEventsFinancialExcel(orders),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10b981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                visualDensity: VisualDensity.compact,
+              ),
+              icon: const Icon(Icons.table_chart_rounded, size: 18),
+              label: Text(
+                'Export ${orders.length} Events to Excel ($_filterLabel)',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
           ),
         ],
       ),

@@ -7,7 +7,6 @@ class CreateOrderItemRowWidget extends StatelessWidget {
   final ItemRow item;
   final int totalItems;
   final VoidCallback onRemove;
-  final ValueChanged<String> onBillingTypeChanged;
   final Color primaryColor;
   final Color textColor;
   final Color labelColor;
@@ -19,7 +18,6 @@ class CreateOrderItemRowWidget extends StatelessWidget {
     required this.item,
     required this.totalItems,
     required this.onRemove,
-    required this.onBillingTypeChanged,
     required this.primaryColor,
     required this.textColor,
     required this.labelColor,
@@ -73,40 +71,6 @@ class CreateOrderItemRowWidget extends StatelessWidget {
           borderSide: BorderSide(color: primaryColor, width: 1),
         ),
         counterText: '',
-      ),
-    );
-  }
-
-  Widget _buildBillingTypeSelector(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: borderColor),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: item.billingType,
-          isExpanded: true,
-          dropdownColor: Theme.of(context).colorScheme.surface,
-          style: TextStyle(color: textColor, fontSize: 13),
-          onChanged: (val) {
-            if (val != null) {
-              onBillingTypeChanged(val);
-            }
-          },
-          items: const [
-            DropdownMenuItem(
-              value: 'daily',
-              child: Text('Per Day'),
-            ),
-            DropdownMenuItem(
-              value: 'lumpsum',
-              child: Text('Lump Sum'),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -177,34 +141,19 @@ class CreateOrderItemRowWidget extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildFieldLabel('Billing Type'),
-                    _buildBillingTypeSelector(context),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
+                flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildFieldLabel('Unit'),
                     _buildTextField(
                       controller: item.unitController,
-                      hintText: 'Pcs',
+                      hintText: 'Pcs / Set',
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
+              const SizedBox(width: 10),
               Expanded(
                 flex: 2,
                 child: Column(
@@ -219,7 +168,7 @@ class CreateOrderItemRowWidget extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 flex: 2,
                 child: Column(

@@ -2,14 +2,15 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:excel/excel.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:order_app/core/services/export_directory_service.dart';
 
 class ExcelExportHelper {
   /// Exports and opens/shares an Excel spreadsheet cleanly across all platforms
   /// using OpenFilex on desktop, and Share.shareXFiles on mobile to let users download/save.
+  /// Automatically arranges files into categorized destination subfolders if configured.
   static Future<void> exportAndShareExcel({
     required BuildContext context,
     required List<String> headers,
@@ -17,6 +18,7 @@ class ExcelExportHelper {
     required String filename,
     String sheetName = 'Sheet1',
     String? title,
+    ExportCategory? category,
   }) async {
     // Sanitize filename to remove special characters like &, %, $, #, spaces, etc.
     final rawName = filename.endsWith('.xlsx')
@@ -186,19 +188,30 @@ class ExcelExportHelper {
         throw Exception('Failed to generate Excel bytes');
       }
 
-      if (!kIsWeb) {
-        // Save Excel file to temporary directory
-        Directory tempDir;
+      // Calculate share origin synchronously from context before async gaps
+      Rect? sharePositionOrigin;
+      try {
+        final box = context.findRenderObject() as RenderBox?;
+        if (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0) {
+          final position = box.localToGlobal(Offset.zero);
+          sharePositionOrigin = position & box.size;
+        }
+      } catch (_) {}
+      if (sharePositionOrigin == null || sharePositionOrigin.isEmpty) {
         try {
-          tempDir = await getTemporaryDirectory();
-        } catch (e) {
-          debugPrint('getTemporaryDirectory FFI error, falling back to Directory.systemTemp: $e');
-          tempDir = Directory.systemTemp;
+          final size = MediaQuery.of(context).size;
+          sharePositionOrigin = Rect.fromLTWH(0, 0, size.width, size.height / 2);
+        } catch (_) {
+          sharePositionOrigin = const Rect.fromLTWH(0, 0, 100, 100);
         }
-        if (!await tempDir.exists()) {
-          await tempDir.create(recursive: true);
-        }
-        final file = File('${tempDir.path}/$sanitizedFilename');
+      }
+
+      if (!kIsWeb) {
+        // Resolve target directory using ExportDirectoryService (supports custom destination folder & auto-arranged category subfolders)
+        final effectiveCategory = category ?? ExportDirectoryService.deduceCategory(filename);
+        final targetDir = await ExportDirectoryService.resolveExportDirectory(category: effectiveCategory);
+
+        final file = File('${targetDir.path}/$sanitizedFilename');
         await file.parent.create(recursive: true);
         await file.writeAsBytes(fileBytes);
 
@@ -244,7 +257,7 @@ class ExcelExportHelper {
           }
 
           if (!opened) {
-            // Desktop fallback: allow user to pick location to save file instead of calling Share.shareXFiles (which throws objective_c FFI errors on desktop)
+            // Desktop fallback: allow user to pick location to save file instead of calling Share.shareXFiles
             final outputPath = await FilePicker.platform.saveFile(
               dialogTitle: 'Save Excel Spreadsheet',
               fileName: sanitizedFilename,
@@ -262,6 +275,7 @@ class ExcelExportHelper {
           await Share.shareXFiles(
             [XFile(file.path, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')],
             text: sanitizedFilename,
+            sharePositionOrigin: sharePositionOrigin,
           );
         }
       }
@@ -270,7 +284,7 @@ class ExcelExportHelper {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Excel "$sanitizedFilename" generated successfully.'),
+            content: Text('Excel "$sanitizedFilename" saved successfully.'),
             duration: const Duration(seconds: 4),
             backgroundColor: Colors.green.shade700,
             behavior: SnackBarBehavior.floating,

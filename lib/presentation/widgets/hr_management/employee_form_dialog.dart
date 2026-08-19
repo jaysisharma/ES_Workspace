@@ -1,10 +1,10 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/domain/entities/employee_profile_entity.dart';
+import 'package:order_app/core/services/admin_auth_service.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/providers/employee_profile_providers.dart';
 import 'package:order_app/presentation/providers/hr_providers.dart';
 import 'package:order_app/presentation/widgets/calendar/nepali_date_picker_dialog.dart';
@@ -410,22 +410,14 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog>
           throw 'Please enter email address and password for the new employee.';
         }
 
-        final credential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(email: email, password: password);
-        finalUserId = credential.user!.uid;
-
-        // Write user document to Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(finalUserId)
-            .set({
-          'id': finalUserId,
-          'name': _nameController.text.trim(),
-          'email': email,
-          'role': 'staff',
-          'isActive': true,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        final createdUser = await AdminAuthService.createEmployeeUser(
+          email: email,
+          password: password,
+          name: _nameController.text.trim(),
+          role: UserRole.staff,
+          isActive: true,
+        );
+        finalUserId = createdUser.id;
       }
 
       // 2. Save complete Employee Profile Record

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:order_app/core/services/attendance_excel_export_service.dart';
 import 'package:order_app/domain/entities/attendance_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
@@ -13,6 +14,7 @@ import 'package:order_app/presentation/widgets/hr_management/admin_attendance_ca
 import 'package:order_app/presentation/widgets/hr_management/admin_attendance_filter_bar.dart';
 import 'package:order_app/presentation/widgets/hr_management/admin_attendance_month_view.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
 class AdminAttendanceDashboard extends ConsumerStatefulWidget {
   const AdminAttendanceDashboard({super.key});
@@ -118,6 +120,225 @@ class _AdminAttendanceDashboardState
     }
   }
 
+  void _exportEmployeeMonthlyExcel({
+    required List<AttendanceEntity> allRecords,
+    required List<UserEntity> staffList,
+    UserEntity? specificStaff,
+  }) {
+    final monthRecords = allRecords.where((r) {
+      return r.checkInTime.year == _selectedDate.year &&
+          r.checkInTime.month == _selectedDate.month;
+    }).toList();
+
+    if (specificStaff != null) {
+      final staffRecords = monthRecords.where((r) => r.staffId == specificStaff.id).toList();
+      AttendanceExcelExportService.exportMonthlyAttendance(
+        context: context,
+        records: staffRecords,
+        selectedMonth: _selectedDate,
+        selectedStaff: specificStaff,
+      );
+      return;
+    }
+
+    if (_selectedStaffId != null) {
+      final staff = staffList.where((u) => u.id == _selectedStaffId).firstOrNull;
+      final staffRecords = monthRecords.where((r) => r.staffId == _selectedStaffId).toList();
+      AttendanceExcelExportService.exportMonthlyAttendance(
+        context: context,
+        records: staffRecords,
+        selectedMonth: _selectedDate,
+        selectedStaff: staff,
+        staffNameOverride: staff?.name ?? 'Selected_Employee',
+      );
+      return;
+    }
+
+    // Show Employee Selection Dialog to choose which employee to export
+    _showExportChoiceDialog(monthRecords, staffList);
+  }
+
+  void _showExportChoiceDialog(
+    List<AttendanceEntity> monthRecords,
+    List<UserEntity> staffList,
+  ) {
+    final nepaliMonthHeader = formatNepaliDate(_selectedDate, 'yyyy MMMM');
+    String dialogSearch = '';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      constraints: const BoxConstraints(maxWidth: 600),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final filteredList = staffList.where((s) {
+              if (dialogSearch.isEmpty) return true;
+              return s.name.toLowerCase().contains(dialogSearch.toLowerCase()) ||
+                  s.email.toLowerCase().contains(dialogSearch.toLowerCase());
+            }).toList();
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.75,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Export Attendance to Excel',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            '$nepaliMonthHeader BS Month Report',
+                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Option 1: Export ALL Staff
+                  Card(
+                    color: Colors.green.shade50,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(color: Colors.green.shade300),
+                    ),
+                    elevation: 0,
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.green.shade700,
+                        child: const Icon(Icons.table_chart_rounded, color: Colors.white, size: 20),
+                      ),
+                      title: const Text(
+                        'Export All Employees (Consolidated)',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        'Total ${monthRecords.length} records across all staff in $nepaliMonthHeader',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      trailing: const Icon(Icons.download_rounded, color: Colors.green),
+                      onTap: () {
+                        Navigator.pop(context);
+                        AttendanceExcelExportService.exportMonthlyAttendance(
+                          context: this.context,
+                          records: monthRecords,
+                          selectedMonth: _selectedDate,
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Search for employee
+                  TextField(
+                    onChanged: (val) => setSheetState(() => dialogSearch = val),
+                    decoration: InputDecoration(
+                      hintText: 'Search employee to export...',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  const Text(
+                    'Or Choose Specific Employee:',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 6),
+
+                  Expanded(
+                    child: filteredList.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No employees found',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: filteredList.length,
+                            separatorBuilder: (context, index) => const Divider(height: 1),
+                            itemBuilder: (context, idx) {
+                              final staff = filteredList[idx];
+                              final staffCount = monthRecords.where((r) => r.staffId == staff.id).length;
+
+                              return ListTile(
+                                dense: true,
+                                leading: CircleAvatar(
+                                  radius: 16,
+                                  child: Text(
+                                    staff.name.isNotEmpty ? staff.name[0].toUpperCase() : 'E',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                title: Text(
+                                  staff.name,
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                                ),
+                                subtitle: Text(
+                                  '${staff.role.name.toUpperCase()} • $staffCount logs this month',
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                                trailing: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green.shade700,
+                                    foregroundColor: Colors.white,
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                  ),
+                                  icon: const Icon(Icons.file_download, size: 14),
+                                  label: const Text('Export', style: TextStyle(fontSize: 11)),
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    final staffRecords = monthRecords.where((r) => r.staffId == staff.id).toList();
+                                    AttendanceExcelExportService.exportMonthlyAttendance(
+                                      context: this.context,
+                                      records: staffRecords,
+                                      selectedMonth: _selectedDate,
+                                      selectedStaff: staff,
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final attendanceStream = ref.watch(allAttendanceStreamProvider);
@@ -131,9 +352,23 @@ class _AdminAttendanceDashboardState
     final selectedStaff = staffList.where((u) => u.id == _selectedStaffId).firstOrNull;
 
     return Scaffold(
+      floatingActionButton: const BottomRightBackButton(),
       appBar: AppBar(
         title: const Text('Staff Attendance & Geofence Audit'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.table_chart_outlined),
+            tooltip: 'Export Month Excel',
+            onPressed: () {
+              attendanceStream.whenData((allRecords) {
+                _exportEmployeeMonthlyExcel(
+                  allRecords: allRecords,
+                  staffList: staffList,
+                  specificStaff: selectedStaff,
+                );
+              });
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ElevatedButton.icon(
@@ -239,6 +474,13 @@ class _AdminAttendanceDashboardState
                       url,
                       '$name Check-In Selfie',
                     ),
+                    onExportExcel: () {
+                      _exportEmployeeMonthlyExcel(
+                        allRecords: allRecords,
+                        staffList: staffList,
+                        specificStaff: selectedStaff,
+                      );
+                    },
                   );
                 }
 
@@ -332,7 +574,7 @@ class _AdminAttendanceDashboardState
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, __) => Center(child: Text('Error loading logs: $e')),
+              error: (e, stack) => Center(child: Text('Error loading logs: $e')),
             ),
           ),
         ],
