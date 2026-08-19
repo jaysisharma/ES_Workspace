@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/settings_provider.dart';
 
+/// Screen allowing authenticated users to change their password securely.
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
 
