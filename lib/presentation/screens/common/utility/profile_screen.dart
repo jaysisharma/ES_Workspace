@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/presentation/widgets/common/role_based_router.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -150,9 +151,14 @@ class ProfileScreen extends ConsumerWidget {
             // Logout Button
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
-                ref.read(authNotifierProvider.notifier).logout();
-                Navigator.popUntil(context, (route) => route.isFirst);
+              onPressed: () async {
+                await ref.read(authNotifierProvider.notifier).logout();
+                if (context.mounted) {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const RoleBasedRouter()),
+                    (route) => false,
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: colorScheme.onSurface,

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:order_app/core/services/export_directory_service.dart';
 
 /// Unified share helper:
@@ -43,13 +44,27 @@ class ShareHelper {
     // Sanitize fileName to prevent invalid path characters (slashes, colons, spaces)
     final safeFileName = fileName.replaceAll(RegExp(r'[^\w\.-]'), '_');
 
-    // Resolve directory using ExportDirectoryService (destination folder + auto-arranged subfolders)
-    final effectiveCategory = category ?? ExportDirectoryService.deduceCategory(fileName);
-    final targetDir = await ExportDirectoryService.resolveExportDirectory(category: effectiveCategory);
+    File file;
+    try {
+      // Resolve directory using ExportDirectoryService (destination folder + auto-arranged subfolders)
+      final effectiveCategory = category ?? ExportDirectoryService.deduceCategory(fileName);
+      final targetDir = await ExportDirectoryService.resolveExportDirectory(category: effectiveCategory);
 
-    final file = File('${targetDir.path}/$safeFileName');
-    await file.parent.create(recursive: true);
-    await file.writeAsBytes(pdfBytes, flush: true);
+      file = File('${targetDir.path}/$safeFileName');
+      await file.parent.create(recursive: true);
+      await file.writeAsBytes(pdfBytes, flush: true);
+    } catch (e) {
+      debugPrint('ShareHelper: Preferred directory write failed ($e), falling back to application documents or temp.');
+      try {
+        final docsDir = await getApplicationDocumentsDirectory();
+        file = File('${docsDir.path}/$safeFileName');
+        await file.writeAsBytes(pdfBytes, flush: true);
+      } catch (_) {
+        final tempDir = await getTemporaryDirectory();
+        file = File('${tempDir.path}/$safeFileName');
+        await file.writeAsBytes(pdfBytes, flush: true);
+      }
+    }
 
     if (isDesktop) {
       if (!context.mounted) return;

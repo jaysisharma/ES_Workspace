@@ -16,6 +16,7 @@ import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/screens/common/inventory/inventory_management_screen.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
+import 'package:order_app/presentation/widgets/common/role_based_router.dart';
 
 class AppDrawer extends ConsumerWidget {
   const AppDrawer({super.key});
@@ -166,7 +167,7 @@ class AppDrawer extends ConsumerWidget {
               ],
             ),
           ),
-          _buildFooter(context),
+          _buildFooter(context, ref),
         ],
       ),
     );
@@ -223,7 +224,7 @@ class AppDrawer extends ConsumerWidget {
     );
   }
 
-  Widget _buildFooter(BuildContext context) {
+  Widget _buildFooter(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
@@ -243,9 +244,17 @@ class AppDrawer extends ConsumerWidget {
           ),
           const Spacer(),
           TextButton(
-            onPressed: () {
-              // Handle Logout
+            onPressed: () async {
+              Scaffold.of(context).closeDrawer();
+              await ref.read(authNotifierProvider.notifier).logout();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const RoleBasedRouter()),
+                  (route) => false,
+                );
+              }
             },
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
             child: const Text('Logout'),
           ),
         ],

@@ -37,7 +37,10 @@ class ExportDirectoryService {
       // Default fallback
       if (!kIsWeb) {
         try {
-          if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
+          if (Platform.isMacOS) {
+            // On macOS Sandbox, ApplicationDocuments is guaranteed writable
+            baseDir = await getApplicationDocumentsDirectory();
+          } else if (Platform.isWindows || Platform.isLinux) {
             baseDir = (await getDownloadsDirectory()) ?? (await getApplicationDocumentsDirectory());
           } else {
             baseDir = (await getApplicationDocumentsDirectory());
@@ -54,7 +57,7 @@ class ExportDirectoryService {
       try {
         await baseDir.create(recursive: true);
       } catch (_) {
-        baseDir = Directory.systemTemp;
+        baseDir = await getApplicationDocumentsDirectory();
         if (!await baseDir.exists()) {
           await baseDir.create(recursive: true);
         }

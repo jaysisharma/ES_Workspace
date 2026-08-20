@@ -22,13 +22,31 @@ class CurrencyFormatter {
     return '$label ${format(value, showDecimal: showDecimal)}';
   }
 
-  /// Formats a double value with compact suffixes (k for thousands, L for Lakhs).
+  /// Formats a double value with compact South Asian suffixes (K, Lakh, Cr).
+  /// Example: 150000 -> 1.5 Lakh, 25000 -> 25K, 12000000 -> 1.2 Cr
   static String formatCompact(double value) {
-    if (value >= 100000) {
-      return '${(value / 100000).toStringAsFixed(1)}L';
-    } else if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(1)}k';
+    final absVal = value.abs();
+    final sign = value < 0 ? '-' : '';
+
+    if (absVal >= 10000000) {
+      final num = absVal / 10000000;
+      final str = num % 1 == 0 ? num.toStringAsFixed(0) : num.toStringAsFixed(2);
+      return '$sign$str Cr';
+    } else if (absVal >= 100000) {
+      final num = absVal / 100000;
+      final str = num % 1 == 0 ? num.toStringAsFixed(0) : num.toStringAsFixed(2);
+      return '$sign$str Lakh';
+    } else if (absVal >= 1000) {
+      final num = absVal / 1000;
+      final str = num % 1 == 0 ? num.toStringAsFixed(0) : num.toStringAsFixed(1);
+      return '$sign${str}K';
     }
-    return value.toStringAsFixed(0);
+    return '$sign${absVal.toStringAsFixed(0)}';
+  }
+
+  /// Formats a double value with compact suffixes and a currency label.
+  /// Example: formatCompactWithLabel(150000, 'NPR') -> NPR 1.5 Lakh
+  static String formatCompactWithLabel(double value, String label) {
+    return '$label ${formatCompact(value)}';
   }
 }

@@ -562,14 +562,17 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        profile.name,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                      Flexible(
+                        child: Text(
+                          profile.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Container(
                         padding:
                             const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -820,13 +823,19 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Net Payable Monthly Salary (In Hand)',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const Expanded(
+                    child: Text(
+                      'Net Payable Monthly Salary (In Hand)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Text(
                     CurrencyFormatter.formatWithLabel(profile.netSalary, 'NPR'),
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 15,
                       color: Colors.green,
                     ),
                   ),
@@ -915,9 +924,14 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title,
-                    style:
-                        const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Text(
                   cardNumber.isNotEmpty ? 'No: $cardNumber' : 'Not Uploaded',
                   style: TextStyle(
@@ -1049,12 +1063,27 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: TextStyle(fontSize: 13, color: labelColor)),
-          Text(value,
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(fontSize: 13, color: labelColor),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
               style: TextStyle(
-                  fontSize: 13, fontWeight: FontWeight.bold, color: textColor)),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+          ),
         ],
       ),
     );

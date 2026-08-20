@@ -166,7 +166,7 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
             : 'No events scheduled for this week';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Listener(
         onPointerDown: (_) => setState(() => _isUserInteracting = true),
         onPointerUp: (_) {
@@ -180,7 +180,7 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
             color: isDark
                 ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.45)
                 : colorScheme.primaryContainer.withValues(alpha: 0.22),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.zero,
             border: Border.all(
               color: colorScheme.primary.withValues(alpha: 0.4),
               width: 1.2,

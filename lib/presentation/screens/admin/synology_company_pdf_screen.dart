@@ -12,6 +12,7 @@ import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/core/utils/company_pdf_generator.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
+import 'package:order_app/core/utils/pdf_export_helper.dart';
 
 class SynologyCompanyPdfScreen extends ConsumerStatefulWidget {
   const SynologyCompanyPdfScreen({super.key});
@@ -404,6 +405,12 @@ class _SynologyCompanyPdfScreenState
               ),
               const SizedBox(width: 8),
               IconButton.filledTonal(
+                icon: const Icon(Icons.file_download_rounded, size: 18),
+                tooltip: 'Download & Save PDF to Device',
+                onPressed: () => _downloadAndSavePdf(context, doc),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filledTonal(
                 icon: const Icon(Icons.copy_rounded, size: 18),
                 tooltip: 'Copy Synology Link',
                 onPressed: () {
@@ -421,6 +428,68 @@ class _SynologyCompanyPdfScreenState
         ],
       ),
     );
+  }
+
+  void _downloadAndSavePdf(BuildContext context, CompanyDocumentEntity doc) async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: const [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            SizedBox(width: 12),
+            Text('Downloading PDF file…'),
+          ],
+        ),
+        duration: const Duration(seconds: 15),
+      ),
+    );
+
+    try {
+      Uint8List? pdfBytes;
+      if (doc.synologyPath.isNotEmpty) {
+        final file = File(doc.synologyPath);
+        if (await file.exists()) {
+          pdfBytes = await file.readAsBytes();
+        }
+      }
+
+      if (pdfBytes == null && doc.shareUrl.isNotEmpty) {
+        if (doc.shareUrl.startsWith('http://') || doc.shareUrl.startsWith('https://')) {
+          final res = await http.get(Uri.parse(doc.shareUrl)).timeout(const Duration(seconds: 10));
+          if (res.statusCode == 200) {
+            pdfBytes = res.bodyBytes;
+          }
+        }
+      }
+
+      pdfBytes ??= await CompanyPdfGenerator.generateCompanyDetailsPdf(
+        companyName: doc.title,
+        tagline: doc.description,
+      );
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+
+      final cleanName = '${doc.title.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.pdf';
+      await PdfExportHelper.exportAndSharePdf(
+        context: context,
+        pdfBytes: pdfBytes,
+        filename: cleanName,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to download PDF file: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _showSynologyConfigDialog(
@@ -801,6 +870,14 @@ class _SynologyCompanyPdfScreenState
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel'),
+          ),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.file_download_rounded, size: 16),
+            label: const Text('Save PDF'),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _downloadAndSavePdf(context, doc);
+            },
           ),
           OutlinedButton.icon(
             icon: const Icon(Icons.copy_rounded, size: 16),

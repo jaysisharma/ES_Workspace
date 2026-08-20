@@ -75,10 +75,9 @@ class _NepaliDatePickerDialogState extends State<NepaliDatePickerDialog> {
         });
         break;
       case 'this_month':
-        final totalDays = NepaliCalendarEngine.getDaysInMonth(now.year, now.month);
         setState(() {
           _selectedStart = NepaliDateTime(now.year, now.month, 1);
-          _selectedEnd = NepaliDateTime(now.year, now.month, totalDays);
+          _selectedEnd = NepaliDateTime(now.year, now.month, now.day);
           _isRangeMode = true;
         });
         break;

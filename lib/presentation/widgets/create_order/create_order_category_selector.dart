@@ -35,6 +35,7 @@ class CreateOrderCategorySelectorWidget extends ConsumerWidget {
           children: [
             Expanded(
               child: DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: isValidSelection ? selectedCategory : null,
                 decoration: InputDecoration(
                   hintText: 'Select Category',
@@ -65,6 +66,7 @@ class CreateOrderCategorySelectorWidget extends ConsumerWidget {
                       value: cat,
                       child: Text(
                         cat,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(color: textColor, fontSize: 14),
                       ),
                     ),
@@ -75,11 +77,14 @@ class CreateOrderCategorySelectorWidget extends ConsumerWidget {
                       children: [
                         Icon(Icons.tune_rounded, size: 18, color: Colors.blue),
                         SizedBox(width: 8),
-                        Text(
-                          'Manage / Add / Remove...',
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: Text(
+                            'Manage / Add / Remove...',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],

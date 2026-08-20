@@ -389,6 +389,50 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
               isDarkMode: isDarkMode,
             ),
           ),
+
+          // ── Legend Key ────────────────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDarkMode
+                  ? Colors.black.withValues(alpha: 0.2)
+                  : Colors.grey.withValues(alpha: 0.05),
+              border: Border(
+                top: BorderSide(color: borderColor.withValues(alpha: 0.3)),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildLegendItem(
+                  color: isDarkMode
+                      ? const Color(0xFF10b981)
+                      : const Color(0xFF047857),
+                  bgColor: isDarkMode
+                      ? const Color(0xFF064e3b).withValues(alpha: 0.45)
+                      : const Color(0xFFecfdf5),
+                  label: '1 Event',
+                  textColor: textColor,
+                ),
+                _buildLegendItem(
+                  color: isDarkMode
+                      ? const Color(0xFFA855F7)
+                      : const Color(0xFF6b21a8),
+                  bgColor: isDarkMode
+                      ? const Color(0xFF4c1d95).withValues(alpha: 0.55)
+                      : const Color(0xFFf3e8ff),
+                  label: 'Multi Events',
+                  textColor: textColor,
+                ),
+                _buildLegendItem(
+                  color: const Color(0xFFea580c),
+                  bgColor: const Color(0xFFea580c).withValues(alpha: 0.12),
+                  label: 'Holiday',
+                  textColor: textColor,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -412,7 +456,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        childAspectRatio: 1.15,
+        childAspectRatio: 0.84,
         crossAxisSpacing: 4,
         mainAxisSpacing: 4,
       ),
@@ -540,6 +584,38 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
         borderRadius: BorderRadius.circular(6),
       );
       cellTextColor = primaryColor;
+    } else if (eventCount == 1) {
+      // SINGLE EVENT DAY: Soft Emerald fill & Emerald border
+      final singleEventBg = isDarkMode
+          ? const Color(0xFF064e3b).withValues(alpha: 0.45)
+          : const Color(0xFFecfdf5);
+      final singleEventBorder = isDarkMode
+          ? const Color(0xFF10b981).withValues(alpha: 0.6)
+          : const Color(0xFFa7f3d0);
+      cellDecoration = BoxDecoration(
+        color: singleEventBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: singleEventBorder, width: 1.2),
+      );
+      cellTextColor = isDarkMode
+          ? const Color(0xFF6ee7b7)
+          : const Color(0xFF047857);
+    } else if (eventCount > 1) {
+      // MULTIPLE EVENTS DAY: Distinct Vibrant Purple fill & Purple border
+      final multiEventBg = isDarkMode
+          ? const Color(0xFF4c1d95).withValues(alpha: 0.55)
+          : const Color(0xFFf3e8ff);
+      final multiEventBorder = isDarkMode
+          ? const Color(0xFFA855F7).withValues(alpha: 0.7)
+          : const Color(0xFFd8b4fe);
+      cellDecoration = BoxDecoration(
+        color: multiEventBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: multiEventBorder, width: 1.5),
+      );
+      cellTextColor = isDarkMode
+          ? const Color(0xFFd8b4fe)
+          : const Color(0xFF6b21a8);
     } else if (isToday) {
       cellDecoration = BoxDecoration(
         border: Border.all(color: primaryColor, width: 1.5),
@@ -557,7 +633,8 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
     return Tooltip(
       message: holiday != null
           ? '${holiday.nameEnglish}\n(${holiday.nameNepali})'
-          : '$dayNumber ${NepaliCalendarEngine.getMonthNameEnglish(currentBsDate.month)} ${currentBsDate.year}',
+          : '$dayNumber ${NepaliCalendarEngine.getMonthNameEnglish(currentBsDate.month)} ${currentBsDate.year}'
+                '${eventCount > 0 ? '\n• $eventCount Event${eventCount > 1 ? 's' : ''}' : ''}',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -583,7 +660,8 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                             (isSelected ||
                                 isRangeStart ||
                                 isRangeEnd ||
-                                isToday)
+                                isToday ||
+                                eventCount > 0)
                             ? FontWeight.w900
                             : FontWeight.w700,
                         color: cellTextColor,
@@ -598,7 +676,15 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                           fontWeight: FontWeight.w500,
                           color: (isSelected || isRangeStart || isRangeEnd)
                               ? Colors.white.withValues(alpha: 0.75)
-                              : textMuted.withValues(alpha: 0.7),
+                              : (eventCount == 1
+                                    ? (isDarkMode
+                                          ? const Color(0xFFa7f3d0)
+                                          : const Color(0xFF047857))
+                                    : (eventCount > 1
+                                          ? (isDarkMode
+                                                ? const Color(0xFFd8b4fe)
+                                                : const Color(0xFF6b21a8))
+                                          : textMuted.withValues(alpha: 0.7))),
                         ),
                       ),
                   ],
@@ -608,13 +694,21 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                 Text(
                   npDigit,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 9.5,
                     fontWeight: FontWeight.w600,
                     color: (isSelected || isRangeStart || isRangeEnd)
                         ? Colors.white.withValues(alpha: 0.9)
-                        : (isSaturday
-                              ? saturdayColor.withValues(alpha: 0.8)
-                              : textMuted),
+                        : (eventCount == 1
+                              ? (isDarkMode
+                                    ? const Color(0xFFa7f3d0)
+                                    : const Color(0xFF047857))
+                              : (eventCount > 1
+                                    ? (isDarkMode
+                                          ? const Color(0xFFd8b4fe)
+                                          : const Color(0xFF6b21a8))
+                                    : (isSaturday
+                                          ? saturdayColor.withValues(alpha: 0.8)
+                                          : textMuted))),
                   ),
                 ),
 
@@ -625,35 +719,59 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                     if (holiday != null &&
                         !(isSelected || isRangeStart || isRangeEnd))
                       Container(
-                        width: 5,
-                        height: 5,
+                        width: 4,
+                        height: 4,
                         margin: const EdgeInsets.symmetric(horizontal: 1),
                         decoration: const BoxDecoration(
                           color: Color(0xFFea580c),
                           shape: BoxShape.circle,
                         ),
                       ),
-                    if (eventCount > 0)
+                    if (eventCount == 1)
                       Container(
-                        width: 5,
-                        height: 5,
+                        width: 4.5,
+                        height: 4.5,
                         margin: const EdgeInsets.symmetric(horizontal: 1),
                         decoration: BoxDecoration(
                           color: (isSelected || isRangeStart || isRangeEnd)
                               ? Colors.white
-                              : const Color(0xFF10b981), // Emerald
+                              : const Color(0xFF10b981), // Single event emerald
                           shape: BoxShape.circle,
+                        ),
+                      )
+                    else if (eventCount > 1)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 2.5,
+                          vertical: 0,
+                        ),
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
+                        decoration: BoxDecoration(
+                          color: (isSelected || isRangeStart || isRangeEnd)
+                              ? Colors.white
+                              : const Color(0xFFA855F7), // Multi event purple
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '$eventCount',
+                          style: TextStyle(
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.bold,
+                            color: (isSelected || isRangeStart || isRangeEnd)
+                                ? primaryColor
+                                : Colors.white,
+                          ),
                         ),
                       ),
                     if (orderCount > 0)
                       Container(
-                        width: 5,
-                        height: 5,
+                        width: 4,
+                        height: 4,
                         margin: const EdgeInsets.symmetric(horizontal: 1),
                         decoration: BoxDecoration(
                           color: (isSelected || isRangeStart || isRangeEnd)
-                              ? Colors.white
-                              : const Color(0xFF6366f1), // Indigo
+                              ? Colors.white.withValues(alpha: 0.8)
+                              : const Color(0xFF0284c7),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -664,6 +782,41 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLegendItem({
+    required Color color,
+    required Color bgColor,
+    required String label,
+    required Color textColor,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: color.withValues(alpha: 0.6), width: 1),
+          ),
+          child: Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            color: textColor.withValues(alpha: 0.8),
+          ),
+        ),
+      ],
     );
   }
 

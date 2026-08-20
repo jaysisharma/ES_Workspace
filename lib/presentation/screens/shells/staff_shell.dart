@@ -8,6 +8,7 @@ import 'package:order_app/presentation/screens/staff/staff_profile_screen.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
 import 'package:order_app/presentation/widgets/common/app_drawer.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/presentation/widgets/common/role_based_router.dart';
 
 class StaffShell extends ConsumerStatefulWidget {
   const StaffShell({super.key});
@@ -214,9 +215,18 @@ class _StaffShellState extends ConsumerState<StaffShell> {
                               color: Colors.redAccent,
                             ),
                             tooltip: 'Logout',
-                            onPressed: () => ref
-                                .read(authNotifierProvider.notifier)
-                                .logout(),
+                            onPressed: () async {
+                              await ref
+                                  .read(authNotifierProvider.notifier)
+                                  .logout();
+                              if (context.mounted) {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                      builder: (_) => const RoleBasedRouter()),
+                                  (route) => false,
+                                );
+                              }
+                            },
                           ),
                         ],
                       ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nepali_utils/nepali_utils.dart';
+import 'package:order_app/core/calendar/nepali_calendar_engine.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/core/utils/currency_formatter.dart';
 import 'package:order_app/core/utils/share_helper.dart';
@@ -24,6 +26,7 @@ class EventFinancialReportScreen extends ConsumerStatefulWidget {
 
 class _EventFinancialReportScreenState
     extends ConsumerState<EventFinancialReportScreen> {
+  final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   DateTimeRange? _selectedDateRange;
   String _filterLabel = 'All Events';
@@ -31,18 +34,30 @@ class _EventFinancialReportScreenState
   @override
   void initState() {
     super.initState();
-    // Default to current month (BS)
+    // Default to current month (BS 1st to Current Date)
     _selectCurrentMonth();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _selectCurrentMonth() {
     final now = DateTime.now();
-    // Start of approx month window (first day of current month)
-    final start = DateTime(now.year, now.month, 1);
-    final end = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
+    final bsNow = NepaliCalendarEngine.adToBs(now);
+    // 1st day of the current Nepali month in AD
+    final bsStart = NepaliDateTime(bsNow.year, bsNow.month, 1);
+    final startAd = NepaliCalendarEngine.bsToAd(bsStart);
+    final start = DateTime(startAd.year, startAd.month, startAd.day, 0, 0, 0);
+    final end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    final monthName = NepaliCalendarEngine.monthsEnglish[bsNow.month - 1];
+
     setState(() {
       _selectedDateRange = DateTimeRange(start: start, end: end);
-      _filterLabel = formatNepaliDate(now, 'yyyy MMMM');
+      _filterLabel = '$monthName 1 - ${bsNow.day} (${bsNow.year})';
     });
   }
 
@@ -153,7 +168,8 @@ class _EventFinancialReportScreenState
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.table_chart_outlined, color: Colors.greenAccent),
+            icon: const Icon(Icons.table_chart_outlined,
+                color: Colors.greenAccent),
             tooltip: 'Export to Excel',
             onPressed: () {
               final orders = ordersAsync.value ?? [];
@@ -208,88 +224,208 @@ class _EventFinancialReportScreenState
 
           return Column(
             children: [
-              // Search & Filter Bar
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText:
-                        'Search by event name, Order ID (e.g. 403), or venue...',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: cardColor,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  ),
-                  onChanged: (val) => setState(() => _searchQuery = val),
-                ),
-              ),
-
-              // Date Selection Chips Bar
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Row(
-                  children: [
-                    FilterChip(
-                      selected: _selectedDateRange != null && _filterLabel.contains(formatNepaliDate(DateTime.now(), 'MMMM')),
-                      avatar: const Icon(Icons.calendar_month_rounded, size: 16),
-                      label: Text('This Month (${formatNepaliDate(DateTime.now(), "MMMM")})'),
-                      onSelected: (_) => _selectCurrentMonth(),
-                    ),
-                    const SizedBox(width: 8),
-                    FilterChip(
-                      selected: _selectedDateRange != null && !_filterLabel.contains(formatNepaliDate(DateTime.now(), 'MMMM')),
-                      avatar: const Icon(Icons.tune_rounded, size: 16),
-                      label: Text(_selectedDateRange != null && !_filterLabel.contains(formatNepaliDate(DateTime.now(), 'MMMM'))
-                          ? _filterLabel
-                          : 'Pick Date Range'),
-                      onSelected: (_) async {
-                        final picked = await NepaliDatePickerDialog.show(
-                          context: context,
-                          title: 'Filter Event Date Range',
-                          initialStart: _selectedDateRange?.start ?? DateTime.now(),
-                          initialEnd: _selectedDateRange?.end ?? DateTime.now(),
-                          allowRange: true,
-                        );
-                        if (picked != null && picked['start'] != null) {
-                          final start = picked['start']!;
-                          final end = picked['end'] ?? picked['start']!;
-                          setState(() {
-                            _selectedDateRange = DateTimeRange(start: start, end: end);
-                            _filterLabel =
-                                '${formatNepaliDate(start, 'yyyy-MM-dd')} to ${formatNepaliDate(end, 'yyyy-MM-dd')}';
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    FilterChip(
-                      selected: _selectedDateRange == null,
-                      avatar: const Icon(Icons.all_inclusive_rounded, size: 16),
-                      label: const Text('All Time'),
-                      onSelected: (_) => setState(() {
-                        _selectedDateRange = null;
-                        _filterLabel = 'All Events';
-                      }),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // Summary Banner with Export Button
-              _buildSummaryBanner(
+              // 1. TOP: 3 KPI Cards (REV, EXP, NET)
+              _buildKpiRow(
                 context,
                 totalRevenue,
                 totalExpenses,
                 totalProfit,
                 currencyLabel,
-                filteredOrders,
               ),
 
+              // 2. BELOW: Date Chips (Left) + Small Search Bar & Excel Export (Right)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth > 700;
+
+                    final dateChips = SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          FilterChip(
+                            selected: _selectedDateRange != null &&
+                                _filterLabel.contains(
+                                    NepaliCalendarEngine.monthsEnglish[
+                                        NepaliCalendarEngine.adToBs(
+                                                    DateTime.now())
+                                                .month -
+                                            1]),
+                            avatar: const Icon(Icons.calendar_month_rounded,
+                                size: 16),
+                            label: Text(
+                                'This Month (${NepaliCalendarEngine.monthsEnglish[NepaliCalendarEngine.adToBs(DateTime.now()).month - 1]})'),
+                            onSelected: (_) => _selectCurrentMonth(),
+                          ),
+                          const SizedBox(width: 8),
+                          FilterChip(
+                            selected: _selectedDateRange != null &&
+                                !_filterLabel.contains(
+                                    NepaliCalendarEngine.monthsEnglish[
+                                        NepaliCalendarEngine.adToBs(
+                                                    DateTime.now())
+                                                .month -
+                                            1]),
+                            avatar: const Icon(Icons.tune_rounded, size: 16),
+                            label: Text(_selectedDateRange != null &&
+                                    !_filterLabel.contains(
+                                        NepaliCalendarEngine.monthsEnglish[
+                                            NepaliCalendarEngine.adToBs(
+                                                        DateTime.now())
+                                                    .month -
+                                                1])
+                                ? _filterLabel
+                                : 'Pick Date Range'),
+                            onSelected: (_) async {
+                              final picked = await NepaliDatePickerDialog.show(
+                                context: context,
+                                title: 'Filter Event Date Range',
+                                initialStart: _selectedDateRange?.start ??
+                                    DateTime.now(),
+                                initialEnd:
+                                    _selectedDateRange?.end ?? DateTime.now(),
+                                allowRange: true,
+                              );
+                              if (picked != null && picked['start'] != null) {
+                                final start = picked['start']!;
+                                final end = picked['end'] ?? picked['start']!;
+                                setState(() {
+                                  _selectedDateRange =
+                                      DateTimeRange(start: start, end: end);
+                                  _filterLabel =
+                                      '${formatNepaliDate(start, 'yyyy-MM-dd')} to ${formatNepaliDate(end, 'yyyy-MM-dd')}';
+                                });
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          FilterChip(
+                            selected: _selectedDateRange == null,
+                            avatar: const Icon(Icons.all_inclusive_rounded,
+                                size: 16),
+                            label: const Text('All Time'),
+                            onSelected: (_) => setState(() {
+                              _selectedDateRange = null;
+                              _filterLabel = 'All Events';
+                            }),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    final searchAndExport = Row(
+                      mainAxisSize:
+                          isWide ? MainAxisSize.min : MainAxisSize.max,
+                      children: [
+                        // Small Search Bar on the Right
+                        SizedBox(
+                          width: isWide ? 220 : 160,
+                          height: 38,
+                          child: TextField(
+                            controller: _searchController,
+                            style: const TextStyle(fontSize: 12.5),
+                            decoration: InputDecoration(
+                              hintText: 'Search event, #ID...',
+                              hintStyle: TextStyle(
+                                  fontSize: 12, color: labelColor),
+                              prefixIcon:
+                                  const Icon(Icons.search, size: 17),
+                              prefixIconConstraints:
+                                  const BoxConstraints(minWidth: 32),
+                              suffixIcon: _searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 14),
+                                      padding: EdgeInsets.zero,
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() => _searchQuery = '');
+                                      },
+                                    )
+                                  : null,
+                              isDense: true,
+                              filled: true,
+                              fillColor: cardColor,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 8),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                    color: colorScheme.outlineVariant
+                                        .withValues(alpha: 0.5)),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                    color: colorScheme.outlineVariant
+                                        .withValues(alpha: 0.5)),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(
+                                    color: colorScheme.primary, width: 1.5),
+                              ),
+                            ),
+                            onChanged: (val) =>
+                                setState(() => _searchQuery = val),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // Excel Export Button
+                        ElevatedButton.icon(
+                          onPressed: () =>
+                              _exportEventsFinancialExcel(filteredOrders),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF10b981),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 9),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 1,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon:
+                              const Icon(Icons.table_chart_rounded, size: 15),
+                          label: Text(
+                            isWide
+                                ? 'Export ${filteredOrders.length} Events to Excel'
+                                : 'Export (${filteredOrders.length})',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+
+                    if (isWide) {
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(child: dateChips),
+                          const SizedBox(width: 12),
+                          searchAndExport,
+                        ],
+                      );
+                    } else {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          dateChips,
+                          const SizedBox(height: 8),
+                          searchAndExport,
+                        ],
+                      );
+                    }
+                  },
+                ),
+              ),
+
+              // 3. Events List
               Expanded(
                 child: filteredOrders.isEmpty
                     ? Center(
@@ -357,64 +493,210 @@ class _EventFinancialReportScreenState
     }).toList();
   }
 
-  Widget _buildSummaryBanner(
+  Widget _buildKpiRow(
     BuildContext context,
     double revenue,
     double expenses,
     double profit,
     String currency,
-    List<OrderEntity> orders,
   ) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = const Color(0xFF0075db);
+    final cardBg = isDark ? const Color(0xFF141f28) : Colors.white;
+    final borderColor =
+        isDark ? const Color(0xFF1e2d3d) : const Color(0xFFe2e8f0);
+    final textMuted =
+        isDark ? const Color(0xFF94a3b8) : const Color(0xFF64748b);
+    final textColor = isDark ? Colors.white : const Color(0xFF0f172a);
 
+    final marginPercent =
+        revenue > 0 ? ((profit / revenue) * 100).toStringAsFixed(1) : '0';
+
+    final revCard = _buildKPICard(
+      label: 'REV',
+      title: 'Revenue',
+      amount: revenue,
+      color: primaryColor,
+      cardBg: cardBg,
+      borderColor: borderColor,
+      textColor: textColor,
+      textMuted: textMuted,
+      icon: Icons.trending_up_rounded,
+    );
+
+    final expCard = _buildKPICard(
+      label: 'EXP',
+      title: 'Expenses',
+      amount: expenses,
+      color: const Color(0xFFf43f5e),
+      cardBg: cardBg,
+      borderColor: borderColor,
+      textColor: textColor,
+      textMuted: textMuted,
+      icon: Icons.trending_down_rounded,
+    );
+
+    final netCard = _buildKPICard(
+      label: 'NET',
+      title: 'Net Profit',
+      amount: profit,
+      badge: '$marginPercent%',
+      color: profit >= 0
+          ? const Color(0xFF10b981)
+          : const Color(0xFFef4444),
+      cardBg: cardBg,
+      borderColor: borderColor,
+      textColor: textColor,
+      textMuted: textMuted,
+      icon: profit >= 0
+          ? Icons.account_balance_wallet_rounded
+          : Icons.money_off_rounded,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth > 650) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Row(
+              children: [
+                Expanded(child: revCard),
+                const SizedBox(width: 10),
+                Expanded(child: expCard),
+                const SizedBox(width: 10),
+                Expanded(child: netCard),
+              ],
+            ),
+          );
+        }
+
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Row(
+            children: [
+              SizedBox(width: 175, child: revCard),
+              const SizedBox(width: 10),
+              SizedBox(width: 175, child: expCard),
+              const SizedBox(width: 10),
+              SizedBox(width: 185, child: netCard),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildKPICard({
+    required String label,
+    required String title,
+    required double amount,
+    String? badge,
+    required Color color,
+    required Color cardBg,
+    required Color borderColor,
+    required Color textColor,
+    required Color textMuted,
+    required IconData icon,
+  }) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: colorScheme.primaryContainer.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colorScheme.primary.withValues(alpha: 0.2)),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.35), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Top Row: Icon Circle + Badge / Label
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _SummaryItem(
-                label: 'REV',
-                value: revenue,
-                currency: currency,
-                color: colorScheme.primary,
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 20, color: color),
               ),
-              _SummaryItem(
-                label: 'EXP',
-                value: expenses,
-                currency: currency,
-                color: colorScheme.error,
-              ),
-              _SummaryItem(
-                label: 'NET',
-                value: profit,
-                currency: currency,
-                color: const Color(0xFF4ade80),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w900,
+                            color: color,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      if (badge != null) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          badge,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _exportEventsFinancialExcel(orders),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10b981),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                visualDensity: VisualDensity.compact,
-              ),
-              icon: const Icon(Icons.table_chart_rounded, size: 18),
-              label: Text(
-                'Export ${orders.length} Events to Excel ($_filterLabel)',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+          const SizedBox(height: 10),
+
+          // Title
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: textMuted,
+            ),
+          ),
+          const SizedBox(height: 3),
+
+          // Amount
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              CurrencyFormatter.formatCompactWithLabel(amount, 'NPR'),
+              style: TextStyle(
+                fontSize: 16.5,
+                fontWeight: FontWeight.w900,
+                color: textColor,
+                letterSpacing: -0.5,
+                fontFamily: 'Manrope',
               ),
             ),
           ),
@@ -1134,43 +1416,6 @@ class __EventFinancialCardWidgetState
   }
 }
 
-class _SummaryItem extends StatelessWidget {
-  final String label;
-  final double value;
-  final String currency;
-  final Color color;
-
-  const _SummaryItem({
-    required this.label,
-    required this.value,
-    required this.currency,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: color.withValues(alpha: 0.7),
-          ),
-        ),
-        Text(
-          CurrencyFormatter.format(value, showDecimal: false),
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class _FinancialMiniStat extends StatelessWidget {
   final String label;

@@ -12,7 +12,7 @@ class BottomRightBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!Navigator.canPop(context)) return const SizedBox.shrink();
+    if (!Navigator.canPop(context) && onPressed == null) return const SizedBox.shrink();
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = const Color(0xFF0075db);

@@ -472,7 +472,7 @@ class RevenueFinancialsCardWidget extends StatelessWidget {
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.receipt_long, size: 18),
                 label: const Text(
-                  'GENERATE TAX / PROFORMA INVOICE',
+                  'GENERATE PROFORMA INVOICE',
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
                 style: ElevatedButton.styleFrom(

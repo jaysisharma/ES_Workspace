@@ -13,6 +13,7 @@ import 'package:order_app/presentation/screens/common/finance/revenue_summary_sc
 import 'package:order_app/presentation/screens/common/finance/financial_ledger_screen.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/settings_screen.dart';
+import 'package:order_app/presentation/widgets/common/role_based_router.dart';
 
 class FounderShell extends ConsumerWidget {
   const FounderShell({super.key});
@@ -273,9 +274,18 @@ class FounderShell extends ConsumerWidget {
                               color: Colors.redAccent,
                             ),
                             tooltip: 'Logout',
-                            onPressed: () => ref
-                                .read(authNotifierProvider.notifier)
-                                .logout(),
+                            onPressed: () async {
+                              await ref
+                                  .read(authNotifierProvider.notifier)
+                                  .logout();
+                              if (context.mounted) {
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                      builder: (_) => const RoleBasedRouter()),
+                                  (route) => false,
+                                );
+                              }
+                            },
                           ),
                         ],
                       ),

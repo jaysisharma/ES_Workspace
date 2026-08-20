@@ -11,6 +11,7 @@ import 'package:order_app/domain/entities/event_entity.dart';
 import 'package:order_app/presentation/widgets/hr_management/leave_request_sheet.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
+import 'package:order_app/presentation/widgets/common/role_based_router.dart';
 
 class StaffProfileScreen extends ConsumerStatefulWidget {
   const StaffProfileScreen({super.key});
@@ -120,7 +121,13 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
     if (confirmed == true && mounted) {
       setState(() => _isLoggingOut = true);
       await ref.read(authNotifierProvider.notifier).logout();
-      if (mounted) setState(() => _isLoggingOut = false);
+      if (mounted) {
+        setState(() => _isLoggingOut = false);
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const RoleBasedRouter()),
+          (route) => false,
+        );
+      }
     }
   }
 

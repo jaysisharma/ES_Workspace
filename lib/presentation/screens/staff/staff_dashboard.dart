@@ -12,6 +12,7 @@ import 'package:order_app/presentation/screens/common/events/event_task_detail_s
 import 'package:order_app/presentation/widgets/common/shimmer_loading.dart';
 import 'package:order_app/presentation/widgets/hr_management/leave_request_sheet.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 
 class StaffDashboard extends ConsumerStatefulWidget {
   const StaffDashboard({super.key});
@@ -49,114 +50,96 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
           child: SafeArea(
             bottom: false,
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    if (MediaQuery.of(context).size.width < 768)
-                      Builder(
-                        builder: (context) => IconButton(
-                          icon: Icon(
-                            Icons.menu_rounded,
-                            color: colorScheme.onSurface,
-                          ),
-                          onPressed: () => Scaffold.of(context).openDrawer(),
-                        ),
-                      ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Work Overview',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurface,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        SlidePageRoute(page: const SynologyCompanyPdfScreen()),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        side: BorderSide(color: colorScheme.primary),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      icon: Icon(Icons.picture_as_pdf_outlined, size: 16, color: colorScheme.primary),
-                      label: Text(
-                        'Company PDF',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      onPressed: () => showStaffLeaveRequestSheet(context, ref),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        side: BorderSide(color: colorScheme.primary),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      icon: Icon(Icons.time_to_leave_rounded, size: 16, color: colorScheme.primary),
-                      label: Text(
-                        'Request Leave',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        SlidePageRoute(page: const NotificationsScreen()),
-                      ),
-                      child: Stack(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: colorScheme.surface,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: colorScheme.outline),
-                            ),
-                            child: Icon(
-                              Icons.notifications_none_rounded,
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (MediaQuery.of(context).size.width < 768)
+                        Builder(
+                          builder: (context) => IconButton(
+                            icon: Icon(
+                              Icons.menu_rounded,
                               color: colorScheme.onSurface,
-                              size: 20,
                             ),
+                            onPressed: () => Scaffold.of(context).openDrawer(),
                           ),
-                          if (unreadCount > 0)
-                            Positioned(
-                              right: 1,
-                              top: 1,
-                              child: Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: colorScheme.surface,
-                                    width: 2,
+                        ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'Work Overview',
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Company PDF',
+                        onPressed: () => Navigator.push(
+                          context,
+                          SlidePageRoute(page: const SynologyCompanyPdfScreen()),
+                        ),
+                        icon: Icon(Icons.picture_as_pdf_outlined, size: 20, color: colorScheme.primary),
+                      ),
+                      IconButton(
+                        tooltip: 'Request Leave',
+                        onPressed: () => showStaffLeaveRequestSheet(context, ref),
+                        icon: Icon(Icons.time_to_leave_rounded, size: 20, color: colorScheme.primary),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          SlidePageRoute(page: const NotificationsScreen()),
+                        ),
+                        child: Stack(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surface,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: colorScheme.outline),
+                              ),
+                              child: Icon(
+                                Icons.notifications_none_rounded,
+                                color: colorScheme.onSurface,
+                                size: 20,
+                              ),
+                            ),
+                            if (unreadCount > 0)
+                              Positioned(
+                                right: 1,
+                                top: 1,
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: colorScheme.surface,
+                                      width: 2,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -167,10 +150,55 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
               .watch(eventsStreamProvider)
               .when(
                 data: (events) {
-                  // Since staff assignment was removed, show all confirmed/active events
-                  final assignedEvents = events
-                      .where((e) => e.status != 'Draft')
-                      .toList();
+                  final currentUser = ref.watch(authNotifierProvider).user;
+                  final currentUserId = currentUser?.uid;
+                  final currentUserEmail = currentUser?.email.toLowerCase();
+
+                  final orders = ref.watch(ordersStreamProvider).value ?? [];
+                  final allItems = ref.watch(allItemsStreamProvider).value ?? [];
+
+                  // Show ONLY works/events assigned to the currently logged in staff member
+                  final userAssignedEvents = events.where((e) {
+                    if (e.status == 'Draft') return false;
+
+                    // 1. Direct assignment on Event
+                    if (e.assignedStaffId != null &&
+                        e.assignedStaffId!.isNotEmpty &&
+                        (e.assignedStaffId == currentUserId ||
+                         (currentUserEmail != null && e.assignedStaffId?.toLowerCase() == currentUserEmail))) {
+                      return true;
+                    }
+
+                    // 2. Assignment via Order
+                    final matchingOrder = orders.where((o) => o.id == e.orderId).firstOrNull;
+                    if (matchingOrder != null && matchingOrder.assignedStaffIds.isNotEmpty) {
+                      if (matchingOrder.assignedStaffIds.contains(currentUserId) ||
+                          (currentUserEmail != null && matchingOrder.assignedStaffIds.any((id) => id.toLowerCase() == currentUserEmail))) {
+                        return true;
+                      }
+                    }
+
+                    // 3. Assignment via Order Items / Tasks
+                    final orderItems = allItems.where((i) => i.orderId == e.orderId);
+                    if (orderItems.any((i) =>
+                        (i.assignedStaffId != null && i.assignedStaffId == currentUserId) ||
+                        (i.assignedStaffName != null &&
+                         currentUserEmail != null &&
+                         i.assignedStaffName!.toLowerCase().contains(currentUserEmail)))) {
+                      return true;
+                    }
+
+                    return false;
+                  }).toList();
+
+                  // Fallback: If no explicit user assignment exists across all events (e.g. legacy database), display non-draft events
+                  final hasAnyAssignmentsInDb = events.any((e) => e.assignedStaffId != null && e.assignedStaffId!.isNotEmpty) ||
+                      orders.any((o) => o.assignedStaffIds.isNotEmpty) ||
+                      allItems.any((i) => i.assignedStaffId != null && i.assignedStaffId!.isNotEmpty);
+
+                  final assignedEvents = (userAssignedEvents.isEmpty && !hasAnyAssignmentsInDb)
+                      ? events.where((e) => e.status != 'Draft').toList()
+                      : userAssignedEvents;
 
                   if (assignedEvents.isEmpty) {
                     return Center(

@@ -836,13 +836,15 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Today\'s Check-in Log (${attendance.length})',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  'Today\'s Check-in Log (${attendance.length})',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               ElevatedButton.icon(
@@ -1156,17 +1158,20 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
           ],
 
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Leave & Absence Requests (${filtered.length})',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              Expanded(
+                child: Text(
+                  'Leave & Absence Requests (${filtered.length})',
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
               OutlinedButton.icon(
                 icon: const Icon(Icons.event_repeat, size: 14),
-                label: const Text('Leave Reset / Cycle', style: TextStyle(fontSize: 12)),
+                label: const Text('Leave Cycle', style: TextStyle(fontSize: 11)),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   visualDensity: VisualDensity.compact,
                 ),
                 onPressed: () => showLeaveCycleSettingsDialog(context, ref),
@@ -1324,11 +1329,13 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Staff Performance & Work Hours',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              const Expanded(
+                child: Text(
+                  'Staff Performance & Work Hours',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.download),

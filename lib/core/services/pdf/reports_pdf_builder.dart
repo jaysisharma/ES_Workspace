@@ -320,7 +320,7 @@ class ReportsPdfBuilder {
     required Uint8List logoBytes,
     required pw.Font font,
     required pw.Font boldFont,
-    String invoiceType = 'TAX INVOICE', // 'TAX INVOICE' or 'PROFORMA INVOICE'
+    String invoiceType = 'PROFORMA INVOICE', // Proforma Invoice
     String companyName = 'Event Solution Pvt Ltd',
     String companyAddress = 'Jwagal - 10, Lalitpur',
     String companyPhone = 'Ph: 01-5268535, 01-5268103',
@@ -329,7 +329,7 @@ class ReportsPdfBuilder {
     String? buyerAddress,
     String? buyerVatNo,
     String paymentTerms = 'Cash / Credit / Cheque',
-    String defaultHsCode = '998399',
+    String defaultHsCode = '',
     double discount = 0.0,
     double discountRate = 0.0,
     double managementCharge = 0.0,

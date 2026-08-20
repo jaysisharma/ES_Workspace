@@ -23,6 +23,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:order_app/core/services/export_directory_service.dart';
 import 'package:order_app/presentation/widgets/create_order/manage_categories_dialog.dart';
 import 'package:order_app/presentation/widgets/hr_management/leave_cycle_settings_dialog.dart';
+import 'package:order_app/presentation/widgets/common/role_based_router.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -1207,20 +1208,23 @@ class SettingsScreen extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: textColor,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
               ),
-            ),
-            Text(subtitle, style: TextStyle(color: labelColor, fontSize: 11)),
-          ],
+              Text(subtitle, style: TextStyle(color: labelColor, fontSize: 11)),
+            ],
+          ),
         ),
+        const SizedBox(width: 12),
         child,
       ],
     );
@@ -1310,9 +1314,15 @@ class SettingsScreen extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context); // Close dialog
-              ref.read(authNotifierProvider.notifier).logout();
+              await ref.read(authNotifierProvider.notifier).logout();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const RoleBasedRouter()),
+                  (route) => false,
+                );
+              }
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Logout'),
