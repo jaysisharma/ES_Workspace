@@ -45,6 +45,9 @@ class OrderEntity {
   final String advanceReceiptUrl;
   final String advanceReceiptPath;
   final String advanceReceiptName;
+  final String finalBillUrl;
+  final String finalBillPath;
+  final String finalBillName;
   final double managementCharge;
   final bool isMgtChargePercent;
   final double discount;
@@ -79,6 +82,9 @@ class OrderEntity {
     this.advanceReceiptUrl = '',
     this.advanceReceiptPath = '',
     this.advanceReceiptName = '',
+    this.finalBillUrl = '',
+    this.finalBillPath = '',
+    this.finalBillName = '',
     this.managementCharge = 0.0,
     this.isMgtChargePercent = true,
     this.discount = 0.0,
@@ -113,6 +119,9 @@ class OrderEntity {
     String? advanceReceiptUrl,
     String? advanceReceiptPath,
     String? advanceReceiptName,
+    String? finalBillUrl,
+    String? finalBillPath,
+    String? finalBillName,
     double? managementCharge,
     bool? isMgtChargePercent,
     double? discount,
@@ -147,6 +156,9 @@ class OrderEntity {
       advanceReceiptUrl: advanceReceiptUrl ?? this.advanceReceiptUrl,
       advanceReceiptPath: advanceReceiptPath ?? this.advanceReceiptPath,
       advanceReceiptName: advanceReceiptName ?? this.advanceReceiptName,
+      finalBillUrl: finalBillUrl ?? this.finalBillUrl,
+      finalBillPath: finalBillPath ?? this.finalBillPath,
+      finalBillName: finalBillName ?? this.finalBillName,
       managementCharge: managementCharge ?? this.managementCharge,
       isMgtChargePercent: isMgtChargePercent ?? this.isMgtChargePercent,
       discount: discount ?? this.discount,
@@ -186,6 +198,9 @@ class OrderEntity {
         other.advanceReceiptUrl == advanceReceiptUrl &&
         other.advanceReceiptPath == advanceReceiptPath &&
         other.advanceReceiptName == advanceReceiptName &&
+        other.finalBillUrl == finalBillUrl &&
+        other.finalBillPath == finalBillPath &&
+        other.finalBillName == finalBillName &&
         other.managementCharge == managementCharge &&
         other.isMgtChargePercent == isMgtChargePercent &&
         other.discount == discount &&
@@ -219,6 +234,9 @@ class OrderEntity {
         advanceReceiptUrl.hashCode ^
         advanceReceiptPath.hashCode ^
         advanceReceiptName.hashCode ^
+        finalBillUrl.hashCode ^
+        finalBillPath.hashCode ^
+        finalBillName.hashCode ^
         managementCharge.hashCode ^
         isMgtChargePercent.hashCode ^
         discount.hashCode ^

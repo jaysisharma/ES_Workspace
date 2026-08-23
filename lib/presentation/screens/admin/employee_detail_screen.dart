@@ -11,6 +11,7 @@ import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/domain/entities/employee_profile_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/domain/entities/leave_request_entity.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/employee_profile_providers.dart';
 import 'package:order_app/presentation/providers/hr_providers.dart';
 import 'package:order_app/presentation/providers/settings_provider.dart';
@@ -387,6 +388,317 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     );
   }
 
+  Future<void> _showEditPayrollDialog(
+    BuildContext context,
+    EmployeeProfileEntity profile,
+  ) async {
+    final basicController = TextEditingController(
+      text: profile.basicSalary > 0 ? profile.basicSalary.toStringAsFixed(0) : '',
+    );
+    final fuelController = TextEditingController(
+      text: profile.fuelAllowance > 0 ? profile.fuelAllowance.toStringAsFixed(0) : '',
+    );
+    final commController = TextEditingController(
+      text: profile.communicationAllowance > 0
+          ? profile.communicationAllowance.toStringAsFixed(0)
+          : '',
+    );
+    final dearController = TextEditingController(
+      text: profile.dearnessAllowance > 0
+          ? profile.dearnessAllowance.toStringAsFixed(0)
+          : '',
+    );
+    final bonusController = TextEditingController(
+      text: profile.bonus > 0 ? profile.bonus.toStringAsFixed(0) : '',
+    );
+    final ssfController = TextEditingController(
+      text: profile.ssf > 0 ? profile.ssf.toStringAsFixed(0) : '',
+    );
+    final citController = TextEditingController(
+      text: profile.cit > 0 ? profile.cit.toStringAsFixed(0) : '',
+    );
+    final insController = TextEditingController(
+      text: profile.healthInsurance > 0
+          ? profile.healthInsurance.toStringAsFixed(0)
+          : '',
+    );
+    final tdsController = TextEditingController(
+      text: profile.tds > 0 ? profile.tds.toStringAsFixed(0) : '',
+    );
+
+    bool isSaving = false;
+
+    await showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final basic = double.tryParse(basicController.text.trim()) ?? 0.0;
+          final fuel = double.tryParse(fuelController.text.trim()) ?? 0.0;
+          final comm = double.tryParse(commController.text.trim()) ?? 0.0;
+          final dear = double.tryParse(dearController.text.trim()) ?? 0.0;
+          final bonus = double.tryParse(bonusController.text.trim()) ?? 0.0;
+          final ssf = double.tryParse(ssfController.text.trim()) ?? 0.0;
+          final cit = double.tryParse(citController.text.trim()) ?? 0.0;
+          final ins = double.tryParse(insController.text.trim()) ?? 0.0;
+          final tds = double.tryParse(tdsController.text.trim()) ?? 0.0;
+
+          final gross = basic + fuel + comm + dear + bonus;
+          final deductions = ssf + cit + ins + tds;
+          final net = gross - deductions;
+
+          Widget buildField(
+            String label,
+            TextEditingController ctrl, {
+            String prefix = 'Rs. ',
+            Color? accentColor,
+          }) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: TextField(
+                controller: ctrl,
+                keyboardType: TextInputType.number,
+                onChanged: (_) => setDialogState(() {}),
+                decoration: InputDecoration(
+                  labelText: label,
+                  prefixText: prefix,
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                  focusedBorder: accentColor != null
+                      ? OutlineInputBorder(
+                          borderSide: BorderSide(color: accentColor, width: 1.5),
+                        )
+                      : null,
+                ),
+              ),
+            );
+          }
+
+          return AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(Icons.payments_outlined,
+                      color: Colors.green, size: 22),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Edit Monthly Payroll',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        profile.name,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 480,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Earnings
+                    Text(
+                      'EARNINGS & ALLOWANCES',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    buildField('Basic Salary', basicController,
+                        accentColor: Colors.green),
+                    buildField('Fuel Allowance', fuelController),
+                    buildField('Communication Allowance', commController),
+                    buildField('Dearness Allowance', dearController),
+                    buildField('Bonus / Incentive', bonusController),
+
+                    const Divider(height: 16),
+
+                    // Deductions
+                    Text(
+                      'DEDUCTIONS & TAXES',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    buildField('TDS / Tax Deduction', tdsController,
+                        accentColor: Colors.redAccent),
+                    buildField('Social Security Fund (SSF)', ssfController),
+                    buildField('Citizen Investment Trust (CIT)', citController),
+                    buildField('Health / Medical Insurance', insController),
+
+                    const SizedBox(height: 10),
+
+                    // Live Net Summary Card
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest
+                            .withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outline
+                              .withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Gross Monthly:',
+                                  style: TextStyle(fontSize: 12)),
+                              Text(
+                                'Rs. ${gross.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Total Deductions:',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.redAccent)),
+                              Text(
+                                '- Rs. ${deductions.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color: Colors.redAccent),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Net In-Hand Salary:',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13)),
+                              Text(
+                                'Rs. ${net.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: Colors.green.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(dialogCtx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        setDialogState(() => isSaving = true);
+                        try {
+                          final updated = profile.copyWith(
+                            basicSalary: basic,
+                            fuelAllowance: fuel,
+                            communicationAllowance: comm,
+                            dearnessAllowance: dear,
+                            bonus: bonus,
+                            ssf: ssf,
+                            cit: cit,
+                            healthInsurance: ins,
+                            tds: tds,
+                          );
+
+                          await ref
+                              .read(employeeProfileNotifierProvider.notifier)
+                              .saveProfile(updated);
+
+                          if (dialogCtx.mounted) {
+                            Navigator.pop(dialogCtx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                    'Payroll updated for ${profile.name}'),
+                                backgroundColor: const Color(0xFF10b981),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (dialogCtx.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content:
+                                    Text('Failed to update payroll: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (dialogCtx.mounted) {
+                            setDialogState(() => isSaving = false);
+                          }
+                        }
+                      },
+                child: isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child:
+                            CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Save Payroll'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -394,6 +706,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     final textColor = colorScheme.onSurface;
     final labelColor = colorScheme.onSurfaceVariant;
     final borderColor = colorScheme.outline.withValues(alpha: 0.2);
+
+    final loggedInUser = ref.watch(authNotifierProvider).user;
+    final isAdmin = loggedInUser?.role == UserRole.admin;
 
     final usersStream = ref.watch(usersStreamProvider);
     final currentUser = usersStream.maybeWhen(
@@ -439,28 +754,30 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             tooltip: 'Share Employee PDF',
             onPressed: () => _printEmployeePdf(profile, share: true),
           ),
-          IconButton(
-            icon: const Icon(Icons.lock_reset, color: Color(0xFF0075db)),
-            tooltip: 'Change Password & Role',
-            onPressed: () => _showChangeCredentialsDialog(context, profile, currentUser),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_note),
-            tooltip: 'Edit HR Profile',
-            onPressed: () {
-              context.pushPage(AddEmployeeScreen(
-                  userId: currentUser.id,
-                  userName: currentUser.name,
-                  userEmail: currentUser.email,
-                  userRole: currentUser.role,
-                  initialProfile: profile));
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
-            tooltip: 'Delete Employee Record',
-            onPressed: () => _confirmDeleteEmployee(context, profile),
-          ),
+          if (isAdmin) ...[
+            IconButton(
+              icon: const Icon(Icons.lock_reset, color: Color(0xFF0075db)),
+              tooltip: 'Change Password & Role',
+              onPressed: () => _showChangeCredentialsDialog(context, profile, currentUser),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_note),
+              tooltip: 'Edit HR Profile',
+              onPressed: () {
+                context.pushPage(AddEmployeeScreen(
+                    userId: currentUser.id,
+                    userName: currentUser.name,
+                    userEmail: currentUser.email,
+                    userRole: currentUser.role,
+                    initialProfile: profile));
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+              tooltip: 'Delete Employee Record',
+              onPressed: () => _confirmDeleteEmployee(context, profile),
+            ),
+          ],
           const SizedBox(width: 8),
         ],
       ),
@@ -794,8 +1111,26 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   labelColor,
                   textColor),
               const SizedBox(height: 20),
-              const Text('Monthly Compensation & Salary Structure',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Monthly Compensation & Salary Structure',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.edit_outlined, size: 14),
+                    label: const Text('Edit Payroll', style: TextStyle(fontSize: 12)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                    ),
+                    onPressed: () => _showEditPayrollDialog(context, profile),
+                  ),
+                ],
+              ),
               const Divider(height: 20),
               () {
                 final gross = profile.grossSalary;

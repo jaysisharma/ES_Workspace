@@ -22,8 +22,7 @@ class SettingsScreen extends ConsumerWidget {
     final user = authState.user;
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final isAdminOrFounder =
-        user?.role == UserRole.admin || user?.role == UserRole.founder;
+    final isAdmin = user?.role == UserRole.admin;
 
     // Design Tokens
     final bgColor = isDarkMode ? const Color(0xFF0b1319) : const Color(0xFFf8fafc);
@@ -42,7 +41,7 @@ class SettingsScreen extends ConsumerWidget {
     Color roleColor;
     switch (user?.role) {
       case UserRole.founder:
-        roleColor = const Color(0xFF0075db);
+        roleColor = const Color(0xFF8b5cf6);
         break;
       case UserRole.admin:
         roleColor = const Color(0xFFa855f7);
@@ -193,8 +192,11 @@ class SettingsScreen extends ConsumerWidget {
 
             const SizedBox(height: 24),
 
-            // ── Administration & Management Sub-pages ────────────────
-            _buildSectionLabel('ADMINISTRATION & POLICIES', labelColor),
+            // ── Administration & Management Sub-pages (Admin only) or Data & Storage ──
+            _buildSectionLabel(
+              isAdmin ? 'ADMINISTRATION & POLICIES' : 'DATA & STORAGE',
+              labelColor,
+            ),
             const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
@@ -204,7 +206,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  if (isAdminOrFounder) ...[
+                  if (isAdmin) ...[
                     _buildNavTile(
                       icon: Icons.people_alt_rounded,
                       iconColor: const Color(0xFF0075db),

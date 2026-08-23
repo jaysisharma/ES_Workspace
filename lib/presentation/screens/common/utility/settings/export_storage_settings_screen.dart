@@ -356,6 +356,8 @@ class ExportStorageSettingsScreen extends ConsumerWidget {
                 'Setup End',
                 'Status',
                 'Total Amount (NPR)',
+                'Advance Received (NPR)',
+                'Due Amount (NPR)',
                 'Description',
               ];
 
@@ -373,6 +375,8 @@ class ExportStorageSettingsScreen extends ConsumerWidget {
                       o.setupEndDate != null ? formatNepaliDate(o.setupEndDate!, 'yyyy-MM-dd') : '',
                       o.status.name,
                       o.totalAmount,
+                      o.advanceReceived,
+                      (o.totalAmount - o.advanceReceived).clamp(0.0, double.infinity),
                       o.description,
                     ],
                   )

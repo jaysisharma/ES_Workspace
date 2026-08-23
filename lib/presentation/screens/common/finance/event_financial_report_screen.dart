@@ -76,6 +76,8 @@ class _EventFinancialReportScreenState
       'Client Name',
       'Event / Rental',
       'Total Revenue (NPR)',
+      'Advance Received (NPR)',
+      'Due Amount (NPR)',
       'Total Expenses (NPR)',
       'Profit / Loss (NPR)',
     ];
@@ -97,6 +99,8 @@ class _EventFinancialReportScreenState
 
     final List<List<dynamic>> rows = [];
     double totalRev = 0.0;
+    double totalAdvance = 0.0;
+    double totalDue = 0.0;
     double totalExp = 0.0;
 
     for (final o in sorted) {
@@ -105,10 +109,14 @@ class _EventFinancialReportScreenState
           : (o.contactPerson.isNotEmpty ? o.contactPerson : 'N/A');
       final eventType = o.category.isNotEmpty ? o.category : 'Event';
       final rev = o.totalAmount;
+      final advance = o.advanceReceived;
+      final due = (rev - advance).clamp(0.0, double.infinity);
       final exp = o.totalExpenses;
       final profitLoss = rev - exp;
 
       totalRev += rev;
+      totalAdvance += advance;
+      totalDue += due;
       totalExp += exp;
 
       rows.add([
@@ -118,6 +126,8 @@ class _EventFinancialReportScreenState
         clientName,
         eventType,
         rev,
+        advance,
+        due,
         exp,
         profitLoss,
       ]);
@@ -133,6 +143,8 @@ class _EventFinancialReportScreenState
       '',
       '',
       totalRev,
+      totalAdvance,
+      totalDue,
       totalExp,
       netProfit,
     ]);
@@ -150,6 +162,56 @@ class _EventFinancialReportScreenState
       title: reportTitle,
       category: ExportCategory.finance,
     );
+  }
+
+  Future<void> _exportEventsFinancialPdf(List<OrderEntity> orders) async {
+    if (orders.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No event records to export.')),
+      );
+      return;
+    }
+
+    double totalRevenue = 0;
+    double totalExpenses = 0;
+    for (var o in orders) {
+      totalRevenue += o.totalAmount;
+      totalExpenses += o.totalExpenses;
+    }
+    final netProfit = totalRevenue - totalExpenses;
+    final margin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0.0;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Generating Event Financial Report PDF...')),
+    );
+
+    try {
+      final pdfData = await OrderPdfService.generateGlobalFinancialPdf(
+        orders: orders,
+        totalRevenue: totalRevenue,
+        totalExpenses: totalExpenses,
+        netProfit: netProfit,
+        margin: margin,
+      );
+
+      if (!context.mounted) return;
+      final cleanLabel = _filterLabel.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+      await ShareHelper.sharePdf(
+        context: context,
+        pdfBytes: pdfData,
+        fileName: 'Event_Financial_Report_$cleanLabel.pdf',
+        subject: 'Event Financial Report - $_filterLabel',
+      );
+    } catch (e, st) {
+      debugPrint('PDF export error in event_financial_report: $e\n$st');
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Export PDF failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -179,6 +241,16 @@ class _EventFinancialReportScreenState
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.picture_as_pdf_outlined,
+                color: Color(0xFFf43f5e)),
+            tooltip: 'Export Summary PDF',
+            onPressed: () {
+              final orders = ordersAsync.value ?? [];
+              final filtered = _getFilteredOrders(orders);
+              _exportEventsFinancialPdf(filtered);
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.table_chart_outlined,
                 color: Colors.greenAccent),
@@ -228,18 +300,24 @@ class _EventFinancialReportScreenState
 
           double totalRevenue = 0;
           double totalExpenses = 0;
+          double totalAdvance = 0;
+          double totalDue = 0;
           for (var o in filteredOrders) {
             totalRevenue += o.totalAmount;
             totalExpenses += o.totalExpenses;
+            totalAdvance += o.advanceReceived;
+            totalDue += (o.totalAmount - o.advanceReceived).clamp(0.0, double.infinity);
           }
           final totalProfit = totalRevenue - totalExpenses;
 
           return Column(
             children: [
-              // 1. TOP: 3 KPI Cards (REV, EXP, NET)
+              // 1. TOP: KPI Cards (REV, ADV, DUE, EXP, NET)
               _buildKpiRow(
                 context,
                 totalRevenue,
+                totalAdvance,
+                totalDue,
                 totalExpenses,
                 totalProfit,
                 currencyLabel,
@@ -403,8 +481,36 @@ class _EventFinancialReportScreenState
                               const Icon(Icons.table_chart_rounded, size: 15),
                           label: Text(
                             isWide
-                                ? 'Export ${filteredOrders.length} Events to Excel'
-                                : 'Export (${filteredOrders.length})',
+                                ? 'Excel (${filteredOrders.length})'
+                                : 'Excel',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        // PDF Export Button
+                        ElevatedButton.icon(
+                          onPressed: () =>
+                              _exportEventsFinancialPdf(filteredOrders),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFf43f5e),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 9),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 1,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon:
+                              const Icon(Icons.picture_as_pdf_rounded, size: 15),
+                          label: Text(
+                            isWide
+                                ? 'PDF (${filteredOrders.length})'
+                                : 'PDF',
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
@@ -537,6 +643,8 @@ class _EventFinancialReportScreenState
   Widget _buildKpiRow(
     BuildContext context,
     double revenue,
+    double advance,
+    double due,
     double expenses,
     double profit,
     String currency,
@@ -563,6 +671,30 @@ class _EventFinancialReportScreenState
       textColor: textColor,
       textMuted: textMuted,
       icon: Icons.trending_up_rounded,
+    );
+
+    final advCard = _buildKPICard(
+      label: 'ADV',
+      title: 'Advance',
+      amount: advance,
+      color: const Color(0xFF059669),
+      cardBg: cardBg,
+      borderColor: borderColor,
+      textColor: textColor,
+      textMuted: textMuted,
+      icon: Icons.payments_outlined,
+    );
+
+    final dueCard = _buildKPICard(
+      label: 'DUE',
+      title: 'Due Amount',
+      amount: due,
+      color: const Color(0xFFd97706),
+      cardBg: cardBg,
+      borderColor: borderColor,
+      textColor: textColor,
+      textMuted: textMuted,
+      icon: Icons.pending_actions_rounded,
     );
 
     final expCard = _buildKPICard(
@@ -596,15 +728,19 @@ class _EventFinancialReportScreenState
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth > 650) {
+        if (constraints.maxWidth > 950) {
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Row(
               children: [
                 Expanded(child: revCard),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
+                Expanded(child: advCard),
+                const SizedBox(width: 8),
+                Expanded(child: dueCard),
+                const SizedBox(width: 8),
                 Expanded(child: expCard),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(child: netCard),
               ],
             ),
@@ -617,11 +753,15 @@ class _EventFinancialReportScreenState
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Row(
             children: [
-              SizedBox(width: 175, child: revCard),
-              const SizedBox(width: 10),
-              SizedBox(width: 175, child: expCard),
-              const SizedBox(width: 10),
-              SizedBox(width: 185, child: netCard),
+              SizedBox(width: 165, child: revCard),
+              const SizedBox(width: 8),
+              SizedBox(width: 165, child: advCard),
+              const SizedBox(width: 8),
+              SizedBox(width: 165, child: dueCard),
+              const SizedBox(width: 8),
+              SizedBox(width: 165, child: expCard),
+              const SizedBox(width: 8),
+              SizedBox(width: 175, child: netCard),
             ],
           ),
         );
@@ -947,7 +1087,7 @@ class __EventFinancialCardWidgetState
             ),
             const SizedBox(height: 14),
 
-            // ── 2. SUMMARY ROW (3 Columns: REVENUE, EXPENSES, NET PROFIT) ─────
+            // ── 2. SUMMARY ROW (REVENUE, ADVANCE, DUE, EXPENSES, NET PROFIT) ─────
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
@@ -961,35 +1101,73 @@ class __EventFinancialCardWidgetState
                   color: colorScheme.outline.withValues(alpha: 0.12),
                 ),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: _FinancialMiniStat(
-                      label: 'REVENUE',
-                      value: order.totalAmount,
-                      currency: widget.currency,
-                      color: textColor,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _FinancialMiniStat(
+                          label: 'REVENUE',
+                          value: order.totalAmount,
+                          currency: widget.currency,
+                          color: textColor,
+                        ),
+                      ),
+                      Expanded(
+                        child: _FinancialMiniStat(
+                          label: 'EXPENSES',
+                          value: order.totalExpenses,
+                          currency: widget.currency,
+                          color: widget.errorColor,
+                        ),
+                      ),
+                      Expanded(
+                        child: _FinancialMiniStat(
+                          label: 'NET PROFIT',
+                          value: profit,
+                          currency: widget.currency,
+                          color: profit >= 0
+                              ? widget.successColor
+                              : widget.errorColor,
+                          isBold: true,
+                        ),
+                      ),
+                    ],
                   ),
-                  Expanded(
-                    child: _FinancialMiniStat(
-                      label: 'EXPENSES',
-                      value: order.totalExpenses,
-                      currency: widget.currency,
-                      color: widget.errorColor,
+                  if (order.totalAmount > 0 || order.advanceReceived > 0) ...[
+                    const SizedBox(height: 8),
+                    Divider(
+                      height: 1,
+                      color: colorScheme.outline.withValues(alpha: 0.12),
                     ),
-                  ),
-                  Expanded(
-                    child: _FinancialMiniStat(
-                      label: 'NET PROFIT',
-                      value: profit,
-                      currency: widget.currency,
-                      color: profit >= 0
-                          ? widget.successColor
-                          : widget.errorColor,
-                      isBold: true,
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _FinancialMiniStat(
+                            label: 'ADVANCE RECEIVED',
+                            value: order.advanceReceived,
+                            currency: widget.currency,
+                            color: const Color(0xFF059669),
+                          ),
+                        ),
+                        Expanded(
+                          child: _FinancialMiniStat(
+                            label: 'DUE AMOUNT',
+                            value: (order.totalAmount - order.advanceReceived)
+                                .clamp(0.0, double.infinity),
+                            currency: widget.currency,
+                            color: (order.totalAmount - order.advanceReceived) >
+                                    0.01
+                                ? const Color(0xFFd97706)
+                                : const Color(0xFF059669),
+                            isBold: (order.totalAmount - order.advanceReceived) >
+                                0.01,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),

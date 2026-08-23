@@ -408,8 +408,10 @@ class PdfTablesBuilder {
     double totalRevenue,
     double totalExpenses,
     double netProfit,
-    double margin,
-  ) {
+    double margin, {
+    double totalAdvance = 0.0,
+    double totalDue = 0.0,
+  }) {
     return PdfThemeAndStyles.card(
       title: 'GLOBAL FINANCIAL SUMMARY',
       child: pw.Column(
@@ -418,6 +420,20 @@ class PdfTablesBuilder {
             'Total Revenue',
             'Rs. ${totalRevenue.toStringAsFixed(0)}',
           ),
+          if (totalAdvance > 0) ...[
+            pw.SizedBox(height: 4),
+            PdfThemeAndStyles.summarySummaryRow(
+              'Advance Received',
+              'Rs. ${totalAdvance.toStringAsFixed(0)}',
+            ),
+          ],
+          if (totalDue > 0) ...[
+            pw.SizedBox(height: 4),
+            PdfThemeAndStyles.summarySummaryRow(
+              'Balance Due',
+              'Rs. ${totalDue.toStringAsFixed(0)}',
+            ),
+          ],
           pw.SizedBox(height: 4),
           PdfThemeAndStyles.summarySummaryRow(
             'Total Expenses',
@@ -437,8 +453,16 @@ class PdfTablesBuilder {
   }
 
   static pw.Widget buildOrdersFinancialTable(List<OrderEntity> orders) {
-    final headers = ['Order ID', 'Event Name', 'Revenue', 'Expenses', 'Profit'];
-    final headerWidths = [2.0, 5.0, 2.0, 2.0, 2.0];
+    final headers = [
+      'Order ID',
+      'Event Name',
+      'Revenue',
+      'Advance',
+      'Due',
+      'Expenses',
+      'Profit',
+    ];
+    final headerWidths = [1.8, 3.8, 1.8, 1.8, 1.8, 1.8, 1.8];
 
     return PdfThemeAndStyles.card(
       title: 'ORDER-WISE BREAKDOWN',
@@ -455,13 +479,13 @@ class PdfTablesBuilder {
                 .map(
                   (h) => pw.Padding(
                     padding: const pw.EdgeInsets.symmetric(
-                      horizontal: 8,
+                      horizontal: 6,
                       vertical: 6,
                     ),
                     child: pw.Text(
                       h.toUpperCase(),
                       style: pw.TextStyle(
-                        fontSize: 8,
+                        fontSize: 7.5,
                         fontWeight: pw.FontWeight.bold,
                         color: PdfThemeAndStyles.darkColor,
                       ),
@@ -472,11 +496,14 @@ class PdfTablesBuilder {
           ),
           ...orders.map((order) {
             final profit = order.totalAmount - order.totalExpenses;
+            final due = (order.totalAmount - order.advanceReceived).clamp(0.0, double.infinity);
             return pw.TableRow(
               children: [
                 PdfThemeAndStyles.tableCell(order.id, bold: true),
                 PdfThemeAndStyles.tableCell(order.eventName),
                 PdfThemeAndStyles.tableCell(order.totalAmount.toStringAsFixed(0)),
+                PdfThemeAndStyles.tableCell(order.advanceReceived.toStringAsFixed(0)),
+                PdfThemeAndStyles.tableCell(due.toStringAsFixed(0)),
                 PdfThemeAndStyles.tableCell(order.totalExpenses.toStringAsFixed(0)),
                 PdfThemeAndStyles.tableCell(profit.toStringAsFixed(0)),
               ],

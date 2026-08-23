@@ -55,6 +55,10 @@ class _RevenueBreakdownScreenState
   String? _advanceReceiptPath;
   String? _advanceReceiptName;
 
+  String? _finalBillUrl;
+  String? _finalBillPath;
+  String? _finalBillName;
+
   @override
   void initState() {
     super.initState();
@@ -115,6 +119,16 @@ class _RevenueBreakdownScreenState
         : null;
     _advanceReceiptName = widget.order.advanceReceiptName.isNotEmpty
         ? widget.order.advanceReceiptName
+        : null;
+
+    _finalBillUrl = widget.order.finalBillUrl.isNotEmpty
+        ? widget.order.finalBillUrl
+        : null;
+    _finalBillPath = widget.order.finalBillPath.isNotEmpty
+        ? widget.order.finalBillPath
+        : null;
+    _finalBillName = widget.order.finalBillName.isNotEmpty
+        ? widget.order.finalBillName
         : null;
 
     if (widget.order.vatRate == 0) {
@@ -390,11 +404,21 @@ class _RevenueBreakdownScreenState
             advanceReceiptUrl: _advanceReceiptUrl,
             advanceReceiptPath: _advanceReceiptPath,
             advanceReceiptName: _advanceReceiptName,
+            finalBillUrl: _finalBillUrl,
+            finalBillPath: _finalBillPath,
+            finalBillName: _finalBillName,
             onReceiptChanged: (receipt) {
               setState(() {
                 _advanceReceiptUrl = receipt.url;
                 _advanceReceiptPath = receipt.path;
                 _advanceReceiptName = receipt.name;
+              });
+            },
+            onFinalBillChanged: (bill) {
+              setState(() {
+                _finalBillUrl = bill.url;
+                _finalBillPath = bill.path;
+                _finalBillName = bill.name;
               });
             },
             onMgtChargePercentChanged: (val) =>
@@ -453,6 +477,9 @@ class _RevenueBreakdownScreenState
                 advanceReceiptUrl: _advanceReceiptUrl ?? '',
                 advanceReceiptPath: _advanceReceiptPath ?? '',
                 advanceReceiptName: _advanceReceiptName ?? '',
+                finalBillUrl: _finalBillUrl ?? '',
+                finalBillPath: _finalBillPath ?? '',
+                finalBillName: _finalBillName ?? '',
                 totalAmount: _grandTotalRevenue,
               );
 
@@ -561,6 +588,9 @@ class _RevenueBreakdownScreenState
                   advanceReceiptUrl: _advanceReceiptUrl ?? '',
                   advanceReceiptPath: _advanceReceiptPath ?? '',
                   advanceReceiptName: _advanceReceiptName ?? '',
+                  finalBillUrl: _finalBillUrl ?? '',
+                  finalBillPath: _finalBillPath ?? '',
+                  finalBillName: _finalBillName ?? '',
                   currencyLabel: currencyLabel,
                 ),
               ),

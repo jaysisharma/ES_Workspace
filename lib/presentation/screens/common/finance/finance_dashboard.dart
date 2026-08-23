@@ -264,6 +264,31 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
                         ),
                     ],
                   ),
+
+                  const SizedBox(width: 8),
+
+                  // Settings Button
+                  IconButton(
+                    icon: const Icon(
+                      Icons.settings_outlined,
+                      size: 22,
+                    ),
+                    tooltip: 'Settings',
+                    style: IconButton.styleFrom(
+                      backgroundColor: isDarkMode
+                          ? const Color(0xFF1e2d3d)
+                          : const Color(0xFFf1f5f9),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        SlidePageRoute(page: const SettingsScreen()),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),

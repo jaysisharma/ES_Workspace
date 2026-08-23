@@ -32,7 +32,11 @@ class RevenueFinancialsCardWidget extends ConsumerStatefulWidget {
   final String? advanceReceiptUrl;
   final String? advanceReceiptPath;
   final String? advanceReceiptName;
+  final String? finalBillUrl;
+  final String? finalBillPath;
+  final String? finalBillName;
   final ValueChanged<({String? url, String? path, String? name})> onReceiptChanged;
+  final ValueChanged<({String? url, String? path, String? name})>? onFinalBillChanged;
   final ValueChanged<bool> onMgtChargePercentChanged;
   final ValueChanged<bool> onDiscountPercentChanged;
   final ValueChanged<VatOption> onVatOptionChanged;
@@ -62,7 +66,11 @@ class RevenueFinancialsCardWidget extends ConsumerStatefulWidget {
     this.advanceReceiptUrl,
     this.advanceReceiptPath,
     this.advanceReceiptName,
+    this.finalBillUrl,
+    this.finalBillPath,
+    this.finalBillName,
     required this.onReceiptChanged,
+    this.onFinalBillChanged,
     required this.onMgtChargePercentChanged,
     required this.onDiscountPercentChanged,
     required this.onVatOptionChanged,
@@ -80,6 +88,8 @@ class _RevenueFinancialsCardWidgetState
     extends ConsumerState<RevenueFinancialsCardWidget> {
   bool _isUploadingReceipt = false;
   Uint8List? _cachedReceiptBytes;
+  bool _isUploadingFinalBill = false;
+  Uint8List? _cachedFinalBillBytes;
   bool _hasAdvance = false;
 
   @override
@@ -223,6 +233,95 @@ class _RevenueFinancialsCardWidgetState
       url: url,
       path: path,
       initialBytes: _cachedReceiptBytes,
+    );
+  }
+
+  Future<void> _pickAndUploadFinalBill() async {
+    setState(() => _isUploadingFinalBill = true);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final picked = result.files.first;
+        final rawBytes = picked.bytes ??
+            (picked.path != null ? await File(picked.path!).readAsBytes() : null);
+
+        if (rawBytes != null) {
+          final compressedBytes = await ReceiptCompressor.compressReceiptBytes(
+            rawBytes: rawBytes,
+            fileName: picked.name,
+          );
+
+          setState(() {
+            _cachedFinalBillBytes = compressedBytes;
+          });
+
+          final filename =
+              'FinalBill_${DateTime.now().millisecondsSinceEpoch}_${picked.name}';
+          final synologyConfig =
+              ref.read(companyDocumentNotifierProvider).synologyConfig;
+          final uploadRes = await SynologyService().uploadPdf(
+            config: synologyConfig,
+            fileBytes: compressedBytes,
+            filename: filename,
+          );
+
+          final billName = picked.name;
+          final billPath = uploadRes?['synologyPath'] ??
+              '/EventSolution/ESWORKSPACE_app/Invoices/$filename';
+          final billUrl = uploadRes?['shareUrl'] ??
+              '${synologyConfig.host}/sharing/$filename';
+
+          if (widget.onFinalBillChanged != null) {
+            widget.onFinalBillChanged!((
+              url: billUrl,
+              path: billPath,
+              name: billName,
+            ));
+          }
+          widget.onChanged();
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Final client bill "$billName" uploaded successfully!'),
+                backgroundColor: const Color(0xFF10b981),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload final bill: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploadingFinalBill = false);
+    }
+  }
+
+  void _previewFinalBill() {
+    final title = widget.finalBillName ?? 'Client Final Bill';
+    final url = widget.finalBillUrl;
+    final path = widget.finalBillPath;
+
+    ReceiptViewerModal.show(
+      context,
+      title: title,
+      url: url,
+      path: path,
+      initialBytes: _cachedFinalBillBytes,
     );
   }
 
@@ -915,7 +1014,206 @@ class _RevenueFinancialsCardWidgetState
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
+
+          // ── CLIENT FINAL BILL / TAX INVOICE ATTACHMENT ──
+          () {
+            final hasFinalBill = widget.finalBillName != null &&
+                widget.finalBillName!.isNotEmpty;
+
+            return Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.receipt_long_rounded,
+                        size: 16,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'CLIENT FINAL BILL / INVOICE ATTACHMENT',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (hasFinalBill) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0284c7).withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFF0284c7).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.description_outlined,
+                            size: 20,
+                            color: Color(0xFF0284c7),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.finalBillName!,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color: Color(0xFF0369a1),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                const Text(
+                                  'Client signed bill / Tax invoice attached',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Color(0xFF0284c7),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          InkWell(
+                            onTap: _previewFinalBill,
+                            borderRadius: BorderRadius.circular(6),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0284c7)
+                                    .withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(
+                                    Icons.visibility_outlined,
+                                    size: 14,
+                                    color: Color(0xFF0369a1),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'VIEW',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF0369a1),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (widget.finalBillUrl != null &&
+                              widget.finalBillUrl!.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            InkWell(
+                              onTap: () =>
+                                  _openReceiptUrl(widget.finalBillUrl!),
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0284c7)
+                                      .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Icon(
+                                  Icons.open_in_new_rounded,
+                                  size: 14,
+                                  color: Color(0xFF0369a1),
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              size: 18,
+                              color: Colors.red,
+                            ),
+                            tooltip: 'Remove final bill',
+                            onPressed: () {
+                              if (widget.onFinalBillChanged != null) {
+                                widget.onFinalBillChanged!((
+                                  url: null,
+                                  path: null,
+                                  name: null,
+                                ));
+                              }
+                              widget.onChanged();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    OutlinedButton.icon(
+                      onPressed:
+                          _isUploadingFinalBill ? null : _pickAndUploadFinalBill,
+                      icon: _isUploadingFinalBill
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.cloud_upload_outlined, size: 18),
+                      label: Text(
+                        _isUploadingFinalBill
+                            ? 'UPLOADING FINAL BILL…'
+                            : 'ATTACH CLIENT FINAL BILL / INVOICE',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 11,
+                          horizontal: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        side: BorderSide(
+                          color: const Color(0xFF0284c7).withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }(),
+
+          const SizedBox(height: 14),
 
           // Preview & Share Revenue PDF Action Button
           SizedBox(

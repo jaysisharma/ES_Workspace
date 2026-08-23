@@ -11,6 +11,7 @@ import 'package:order_app/domain/entities/notification_entity.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/providers/attendance_providers.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/employee_profile_providers.dart';
 import 'package:order_app/presentation/providers/hr_providers.dart';
 import 'package:order_app/presentation/providers/notification_notifier.dart';
@@ -286,6 +287,9 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
     final leaveRequestsAsync = ref.watch(leaveRequestsStreamProvider);
     final ordersAsync = ref.watch(ordersStreamProvider);
 
+    final authUser = ref.watch(authNotifierProvider).user;
+    final isAdmin = authUser?.role == UserRole.admin;
+
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
@@ -304,45 +308,47 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
             tooltip: 'Print Staff Directory PDF',
             onPressed: () => _printStaffDirectoryPdf(usersAsync, profilesAsync),
           ),
-          IconButton(
-            icon: const Icon(Icons.event_repeat),
-            tooltip: 'Leave Cycle & Reset Settings',
-            onPressed: () => showLeaveCycleSettingsDialog(context, ref),
-          ),
-          const SizedBox(width: 8),
-          isMobile
-              ? IconButton(
-                  icon: const Icon(Icons.person_add_alt_1),
-                  tooltip: 'New Employee Record',
-                  onPressed: () {
-                    context.pushPage(
-                      const AddEmployeeScreen(
-                        userId: '',
-                        userName: '',
-                        isNewUser: true,
+          if (isAdmin) ...[
+            IconButton(
+              icon: const Icon(Icons.event_repeat),
+              tooltip: 'Leave Cycle & Reset Settings',
+              onPressed: () => showLeaveCycleSettingsDialog(context, ref),
+            ),
+            const SizedBox(width: 8),
+            isMobile
+                ? IconButton(
+                    icon: const Icon(Icons.person_add_alt_1),
+                    tooltip: 'New Employee Record',
+                    onPressed: () {
+                      context.pushPage(
+                        const AddEmployeeScreen(
+                          userId: '',
+                          userName: '',
+                          isNewUser: true,
+                        ),
+                      );
+                    },
+                  )
+                : ElevatedButton.icon(
+                    icon: const Icon(Icons.person_add_alt_1, size: 16),
+                    label: const Text('New Employee Record'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
                       ),
-                    );
-                  },
-                )
-              : ElevatedButton.icon(
-                  icon: const Icon(Icons.person_add_alt_1, size: 16),
-                  label: const Text('New Employee Record'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
                     ),
+                    onPressed: () {
+                      context.pushPage(
+                        const AddEmployeeScreen(
+                          userId: '',
+                          userName: '',
+                          isNewUser: true,
+                        ),
+                      );
+                    },
                   ),
-                  onPressed: () {
-                    context.pushPage(
-                      const AddEmployeeScreen(
-                        userId: '',
-                        userName: '',
-                        isNewUser: true,
-                      ),
-                    );
-                  },
-                ),
+          ],
           const SizedBox(width: 12),
         ],
         bottom: TabBar(
@@ -419,6 +425,7 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                       allUsers,
                       orders,
                       profilesAsync.maybeWhen(data: (p) => p, orElse: () => []),
+                      isAdmin: isAdmin,
                     ),
 
                     // Tab 2: Live Attendance
@@ -449,8 +456,9 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
     BuildContext context,
     List<UserEntity> users,
     List<OrderEntity> orders,
-    List<EmployeeProfileEntity> profiles,
-  ) {
+    List<EmployeeProfileEntity> profiles, {
+    bool isAdmin = false,
+  }) {
     final colorScheme = Theme.of(context).colorScheme;
     final labelColor = colorScheme.onSurfaceVariant;
 
@@ -633,18 +641,19 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                                           ],
                                         ),
                                       ),
-                                      Switch(
-                                        value: u.isActive,
-                                        onChanged: (val) async {
-                                          await ref
-                                              .read(
-                                                leaveRequestNotifierProvider
-                                                    .notifier,
-                                              )
-                                              .toggleUserActive(u.id, val);
-                                          ref.invalidate(usersStreamProvider);
-                                        },
-                                      ),
+                                      if (isAdmin)
+                                        Switch(
+                                          value: u.isActive,
+                                          onChanged: (val) async {
+                                            await ref
+                                                .read(
+                                                  leaveRequestNotifierProvider
+                                                      .notifier,
+                                                )
+                                                .toggleUserActive(u.id, val);
+                                            ref.invalidate(usersStreamProvider);
+                                          },
+                                        ),
                                     ],
                                   ),
                                   const Divider(height: 16),
@@ -681,16 +690,17 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                                           );
                                         },
                                       ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.delete_outline_rounded,
-                                          size: 18,
-                                          color: Colors.redAccent,
+                                      if (isAdmin)
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                            size: 18,
+                                            color: Colors.redAccent,
+                                          ),
+                                          tooltip: 'Delete Employee Record',
+                                          onPressed: () =>
+                                              _confirmDeleteEmployee(context, u),
                                         ),
-                                        tooltip: 'Delete Employee Record',
-                                        onPressed: () =>
-                                            _confirmDeleteEmployee(context, u),
-                                      ),
                                     ],
                                   ),
                                 ],
@@ -788,28 +798,30 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                                   );
                                 },
                               ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete_outline_rounded,
-                                  size: 18,
-                                  color: Colors.redAccent,
+                              if (isAdmin) ...[
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                    size: 18,
+                                    color: Colors.redAccent,
+                                  ),
+                                  tooltip: 'Delete Employee Record',
+                                  onPressed: () =>
+                                      _confirmDeleteEmployee(context, u),
                                 ),
-                                tooltip: 'Delete Employee Record',
-                                onPressed: () =>
-                                    _confirmDeleteEmployee(context, u),
-                              ),
-                              const SizedBox(width: 4),
-                              Switch(
-                                value: u.isActive,
-                                onChanged: (val) async {
-                                  await ref
-                                      .read(
-                                        leaveRequestNotifierProvider.notifier,
-                                      )
-                                      .toggleUserActive(u.id, val);
-                                  ref.invalidate(usersStreamProvider);
-                                },
-                              ),
+                                const SizedBox(width: 4),
+                                Switch(
+                                  value: u.isActive,
+                                  onChanged: (val) async {
+                                    await ref
+                                        .read(
+                                          leaveRequestNotifierProvider.notifier,
+                                        )
+                                        .toggleUserActive(u.id, val);
+                                    ref.invalidate(usersStreamProvider);
+                                  },
+                                ),
+                              ],
                             ],
                           ),
                         ),

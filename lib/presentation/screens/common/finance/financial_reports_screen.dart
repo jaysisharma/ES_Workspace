@@ -157,6 +157,8 @@ class _FinancialReportsScreenState
                           'Event Date (BS)',
                           'Event Date (AD)',
                           'Total Revenue (NPR)',
+                          'Advance Received (NPR)',
+                          'Due Amount (NPR)',
                           'Total Expenses (NPR)',
                           'Profit / Loss (NPR)',
                         ];
@@ -178,6 +180,8 @@ class _FinancialReportsScreenState
 
                         final List<List<dynamic>> rows = [];
                         double totalRev = 0.0;
+                        double totalAdvance = 0.0;
+                        double totalDue = 0.0;
                         double totalExp = 0.0;
 
                         for (final o in sorted) {
@@ -186,12 +190,16 @@ class _FinancialReportsScreenState
                               : (o.contactPerson.isNotEmpty ? o.contactPerson : 'N/A');
                           final eventType = o.category.isNotEmpty ? o.category : 'Event';
                           final rev = o.totalAmount;
+                          final advance = o.advanceReceived;
+                          final due = (rev - advance).clamp(0.0, double.infinity);
                           final exp = o.totalExpenses;
                           final profitLoss = rev - exp;
                           final bsDate = formatNepaliDate(o.eventDate, 'yyyy-MM-dd');
                           final adDate = DateFormat('yyyy-MM-dd').format(o.eventDate);
 
                           totalRev += rev;
+                          totalAdvance += advance;
+                          totalDue += due;
                           totalExp += exp;
 
                           rows.add([
@@ -203,6 +211,8 @@ class _FinancialReportsScreenState
                             bsDate,
                             adDate,
                             rev,
+                            advance,
+                            due,
                             exp,
                             profitLoss,
                           ]);
@@ -219,6 +229,8 @@ class _FinancialReportsScreenState
                           '',
                           '',
                           totalRev,
+                          totalAdvance,
+                          totalDue,
                           totalExp,
                           netProf,
                         ]);

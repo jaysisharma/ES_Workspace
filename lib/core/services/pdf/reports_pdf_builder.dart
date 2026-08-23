@@ -77,6 +77,14 @@ class ReportsPdfBuilder {
       theme: pw.ThemeData.withFont(base: font, bold: boldFont),
     );
 
+    final double totalAdvance =
+        orders.fold(0.0, (sum, o) => sum + o.advanceReceived);
+    final double totalDue = orders.fold(
+      0.0,
+      (sum, o) =>
+          sum + (o.totalAmount - o.advanceReceived).clamp(0.0, double.infinity),
+    );
+
     final logoImage = pw.MemoryImage(logoBytes);
 
     pdf.addPage(
@@ -93,6 +101,8 @@ class ReportsPdfBuilder {
             totalExpenses,
             netProfit,
             margin,
+            totalAdvance: totalAdvance,
+            totalDue: totalDue,
           ),
           pw.SizedBox(height: 14),
           PdfTablesBuilder.buildOrdersFinancialTable(orders),

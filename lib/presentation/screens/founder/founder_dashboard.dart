@@ -16,6 +16,7 @@ import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/vendor_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/client_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/notifications_screen.dart';
+import 'package:order_app/presentation/screens/common/utility/settings_screen.dart';
 
 class FounderDashboard extends ConsumerStatefulWidget {
   const FounderDashboard({super.key});
@@ -125,9 +126,7 @@ class _FounderDashboardState extends ConsumerState<FounderDashboard> {
 
     final isSearching = _searchQuery.trim().isNotEmpty;
     final searchResults = isSearching
-        ? allOrders
-            .where((o) => _matchesOrderQuery(o, _searchQuery))
-            .toList()
+        ? allOrders.where((o) => _matchesOrderQuery(o, _searchQuery)).toList()
         : <OrderEntity>[];
 
     return Scaffold(
@@ -275,6 +274,28 @@ class _FounderDashboardState extends ConsumerState<FounderDashboard> {
                         ),
                     ],
                   ),
+
+                  const SizedBox(width: 8),
+
+                  // Settings Button
+                  IconButton(
+                    icon: const Icon(Icons.settings_outlined, size: 22),
+                    tooltip: 'Settings',
+                    style: IconButton.styleFrom(
+                      backgroundColor: isDarkMode
+                          ? const Color(0xFF1e2d3d)
+                          : const Color(0xFFf1f5f9),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        SlidePageRoute(page: const SettingsScreen()),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -339,9 +360,7 @@ class _FounderDashboardState extends ConsumerState<FounderDashboard> {
       width: 260,
       height: 40,
       decoration: BoxDecoration(
-        color: isDarkMode
-            ? const Color(0xFF1e2d3d)
-            : const Color(0xFFf1f5f9),
+        color: isDarkMode ? const Color(0xFF1e2d3d) : const Color(0xFFf1f5f9),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: borderColor),
       ),
@@ -594,9 +613,7 @@ class _FounderDashboardState extends ConsumerState<FounderDashboard> {
                           isMobile: isMobile,
                           onTap: () => Navigator.push(
                             context,
-                            SlidePageRoute(
-                              page: const HrManagementScreen(),
-                            ),
+                            SlidePageRoute(page: const HrManagementScreen()),
                           ),
                         ),
 
@@ -629,6 +646,22 @@ class _FounderDashboardState extends ConsumerState<FounderDashboard> {
                           onTap: () => Navigator.push(
                             context,
                             SlidePageRoute(page: const ClientScreen()),
+                          ),
+                        ),
+
+                        // 6. System Settings
+                        _buildModuleCard(
+                          title: 'System Settings',
+                          subtitle: 'Preferences & configurations',
+                          icon: Icons.settings_rounded,
+                          accentColor: const Color(0xFF64748b), // Slate
+                          cardBgColor: cardBgColor,
+                          borderColor: borderColor,
+                          textMuted: textMuted,
+                          isMobile: isMobile,
+                          onTap: () => Navigator.push(
+                            context,
+                            SlidePageRoute(page: const SettingsScreen()),
                           ),
                         ),
                       ],

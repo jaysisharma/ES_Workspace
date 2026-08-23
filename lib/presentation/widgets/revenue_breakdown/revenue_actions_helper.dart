@@ -167,6 +167,9 @@ class RevenueActionsHelper {
     String advanceReceiptUrl = '',
     String advanceReceiptPath = '',
     String advanceReceiptName = '',
+    String finalBillUrl = '',
+    String finalBillPath = '',
+    String finalBillName = '',
   }) async {
     final updatedItems = items.map((item) {
       final rate = RevenueCalculations.parseRate(itemControllers[item.id]?.text, item.rate);
@@ -199,6 +202,9 @@ class RevenueActionsHelper {
       advanceReceiptUrl: advanceReceiptUrl,
       advanceReceiptPath: advanceReceiptPath,
       advanceReceiptName: advanceReceiptName,
+      finalBillUrl: finalBillUrl,
+      finalBillPath: finalBillPath,
+      finalBillName: finalBillName,
     );
 
     debugPrint('=== [REVENUE SAVE DEBUG] ===');
@@ -266,6 +272,9 @@ class RevenueActionsHelper {
     String advanceReceiptUrl = '',
     String advanceReceiptPath = '',
     String advanceReceiptName = '',
+    String finalBillUrl = '',
+    String finalBillPath = '',
+    String finalBillName = '',
   }) async {
     bool? proceed = await showDialog<bool>(
       context: context,
@@ -319,6 +328,9 @@ class RevenueActionsHelper {
       advanceReceiptUrl: advanceReceiptUrl,
       advanceReceiptPath: advanceReceiptPath,
       advanceReceiptName: advanceReceiptName,
+      finalBillUrl: finalBillUrl,
+      finalBillPath: finalBillPath,
+      finalBillName: finalBillName,
     );
 
     if (context.mounted) {
