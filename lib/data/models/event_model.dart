@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:order_app/domain/entities/event_entity.dart';
 
@@ -17,23 +18,37 @@ class EventModel extends EventEntity {
     super.createdAt,
   });
 
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.now();
+    }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return DateTime.now();
+  }
+
   factory EventModel.fromJson(Map<String, dynamic> json) {
+    final date = _parseDateTime(json['date']);
     final createdDate = json['createdAt'] != null
-        ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.parse(json['date'] as String)
-        : DateTime.parse(json['date'] as String);
+        ? _parseDateTime(json['createdAt'])
+        : date;
     final isArchived = json['isArchived'] as bool? ?? false;
 
     return EventModel(
-      id: json['id'] as String,
-      orderId: json['orderId'] as String,
-      title: json['title'] as String,
-      date: DateTime.parse(json['date'] as String),
-      location: json['location'] as String,
-      role: json['role'] as String,
-      status: json['status'] as String,
-      completion: (json['completion'] as num).toDouble(),
-      assignedStaffId: json['assignedStaffId'] as String?,
-      color: json['color'] != null ? Color(json['color'] as int) : null,
+      id: json['id']?.toString() ?? '',
+      orderId: json['orderId']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      date: date,
+      location: json['location']?.toString() ?? '',
+      role: json['role']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'pending',
+      completion: (json['completion'] as num?)?.toDouble() ?? 0.0,
+      assignedStaffId: json['assignedStaffId']?.toString(),
+      color: json['color'] != null && json['color'] is int ? Color(json['color'] as int) : null,
       isArchived: isArchived,
       createdAt: createdDate,
     );

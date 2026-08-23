@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:order_app/domain/entities/expense_entity.dart';
 
 class ExpenseModel extends ExpenseEntity {
@@ -21,25 +22,38 @@ class ExpenseModel extends ExpenseEntity {
     super.billName,
   });
 
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.now();
+    }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return DateTime.now();
+  }
+
   factory ExpenseModel.fromJson(Map<String, dynamic> json) {
     return ExpenseModel(
-      id: json['id'] as String,
-      orderId: json['orderId'] as String,
-      description: json['description'] as String,
-      specification: json['specification'] as String? ?? '',
-      unit: json['unit'] as String? ?? 'Pcs',
-      amount: (json['amount'] as num).toDouble(),
+      id: json['id']?.toString() ?? '',
+      orderId: json['orderId']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      specification: json['specification']?.toString() ?? '',
+      unit: json['unit']?.toString() ?? 'Pcs',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       rate: (json['rate'] as num?)?.toDouble() ?? 0.0,
-      quantity: json['quantity'] as int? ?? 1,
-      days: json['days'] as int? ?? 1,
-      billingType: json['billingType'] as String? ?? 'event',
-      vendorId: json['vendorId'] as String?,
-      vendorName: json['vendorName'] as String?,
-      category: json['category'] as String? ?? 'Miscellaneous',
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      billUrl: json['billUrl'] as String?,
-      billPath: json['billPath'] as String?,
-      billName: json['billName'] as String?,
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      days: (json['days'] as num?)?.toInt() ?? 1,
+      billingType: json['billingType']?.toString() ?? 'event',
+      vendorId: json['vendorId']?.toString(),
+      vendorName: json['vendorName']?.toString(),
+      category: json['category']?.toString() ?? 'Miscellaneous',
+      createdAt: _parseDateTime(json['createdAt']),
+      billUrl: json['billUrl']?.toString(),
+      billPath: json['billPath']?.toString(),
+      billName: json['billName']?.toString(),
     );
   }
 

@@ -236,13 +236,7 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
     final notificationState = ref.watch(notificationsStreamProvider);
     final profilesAsync = ref.watch(employeeProfilesStreamProvider);
 
-    final myProfile = profilesAsync.maybeWhen(
-      data: (profiles) => profiles.cast<EmployeeProfileEntity?>().firstWhere(
-        (p) => p != null && (p.userId == user?.uid || (user?.email != null && p.name.toLowerCase() == user!.email.split('@').first.toLowerCase())),
-        orElse: () => null,
-      ),
-      orElse: () => null,
-    );
+    final myProfile = ref.watch(currentEmployeeProfileProvider);
 
     // Trigger popup on initial load if profile is incomplete
     profilesAsync.whenData((_) {

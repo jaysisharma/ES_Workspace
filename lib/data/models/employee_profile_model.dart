@@ -1,9 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:order_app/domain/entities/employee_profile_entity.dart';
 
 class EmployeeProfileModel extends EmployeeProfileEntity {
   const EmployeeProfileModel({
     required super.id,
     required super.userId,
+    super.email = '',
     required super.name,
     super.designation,
     super.dob,
@@ -39,24 +41,35 @@ class EmployeeProfileModel extends EmployeeProfileEntity {
     super.allowedLeaves,
   });
 
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) {
+      if (value.trim().isEmpty) return null;
+      return DateTime.tryParse(value);
+    }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return null;
+  }
+
   factory EmployeeProfileModel.fromJson(Map<String, dynamic> json) {
     return EmployeeProfileModel(
-      id: json['id'] as String,
-      userId: json['userId'] as String,
-      name: json['name'] as String? ?? 'Employee',
-      designation: json['designation'] as String? ?? 'Staff Member',
-      dob: json['dob'] != null ? DateTime.parse(json['dob'] as String) : null,
-      fatherName: json['fatherName'] as String? ?? '',
-      motherName: json['motherName'] as String? ?? '',
-      grandfatherName: json['grandfatherName'] as String? ?? '',
-      address: json['address'] as String? ?? '',
-      bloodGroup: json['bloodGroup'] as String? ?? 'N/A',
-      officeJoinDate: json['officeJoinDate'] != null
-          ? DateTime.parse(json['officeJoinDate'] as String)
-          : DateTime.now(),
-      officeLeavingDate: json['officeLeavingDate'] != null
-          ? DateTime.parse(json['officeLeavingDate'] as String)
-          : null,
+      id: json['id']?.toString() ?? '',
+      userId: json['userId']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Employee',
+      designation: json['designation']?.toString() ?? 'Staff Member',
+      dob: _parseDate(json['dob']),
+      fatherName: json['fatherName']?.toString() ?? '',
+      motherName: json['motherName']?.toString() ?? '',
+      grandfatherName: json['grandfatherName']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      bloodGroup: json['bloodGroup']?.toString() ?? 'N/A',
+      officeJoinDate: _parseDate(json['officeJoinDate']) ?? DateTime.now(),
+      officeLeavingDate: _parseDate(json['officeLeavingDate']),
       basicSalary: (json['basicSalary'] as num?)?.toDouble() ?? 0.0,
       fuelAllowance: (json['fuelAllowance'] as num?)?.toDouble() ?? 0.0,
       communicationAllowance:
@@ -70,23 +83,23 @@ class EmployeeProfileModel extends EmployeeProfileEntity {
       healthInsurance: (json['healthInsurance'] as num?)?.toDouble() ?? 0.0,
       tds: (json['tds'] as num?)?.toDouble() ?? 0.0,
       netPayableSalary: (json['netPayableSalary'] as num?)?.toDouble() ?? 0.0,
-      photoUrl: json['photoUrl'] as String?,
-      citizenshipNumber: json['citizenshipNumber'] as String? ?? '',
-      citizenshipPhotoFrontUrl: json['citizenshipPhotoFrontUrl'] as String?,
-      citizenshipPhotoBackUrl: json['citizenshipPhotoBackUrl'] as String?,
-      ninNumber: json['ninNumber'] as String? ?? '',
-      ninPhotoUrl: json['ninPhotoUrl'] as String?,
-      panNumber: json['panNumber'] as String? ?? '',
-      panPhotoUrl: json['panPhotoUrl'] as String?,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
-          : DateTime.now(),
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'] as String)
-          : DateTime.now(),
+      photoUrl: json['photoUrl']?.toString(),
+      citizenshipNumber: json['citizenshipNumber']?.toString() ?? '',
+      citizenshipPhotoFrontUrl: json['citizenshipPhotoFrontUrl']?.toString(),
+      citizenshipPhotoBackUrl: json['citizenshipPhotoBackUrl']?.toString(),
+      ninNumber: json['ninNumber']?.toString() ?? '',
+      ninPhotoUrl: json['ninPhotoUrl']?.toString(),
+      panNumber: json['panNumber']?.toString() ?? '',
+      panPhotoUrl: json['panPhotoUrl']?.toString(),
+      createdAt: _parseDate(json['createdAt']) ?? DateTime.now(),
+      updatedAt: _parseDate(json['updatedAt']) ?? DateTime.now(),
       allowedLeaves: (json['allowedLeaves'] as Map?)?.map(
-            (k, v) => MapEntry(k as String, (v as num).toInt()),
-          ) ?? const {},
+            (k, v) => MapEntry(
+              k.toString(),
+              (v is num) ? v.toInt() : (int.tryParse(v.toString()) ?? 0),
+            ),
+          ) ??
+          const {},
     );
   }
 
@@ -94,6 +107,7 @@ class EmployeeProfileModel extends EmployeeProfileEntity {
     return {
       'id': id,
       'userId': userId,
+      'email': email,
       'name': name,
       'designation': designation,
       if (dob != null) 'dob': dob!.toIso8601String(),
@@ -137,6 +151,7 @@ class EmployeeProfileModel extends EmployeeProfileEntity {
     return EmployeeProfileModel(
       id: entity.id,
       userId: entity.userId,
+      email: entity.email,
       name: entity.name,
       designation: entity.designation,
       dob: entity.dob,

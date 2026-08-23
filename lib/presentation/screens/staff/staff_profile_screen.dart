@@ -54,9 +54,10 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
   Future<void> _printMyEmployeePdf(BuildContext context, dynamic firebaseUser) async {
     if (firebaseUser == null) return;
     try {
-      final uid = firebaseUser.uid;
-      final email = firebaseUser.email ?? '';
-      final name = email.isNotEmpty ? email.split('@').first : 'Staff';
+      final myProfile = ref.read(currentEmployeeProfileProvider);
+      final email = firebaseUser.email ?? (myProfile?.email.isNotEmpty == true ? myProfile!.email : '');
+      final name = myProfile?.name.isNotEmpty == true ? myProfile!.name : (email.isNotEmpty ? email.split('@').first : 'Staff');
+      final uid = myProfile?.userId.isNotEmpty == true ? myProfile!.userId : (firebaseUser.uid as String);
 
       final userEntity = UserEntity(
         id: uid,
@@ -66,17 +67,14 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
         isActive: true,
       );
 
-      final profiles = await ref.read(employeeProfilesStreamProvider.future);
-      final profile = profiles.cast<EmployeeProfileEntity>().firstWhere(
-        (p) => p.userId == uid,
-        orElse: () => EmployeeProfileEntity(
-          id: uid,
-          userId: uid,
-          name: name,
-          officeJoinDate: DateTime.now(),
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        ),
+      final profile = myProfile ?? EmployeeProfileEntity(
+        id: uid,
+        userId: uid,
+        name: name,
+        email: email,
+        officeJoinDate: DateTime.now(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
 
       final pdfData = await EmployeePdfService.generateEmployeeDetailPdf(
@@ -243,7 +241,6 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
     final authState = ref.watch(authNotifierProvider);
     final settings = ref.watch(settingsProvider);
     final eventsAsync = ref.watch(eventsStreamProvider);
-    final profilesAsync = ref.watch(employeeProfilesStreamProvider);
 
     // Design tokens
     final primaryColor = const Color(0xFF0075db);
@@ -266,13 +263,7 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
     final userId = user?.uid ?? '';
     final rawDisplayName = userEmail.split('@').first;
 
-    final myProfile = profilesAsync.maybeWhen(
-      data: (profiles) => profiles.cast<EmployeeProfileEntity?>().firstWhere(
-        (p) => p != null && (p.userId == userId || (userEmail.isNotEmpty && p.name.toLowerCase() == rawDisplayName.toLowerCase())),
-        orElse: () => null,
-      ),
-      orElse: () => null,
-    );
+    final myProfile = ref.watch(currentEmployeeProfileProvider);
 
     final displayName = myProfile?.name.isNotEmpty == true
         ? myProfile!.name

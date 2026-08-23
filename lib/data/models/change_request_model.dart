@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:order_app/domain/entities/change_request_entity.dart';
 
 class ChangeRequestModel extends ChangeRequestEntity {
@@ -14,14 +15,14 @@ class ChangeRequestModel extends ChangeRequestEntity {
 
   factory ChangeRequestModel.fromJson(Map<String, dynamic> json) {
     return ChangeRequestModel(
-      id: json['id'] as String,
-      orderId: json['orderId'] as String,
-      itemId: json['itemId'] as String,
-      requestedBy: json['requestedBy'] as String,
-      changeType: json['changeType'] as String,
-      description: json['description'] as String,
-      status: _parseStatus(json['status'] as String?),
-      createdAt: _parseDateTime(json['createdAt'] as String),
+      id: json['id']?.toString() ?? '',
+      orderId: json['orderId']?.toString() ?? '',
+      itemId: json['itemId']?.toString() ?? '',
+      requestedBy: json['requestedBy']?.toString() ?? '',
+      changeType: json['changeType']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      status: _parseStatus(json['status']?.toString()),
+      createdAt: _parseDateTime(json['createdAt']),
     );
   }
 
@@ -50,13 +51,17 @@ class ChangeRequestModel extends ChangeRequestEntity {
   }
 
   // DRY helper for DateTime parsing
-  static DateTime _parseDateTime(String dateStr) {
-    try {
-      return DateTime.parse(dateStr);
-    } catch (_) {
-      // Fallback in case of formatting issues
-      return DateTime.now();
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.now();
     }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return DateTime.now();
   }
 
   factory ChangeRequestModel.fromEntity(ChangeRequestEntity entity) {

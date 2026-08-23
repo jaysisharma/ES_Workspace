@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 
 class OrderModel extends OrderEntity {
@@ -40,51 +41,47 @@ class OrderModel extends OrderEntity {
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
-    final createdAtDate = _parseDateTime(json['createdAt'] as String);
+    final createdAtDate = _parseDateTime(json['createdAt']);
     final isArchived = json['isArchived'] as bool? ?? false;
     final orderType = json['orderType'] as String? ??
         json['type'] as String? ??
         'Event';
 
     return OrderModel(
-      id: json['id'] as String,
-      eventName: json['eventName'] as String,
-      eventDate: _parseDateTime(json['eventDate'] as String),
-      eventEndDate: json['eventEndDate'] != null
-          ? _parseDateTime(json['eventEndDate'] as String)
-          : null,
-      setupDate: _parseDateTime(json['setupDate'] as String),
-      setupEndDate: json['setupEndDate'] != null
-          ? _parseDateTime(json['setupEndDate'] as String)
-          : null,
-      venue: json['venue'] as String,
-      contactPerson: json['contactPerson'] as String,
-      contactNumber: json['contactNumber'] as String,
-      notes: json['notes'] as String? ?? '',
-      status: _parseStatus(json['status'] as String?),
+      id: json['id']?.toString() ?? '',
+      eventName: json['eventName']?.toString() ?? '',
+      eventDate: _parseDateTime(json['eventDate']),
+      eventEndDate: _parseNullableDateTime(json['eventEndDate']),
+      setupDate: _parseDateTime(json['setupDate']),
+      setupEndDate: _parseNullableDateTime(json['setupEndDate']),
+      venue: json['venue']?.toString() ?? '',
+      contactPerson: json['contactPerson']?.toString() ?? '',
+      contactNumber: json['contactNumber']?.toString() ?? '',
+      notes: json['notes']?.toString() ?? '',
+      status: _parseStatus(json['status']?.toString()),
       assignedStaffIds: List<String>.from(json['assignedStaffIds'] ?? []),
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
       totalExpenses: (json['totalExpenses'] as num?)?.toDouble() ?? 0.0,
       createdAt: createdAtDate,
-      updatedAt: _parseDateTime(json['updatedAt'] as String),
+      updatedAt: _parseDateTime(json['updatedAt']),
       logs:
           (json['logs'] as List<dynamic>?)
-              ?.map((log) => _parseLog(log as Map<String, dynamic>))
+              ?.map((log) => _parseLog(log is Map<String, dynamic> ? log : Map<String, dynamic>.from(log as Map)))
               .toList() ??
           [],
-      category: json['category'] as String? ?? '',
-      client: json['client'] as String? ?? '',
-      description: json['description'] as String? ?? '',
+      category: json['category']?.toString() ?? '',
+      client: json['client']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
       vatRate: (json['vatRate'] as num?)?.toDouble() ?? 0.0,
       isArchived: isArchived,
       advanceReceived: (json['advanceReceived'] as num?)?.toDouble() ?? 0.0,
-      advanceReferenceNo: json['advanceReferenceNo'] as String? ?? '',
-      advanceReceiptUrl: json['advanceReceiptUrl'] as String? ?? '',
-      advanceReceiptPath: json['advanceReceiptPath'] as String? ?? '',
-      advanceReceiptName: json['advanceReceiptName'] as String? ?? '',
-      finalBillUrl: json['finalBillUrl'] as String? ?? '',
-      finalBillPath: json['finalBillPath'] as String? ?? '',
-      finalBillName: json['finalBillName'] as String? ?? '',
+      advanceReferenceNo: json['advanceReferenceNo']?.toString() ?? '',
+      advanceReceiptUrl: json['advanceReceiptUrl']?.toString() ?? '',
+      advanceReceiptPath: json['advanceReceiptPath']?.toString() ?? '',
+      advanceReceiptName: json['advanceReceiptName']?.toString() ?? '',
+      finalBillUrl: json['finalBillUrl']?.toString() ?? '',
+      finalBillPath: json['finalBillPath']?.toString() ?? '',
+      finalBillName: json['finalBillName']?.toString() ?? '',
       managementCharge: (json['managementCharge'] as num?)?.toDouble() ?? 0.0,
       isMgtChargePercent: json['isMgtChargePercent'] as bool? ?? true,
       discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
@@ -143,8 +140,8 @@ class OrderModel extends OrderEntity {
 
   static OrderLogEntity _parseLog(Map<String, dynamic> json) {
     return OrderLogEntity(
-      timestamp: _parseDateTime(json['timestamp'] as String),
-      message: json['message'] as String,
+      timestamp: _parseDateTime(json['timestamp']),
+      message: json['message']?.toString() ?? '',
     );
   }
 
@@ -160,13 +157,31 @@ class OrderModel extends OrderEntity {
   }
 
   // DRY helper for DateTime parsing
-  static DateTime _parseDateTime(String dateStr) {
-    try {
-      return DateTime.parse(dateStr);
-    } catch (_) {
-      // Fallback in case of formatting issues
-      return DateTime.now();
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.now();
     }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return DateTime.now();
+  }
+
+  static DateTime? _parseNullableDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) {
+      if (value.trim().isEmpty) return null;
+      return DateTime.tryParse(value);
+    }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return null;
   }
 
   factory OrderModel.fromEntity(OrderEntity entity) {

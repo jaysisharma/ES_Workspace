@@ -391,6 +391,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   Future<void> _showEditPayrollDialog(
     BuildContext context,
     EmployeeProfileEntity profile,
+    UserEntity currentUser,
   ) async {
     final basicController = TextEditingController(
       text: profile.basicSalary > 0 ? profile.basicSalary.toStringAsFixed(0) : '',
@@ -642,6 +643,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         setDialogState(() => isSaving = true);
                         try {
                           final updated = profile.copyWith(
+                            email: currentUser.email.isNotEmpty
+                                ? currentUser.email
+                                : profile.email,
                             basicSalary: basic,
                             fuelAllowance: fuel,
                             communicationAllowance: comm,
@@ -790,7 +794,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             const SizedBox(height: 16),
 
             // 2. Office & Salary Breakdown Card
-            _buildPayrollTab(context, profile, borderColor, labelColor, textColor),
+            _buildPayrollTab(context, profile, currentUser, borderColor, labelColor, textColor),
             const SizedBox(height: 16),
 
             // 3. Personal & Family Information Card
@@ -1078,6 +1082,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   Widget _buildPayrollTab(
     BuildContext context,
     EmployeeProfileEntity profile,
+    UserEntity currentUser,
     Color borderColor,
     Color labelColor,
     Color textColor,
@@ -1127,7 +1132,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         vertical: 4,
                       ),
                     ),
-                    onPressed: () => _showEditPayrollDialog(context, profile),
+                    onPressed: () => _showEditPayrollDialog(context, profile, currentUser),
                   ),
                 ],
               ),

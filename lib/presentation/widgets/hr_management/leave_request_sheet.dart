@@ -64,24 +64,17 @@ void showLeaveRequestSheet({
         builder: (context, setSheetState) {
           return Consumer(
             builder: (context, ref, child) {
-              final profilesAsync = ref.watch(employeeProfilesStreamProvider);
+              final currentProfile = ref.watch(currentEmployeeProfileProvider);
               final leaveRequestsAsync = ref.watch(leaveRequestsStreamProvider);
 
               // Find the profile for the current user
-              final profile = profilesAsync.maybeWhen(
-                data: (list) {
-                  final matching = list.where((p) => p.userId == userId);
-                  if (matching.isNotEmpty) return matching.first;
-                  return EmployeeProfileEntity(
-                    id: '',
-                    userId: userId,
-                    name: staffName,
-                    officeJoinDate: DateTime.now(),
-                    createdAt: DateTime.now(),
-                    updatedAt: DateTime.now(),
-                  );
-                },
-                orElse: () => null,
+              final profile = currentProfile ?? EmployeeProfileEntity(
+                id: '',
+                userId: userId,
+                name: staffName,
+                officeJoinDate: DateTime.now(),
+                createdAt: DateTime.now(),
+                updatedAt: DateTime.now(),
               );
 
               final settings = ref.watch(settingsProvider);
@@ -110,7 +103,7 @@ void showLeaveRequestSheet({
               }
 
               final allowed =
-                  profile?.effectiveAllowedLeaves[leaveType] ??
+                  profile.effectiveAllowedLeaves[leaveType] ??
                   EmployeeProfileEntity.defaultAllowedLeaves[leaveType] ??
                   0;
               final taken = takenDays(leaveType);

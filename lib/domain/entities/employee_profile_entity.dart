@@ -1,6 +1,7 @@
 class EmployeeProfileEntity {
   final String id;
   final String userId;
+  final String email;
   final String name;
   final String designation;
   final DateTime? dob;
@@ -47,6 +48,7 @@ class EmployeeProfileEntity {
   const EmployeeProfileEntity({
     required this.id,
     required this.userId,
+    this.email = '',
     required this.name,
     this.designation = 'Staff Member',
     this.dob,
@@ -107,6 +109,7 @@ class EmployeeProfileEntity {
   EmployeeProfileEntity copyWith({
     String? id,
     String? userId,
+    String? email,
     String? name,
     String? designation,
     DateTime? dob,
@@ -144,6 +147,7 @@ class EmployeeProfileEntity {
     return EmployeeProfileEntity(
       id: id ?? this.id,
       userId: userId ?? this.userId,
+      email: email ?? this.email,
       name: name ?? this.name,
       designation: designation ?? this.designation,
       dob: dob ?? this.dob,

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:order_app/domain/entities/leave_request_entity.dart';
 
 class LeaveRequestModel extends LeaveRequestEntity {
@@ -15,21 +16,46 @@ class LeaveRequestModel extends LeaveRequestEntity {
     required super.createdAt,
   });
 
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.now();
+    }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return DateTime.now();
+  }
+
+  static DateTime? _parseNullableDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) {
+      if (value.trim().isEmpty) return null;
+      return DateTime.tryParse(value);
+    }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return null;
+  }
+
   factory LeaveRequestModel.fromJson(Map<String, dynamic> json) {
     return LeaveRequestModel(
-      id: json['id'] as String,
-      staffId: json['staffId'] as String,
-      staffName: json['staffName'] as String,
-      startDate: DateTime.parse(json['startDate'] as String),
-      endDate: DateTime.parse(json['endDate'] as String),
-      leaveType: json['leaveType'] as String? ?? 'General',
-      reason: json['reason'] as String? ?? '',
-      status: LeaveStatus.fromString(json['status'] as String? ?? 'pending'),
-      reviewedBy: json['reviewedBy'] as String?,
-      reviewedAt: json['reviewedAt'] != null
-          ? DateTime.parse(json['reviewedAt'] as String)
-          : null,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      id: json['id']?.toString() ?? '',
+      staffId: json['staffId']?.toString() ?? '',
+      staffName: json['staffName']?.toString() ?? '',
+      startDate: _parseDateTime(json['startDate']),
+      endDate: _parseDateTime(json['endDate']),
+      leaveType: json['leaveType']?.toString() ?? 'General',
+      reason: json['reason']?.toString() ?? '',
+      status: LeaveStatus.fromString(json['status']?.toString() ?? 'pending'),
+      reviewedBy: json['reviewedBy']?.toString(),
+      reviewedAt: _parseNullableDateTime(json['reviewedAt']),
+      createdAt: _parseDateTime(json['createdAt']),
     );
   }
 

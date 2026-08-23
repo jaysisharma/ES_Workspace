@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:order_app/domain/entities/notification_entity.dart';
 
 class NotificationModel extends NotificationEntity {
@@ -14,6 +15,19 @@ class NotificationModel extends NotificationEntity {
     super.targetUserId,
   });
 
+  static DateTime _parseDateTime(dynamic value) {
+    if (value == null) return DateTime.now();
+    if (value is DateTime) return value;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.now();
+    }
+    if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return DateTime.now();
+  }
+
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     final rawReadBy = json['readBy'];
     final List<String> readBy = rawReadBy is List
@@ -21,16 +35,16 @@ class NotificationModel extends NotificationEntity {
         : <String>[];
 
     return NotificationModel(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      description: json['description'] as String,
-      timestamp: DateTime.parse(json['timestamp'] as String),
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      timestamp: _parseDateTime(json['timestamp']),
       isRead: json['isRead'] as bool? ?? false,
       readBy: readBy,
-      type: json['type'] as String,
-      relatedId: json['relatedId'] as String?,
-      targetRole: json['targetRole'] as String? ?? 'admin_founder',
-      targetUserId: json['targetUserId'] as String?,
+      type: json['type']?.toString() ?? 'general',
+      relatedId: json['relatedId']?.toString(),
+      targetRole: json['targetRole']?.toString() ?? 'admin_founder',
+      targetUserId: json['targetUserId']?.toString(),
     );
   }
 

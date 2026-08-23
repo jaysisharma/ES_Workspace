@@ -1123,6 +1123,9 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
       final profile = EmployeeProfileEntity(
         id: widget.initialProfile?.id ?? const Uuid().v4(),
         userId: finalUserId,
+        email: _emailController.text.trim().isNotEmpty
+            ? _emailController.text.trim()
+            : (widget.userEmail ?? (widget.initialProfile?.email ?? '')),
         name: _nameController.text.trim(),
         designation: _designationController.text.trim(),
         dob: _dob,
