@@ -61,7 +61,7 @@ class _DashboardEventSelectionDialogState
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    final availableEvents = widget.allEvents.where((e) => !e.isArchived).toList();
+    final availableEvents = List<EventEntity>.from(widget.allEvents);
     availableEvents.sort((a, b) => b.date.compareTo(a.date));
 
     final filteredEvents = availableEvents.where((e) {

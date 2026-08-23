@@ -80,8 +80,20 @@ class _EventFinancialReportScreenState
       'Profit / Loss (NPR)',
     ];
 
+    int extractOrderNum(String id) {
+      final match = RegExp(r'\d+').firstMatch(id);
+      return match != null ? int.tryParse(match.group(0)!) ?? 0 : 0;
+    }
+
     final sorted = List<OrderEntity>.from(orders)
-      ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+      ..sort((a, b) {
+        final numA = extractOrderNum(a.id);
+        final numB = extractOrderNum(b.id);
+        if (numA != 0 && numB != 0 && numA != numB) {
+          return numA.compareTo(numB);
+        }
+        return a.id.compareTo(b.id);
+      });
 
     final List<List<dynamic>> rows = [];
     double totalRev = 0.0;
@@ -473,15 +485,44 @@ class _EventFinancialReportScreenState
   List<OrderEntity> _getFilteredOrders(List<OrderEntity> orders) {
     return orders.where((o) {
       final query = _searchQuery.trim().toLowerCase();
+      final isSearching = query.isNotEmpty;
+
+      final cleanNoSymbols = query.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+      final cleanNoPrefix = query
+          .replaceAll('#', '')
+          .replaceAll('order-', '')
+          .replaceAll('ord-', '')
+          .replaceAll('order', '')
+          .replaceAll('id:', '')
+          .trim();
+
+      final orderIdLower = o.id.toLowerCase();
+      final orderIdNoSymbols = orderIdLower.replaceAll(
+        RegExp(r'[^a-zA-Z0-9]'),
+        '',
+      );
+
+      final idMatch = orderIdLower == query ||
+          (cleanNoPrefix.isNotEmpty && orderIdLower == cleanNoPrefix) ||
+          (cleanNoSymbols.isNotEmpty && orderIdNoSymbols == cleanNoSymbols) ||
+          orderIdLower.contains(query) ||
+          (cleanNoPrefix.isNotEmpty && orderIdLower.contains(cleanNoPrefix)) ||
+          (cleanNoSymbols.isNotEmpty &&
+              orderIdNoSymbols.contains(cleanNoSymbols));
+
       final nameMatch = o.eventName.toLowerCase().contains(query);
-      final idMatch = o.id.toLowerCase().contains(query);
       final venueMatch = o.venue.toLowerCase().contains(query);
       final clientMatch = o.client.toLowerCase().contains(query) ||
           o.contactPerson.toLowerCase().contains(query);
-      final matchesQuery = nameMatch || idMatch || venueMatch || clientMatch;
+      final notesMatch = o.notes.toLowerCase().contains(query) ||
+          o.description.toLowerCase().contains(query) ||
+          o.category.toLowerCase().contains(query);
+
+      final matchesQuery =
+          !isSearching || idMatch || nameMatch || venueMatch || clientMatch || notesMatch;
 
       bool dateMatch = true;
-      if (_selectedDateRange != null) {
+      if (!isSearching && _selectedDateRange != null) {
         dateMatch = o.eventDate.isAfter(
               _selectedDateRange!.start.subtract(const Duration(days: 1)),
             ) &&

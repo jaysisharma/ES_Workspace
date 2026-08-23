@@ -5,6 +5,7 @@ import 'package:order_app/domain/entities/order_item_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/screens/common/finance/expense_breakdown_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/revenue_breakdown_screen.dart';
+import 'package:order_app/presentation/widgets/common/receipt_viewer_modal.dart';
 import 'package:order_app/presentation/widgets/order_details/order_details_helper_widgets.dart';
 
 class OrderDetailsFinancialSummaryWidget extends StatelessWidget {
@@ -37,7 +38,7 @@ class OrderDetailsFinancialSummaryWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAdminOrFounder = userRole == UserRole.admin || userRole == UserRole.founder;
+    final isAdminOrFounder = userRole == UserRole.admin || userRole == UserRole.founder || userRole == UserRole.finance;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -139,6 +140,94 @@ class OrderDetailsFinancialSummaryWidget extends StatelessWidget {
               ),
             ],
           ),
+          if (order.advanceReceived > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.teal.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.teal.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.payments_outlined,
+                        size: 16,
+                        color: Colors.teal,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        order.advanceReferenceNo.isNotEmpty
+                            ? 'Advance (${order.advanceReferenceNo})'
+                            : 'Advance Received',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.teal,
+                        ),
+                      ),
+                      if (order.advanceReceiptName.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        InkWell(
+                          onTap: () {
+                            ReceiptViewerModal.show(
+                              context,
+                              title: order.advanceReceiptName,
+                              url: order.advanceReceiptUrl,
+                              path: order.advanceReceiptPath,
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(4),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(
+                                  Icons.receipt_long,
+                                  size: 10,
+                                  color: Colors.teal,
+                                ),
+                                SizedBox(width: 3),
+                                Text(
+                                  'RECEIPT',
+                                  style: TextStyle(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.teal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  Text(
+                    '$currencyLabel ${order.advanceReceived.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.teal,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (isAdminOrFounder) ...[
             const SizedBox(height: 16),
             SizedBox(

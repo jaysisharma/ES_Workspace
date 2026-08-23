@@ -35,13 +35,33 @@ class FinanceExcelExportService {
     double totalAdvanceSum = 0.0;
     double totalDueSum = 0.0;
 
-    for (final order in orders) {
+    int extractOrderNum(String id) {
+      final match = RegExp(r'\d+').firstMatch(id);
+      return match != null ? int.tryParse(match.group(0)!) ?? 0 : 0;
+    }
+
+    final sortedOrders = List<OrderEntity>.from(orders)
+      ..sort((a, b) {
+        final numA = extractOrderNum(a.id);
+        final numB = extractOrderNum(b.id);
+        if (numA != 0 && numB != 0 && numA != numB) {
+          return numA.compareTo(numB);
+        }
+        return a.id.compareTo(b.id);
+      });
+
+    for (final order in sortedOrders) {
       final due = (order.totalAmount - order.advanceReceived).clamp(0.0, double.infinity);
       final isPaid = due <= 0.01 && order.totalAmount > 0;
       final isPartial = order.advanceReceived > 0 && due > 0;
       final statusStr = isPaid ? 'PAID IN FULL' : (isPartial ? 'PARTIAL PAYMENT' : 'UNPAID / DUE');
 
       final invNo = 'PI-${order.id.length > 8 ? order.id.substring(0, 8).toUpperCase() : order.id.toUpperCase()}';
+      final clientName = order.client.isNotEmpty
+          ? order.client
+          : (order.contactPerson.isNotEmpty
+              ? order.contactPerson
+              : order.eventName);
 
       totalInvoicedSum += order.totalAmount;
       totalAdvanceSum += order.advanceReceived;
@@ -51,7 +71,7 @@ class FinanceExcelExportService {
         sn++,
         invNo,
         order.eventName,
-        order.client.isNotEmpty ? order.client : 'Individual Client',
+        clientName,
         formatNepaliDate(order.eventDate, 'yyyy-MM-dd'),
         order.venue.isNotEmpty ? order.venue : 'Kathmandu, Nepal',
         order.totalAmount,

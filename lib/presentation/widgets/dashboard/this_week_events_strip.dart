@@ -89,9 +89,10 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
 
     // Fallback: Combine active orders if EventEntity records are not explicitly created
     final ordersAsync = ref.watch(ordersStreamProvider);
-    final orders = ordersAsync.value ?? [];
+    final orders = (ordersAsync.value ?? []).where((o) => !o.isArchived).toList();
+    final activeWidgetEvents = widget.events.where((e) => !e.isArchived).toList();
 
-    final existingOrderIds = widget.events.map((e) => e.orderId).toSet();
+    final existingOrderIds = activeWidgetEvents.map((e) => e.orderId).toSet();
     final orderEvents = orders
         .where((o) => !existingOrderIds.contains(o.id))
         .map((o) => EventEntity(
@@ -106,15 +107,14 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
             ))
         .toList();
 
-    final allEvents = [...widget.events, ...orderEvents];
+    final allEvents = [...activeWidgetEvents, ...orderEvents];
 
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
-    // Monday of current week
-    final startOfWeek = todayStart.subtract(Duration(days: now.weekday - 1));
-    // Sunday of current week
-    final endOfWeek = startOfWeek.add(
-      const Duration(days: 6, hours: 23, minutes: 59, seconds: 59),
+    // End of the current week (Sunday end of day)
+    final daysUntilEndOfWeek = (7 - now.weekday) % 7;
+    final endOfWeek = todayStart.add(
+      Duration(days: daysUntilEndOfWeek, hours: 23, minutes: 59, seconds: 59),
     );
 
     // Filter events based on active mode with timezone safety
@@ -122,32 +122,34 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
     switch (stripState.mode) {
       case DashboardStripMode.thisWeek:
         filteredEvents = allEvents.where((e) {
-          if (e.isArchived) return false;
           final localDate = e.date.toLocal();
           final eventDay = DateTime(localDate.year, localDate.month, localDate.day);
-          return (eventDay.isAfter(startOfWeek.subtract(const Duration(seconds: 1))) &&
-                  eventDay.isBefore(endOfWeek)) ||
-                 DateUtils.isSameDay(localDate, now);
+          // Never show past days before today (e.g. if today is 7, don't show before 7)
+          final isTodayOrFuture = !eventDay.isBefore(todayStart);
+          final isWithinThisWeek = !eventDay.isAfter(endOfWeek);
+          return isTodayOrFuture && isWithinThisWeek;
         }).toList();
         break;
       case DashboardStripMode.upcoming:
         filteredEvents = allEvents.where((e) {
-          if (e.isArchived) return false;
           final localDate = e.date.toLocal();
           final eventDay = DateTime(localDate.year, localDate.month, localDate.day);
-          return eventDay.isAfter(todayStart.subtract(const Duration(seconds: 1))) ||
-                 DateUtils.isSameDay(localDate, now);
+          // Today and future upcoming events
+          return !eventDay.isBefore(todayStart);
         }).toList();
         break;
       case DashboardStripMode.custom:
         filteredEvents = allEvents.where((e) {
-          if (e.isArchived) return false;
           return stripState.selectedEventIds.contains(e.id) ||
                  stripState.selectedEventIds.contains(e.orderId);
         }).toList();
         break;
       case DashboardStripMode.all:
-        filteredEvents = allEvents.where((e) => !e.isArchived).toList();
+        filteredEvents = allEvents.where((e) {
+          final localDate = e.date.toLocal();
+          final eventDay = DateTime(localDate.year, localDate.month, localDate.day);
+          return !eventDay.isBefore(todayStart);
+        }).toList();
         break;
     }
 

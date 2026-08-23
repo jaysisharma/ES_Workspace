@@ -29,6 +29,11 @@ class _FinancialReportsScreenState
   @override
   Widget build(BuildContext context) {
     final orderState = ref.watch(orderNotifierProvider);
+    final ordersStream = ref.watch(ordersStreamProvider);
+    final allOrders = ordersStream.maybeWhen(
+      data: (list) => list,
+      orElse: () => orderState.orders,
+    );
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     final primaryColor = const Color(0xFF0075db);
@@ -45,7 +50,7 @@ class _FinancialReportsScreenState
         : const Color(0xFF64748b);
     final successColor = const Color(0xFF4ade80);
 
-    final filteredOrders = orderState.orders.where((order) {
+    final filteredOrders = allOrders.where((order) {
       final query = _searchQuery.trim().toLowerCase();
       if (query.isEmpty) return true;
 
@@ -156,8 +161,20 @@ class _FinancialReportsScreenState
                           'Profit / Loss (NPR)',
                         ];
 
+                        int extractOrderNum(String id) {
+                          final match = RegExp(r'\d+').firstMatch(id);
+                          return match != null ? int.tryParse(match.group(0)!) ?? 0 : 0;
+                        }
+
                         final sorted = List<OrderEntity>.from(filteredOrders)
-                          ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+                          ..sort((a, b) {
+                            final numA = extractOrderNum(a.id);
+                            final numB = extractOrderNum(b.id);
+                            if (numA != 0 && numB != 0 && numA != numB) {
+                              return numA.compareTo(numB);
+                            }
+                            return a.id.compareTo(b.id);
+                          });
 
                         final List<List<dynamic>> rows = [];
                         double totalRev = 0.0;
@@ -385,7 +402,7 @@ class _FinancialReportsScreenState
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'RECENT ARCHIVES',
+                          'EVENT FINANCIAL REPORTS',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,

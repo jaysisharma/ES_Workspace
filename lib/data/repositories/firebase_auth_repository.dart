@@ -108,12 +108,12 @@ class FirebaseAuthRepository implements AuthRepository {
       debugPrint(
         '❌ [AuthRepo] FirebaseAuthException [${e.code}]: ${e.message}',
       );
-      if (e.code == 'keychain-error') {
+      try {
         debugPrint(
-          '⚠️ [AuthRepo] Keychain error encountered! Attempting Firebase REST API login fallback...',
+          '⚠️ [AuthRepo] Attempting Firebase REST API login fallback for ${e.code}...',
         );
         authResult = await _loginViaRestApi(email, password) as AuthModel?;
-      } else {
+      } catch (restErr) {
         debugPrint('❌ [AuthRepo] StackTrace: $stack');
         throw ServerException('FirebaseAuth Error (${e.code}): ${e.message}');
       }

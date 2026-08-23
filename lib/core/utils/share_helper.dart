@@ -48,7 +48,10 @@ class ShareHelper {
     try {
       // Resolve directory using ExportDirectoryService (destination folder + auto-arranged subfolders)
       final effectiveCategory = category ?? ExportDirectoryService.deduceCategory(fileName);
-      final targetDir = await ExportDirectoryService.resolveExportDirectory(category: effectiveCategory);
+      final targetDir = await ExportDirectoryService.resolveExportDirectory(
+        category: effectiveCategory,
+        filename: safeFileName,
+      );
 
       file = File('${targetDir.path}/$safeFileName');
       await file.parent.create(recursive: true);

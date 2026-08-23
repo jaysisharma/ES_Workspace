@@ -18,6 +18,9 @@ class OrderItemModel extends OrderItemEntity {
     super.isCompleted = false,
     super.assignedStaffId,
     super.assignedStaffName,
+    super.vendorBillUrl,
+    super.vendorBillPath,
+    super.vendorBillName,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +41,9 @@ class OrderItemModel extends OrderItemEntity {
       isCompleted: json['isCompleted'] as bool? ?? false,
       assignedStaffId: json['assignedStaffId'] as String?,
       assignedStaffName: json['assignedStaffName'] as String?,
+      vendorBillUrl: json['vendorBillUrl'] as String?,
+      vendorBillPath: json['vendorBillPath'] as String?,
+      vendorBillName: json['vendorBillName'] as String?,
     );
   }
 
@@ -59,6 +65,9 @@ class OrderItemModel extends OrderItemEntity {
       'isCompleted': isCompleted,
       'assignedStaffId': assignedStaffId,
       'assignedStaffName': assignedStaffName,
+      'vendorBillUrl': vendorBillUrl,
+      'vendorBillPath': vendorBillPath,
+      'vendorBillName': vendorBillName,
     };
   }
 
@@ -80,6 +89,9 @@ class OrderItemModel extends OrderItemEntity {
       isCompleted: entity.isCompleted,
       assignedStaffId: entity.assignedStaffId,
       assignedStaffName: entity.assignedStaffName,
+      vendorBillUrl: entity.vendorBillUrl,
+      vendorBillPath: entity.vendorBillPath,
+      vendorBillName: entity.vendorBillName,
     );
   }
 }

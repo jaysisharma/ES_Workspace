@@ -118,21 +118,36 @@ class FirestoreNotificationRemoteDataSource
 
   @override
   Future<void> markAsRead(String id) async {
-    await _firestore.collection('notifications').doc(id).update({
-      'isRead': true,
-    });
+    final uid = _auth.currentUser?.uid;
+    final docRef = _firestore.collection('notifications').doc(id);
+    if (uid != null) {
+      await docRef.set({
+        'isRead': true,
+        'readBy': FieldValue.arrayUnion([uid]),
+      }, SetOptions(merge: true));
+    } else {
+      await docRef.set({'isRead': true}, SetOptions(merge: true));
+    }
   }
 
   @override
   Future<void> markAllAsRead() async {
-    final unread = await _firestore
+    final uid = _auth.currentUser?.uid;
+    final snapshot = await _firestore
         .collection('notifications')
-        .where('isRead', isEqualTo: false)
+        .orderBy('timestamp', descending: true)
+        .limit(100)
         .get();
 
     final batch = _firestore.batch();
-    for (final doc in unread.docs) {
-      batch.update(doc.reference, {'isRead': true});
+    for (final doc in snapshot.docs) {
+      if (uid != null) {
+        batch.set(doc.reference, {
+          'readBy': FieldValue.arrayUnion([uid]),
+        }, SetOptions(merge: true));
+      } else {
+        batch.set(doc.reference, {'isRead': true}, SetOptions(merge: true));
+      }
     }
     await batch.commit();
   }

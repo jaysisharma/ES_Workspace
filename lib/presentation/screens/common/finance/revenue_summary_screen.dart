@@ -467,7 +467,22 @@ class _RevenueSummaryScreenState extends ConsumerState<RevenueSummaryScreen> {
       'Vendor Amount (NPR)',
     ];
 
-    final rows = itemsList.map((item) {
+    int extractOrderNum(String id) {
+      final match = RegExp(r'\d+').firstMatch(id);
+      return match != null ? int.tryParse(match.group(0)!) ?? 0 : 0;
+    }
+
+    final sortedItems = List<OrderItemEntity>.from(itemsList)
+      ..sort((a, b) {
+        final numA = extractOrderNum(a.orderId);
+        final numB = extractOrderNum(b.orderId);
+        if (numA != 0 && numB != 0 && numA != numB) {
+          return numA.compareTo(numB);
+        }
+        return a.orderId.compareTo(b.orderId);
+      });
+
+    final rows = sortedItems.map((item) {
       final order = orders.firstWhere(
         (o) => o.id == item.orderId,
         orElse: () => orders.first,

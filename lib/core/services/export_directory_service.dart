@@ -20,15 +20,17 @@ class ExportDirectoryService {
   static const String _prefAutoArrangeKey = 'auto_arrange_export_folders';
 
   /// Resolves the destination directory for saving an export file based on user settings
-  /// and the target category.
+  /// and the target category/filename.
   static Future<Directory> resolveExportDirectory({
     ExportCategory category = ExportCategory.general,
+    String? filename,
     String? customPath,
     bool? autoArrange,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final savedPath = customPath ?? prefs.getString(_prefExportDirKey);
-    final isAutoArrange = autoArrange ?? (prefs.getBool(_prefAutoArrangeKey) ?? true);
+    final isAutoArrange =
+        autoArrange ?? (prefs.getBool(_prefAutoArrangeKey) ?? true);
 
     Directory baseDir;
     if (savedPath != null && savedPath.trim().isNotEmpty) {
@@ -41,7 +43,8 @@ class ExportDirectoryService {
             // On macOS Sandbox, ApplicationDocuments is guaranteed writable
             baseDir = await getApplicationDocumentsDirectory();
           } else if (Platform.isWindows || Platform.isLinux) {
-            baseDir = (await getDownloadsDirectory()) ?? (await getApplicationDocumentsDirectory());
+            baseDir = (await getDownloadsDirectory()) ??
+                (await getApplicationDocumentsDirectory());
           } else {
             baseDir = (await getApplicationDocumentsDirectory());
           }
@@ -64,18 +67,37 @@ class ExportDirectoryService {
       }
     }
 
-    // Auto-arrange in category subfolder if enabled
+    // Auto-arrange in category and subcategory subfolders if enabled
     if (isAutoArrange) {
-      final categoryDir = Directory('${baseDir.path}/${category.folderName}');
-      if (!await categoryDir.exists()) {
+      String subPath = category.folderName;
+
+      if (category == ExportCategory.finance && filename != null) {
+        final lower = filename.toLowerCase();
+        if (lower.contains('invoice')) {
+          subPath = '${category.folderName}/Invoices';
+        } else if (lower.contains('expense')) {
+          subPath = '${category.folderName}/Expenses';
+        } else if (lower.contains('revenue')) {
+          subPath = '${category.folderName}/Revenue';
+        } else if (lower.contains('ledger')) {
+          subPath = '${category.folderName}/Ledgers';
+        } else if (lower.contains('report') || lower.contains('statement')) {
+          subPath = '${category.folderName}/Reports';
+        } else if (lower.contains('quotation')) {
+          subPath = '${category.folderName}/Quotations';
+        }
+      }
+
+      final targetCategoryDir = Directory('${baseDir.path}/$subPath');
+      if (!await targetCategoryDir.exists()) {
         try {
-          await categoryDir.create(recursive: true);
-          return categoryDir;
+          await targetCategoryDir.create(recursive: true);
+          return targetCategoryDir;
         } catch (_) {
           return baseDir;
         }
       }
-      return categoryDir;
+      return targetCategoryDir;
     }
 
     return baseDir;
@@ -84,19 +106,40 @@ class ExportDirectoryService {
   /// Automatically deduces the ExportCategory from the filename or title.
   static ExportCategory deduceCategory(String filenameOrTitle) {
     final lower = filenameOrTitle.toLowerCase();
-    if (lower.contains('attend') || lower.contains('shift') || lower.contains('clock')) {
+    if (lower.contains('attend') ||
+        lower.contains('shift') ||
+        lower.contains('clock')) {
       return ExportCategory.attendance;
     }
-    if (lower.contains('order') || lower.contains('invoice') || lower.contains('item')) {
-      return ExportCategory.orders;
-    }
-    if (lower.contains('finance') || lower.contains('expense') || lower.contains('statement') || lower.contains('profit') || lower.contains('revenue')) {
+    if (lower.contains('invoice') ||
+        lower.contains('quotation') ||
+        lower.contains('bill') ||
+        lower.contains('receipt') ||
+        lower.contains('finance') ||
+        lower.contains('expense') ||
+        lower.contains('statement') ||
+        lower.contains('profit') ||
+        lower.contains('revenue') ||
+        lower.contains('ledger') ||
+        lower.contains('tax') ||
+        lower.contains('vat') ||
+        lower.contains('salary') ||
+        lower.contains('payroll')) {
       return ExportCategory.finance;
     }
-    if (lower.contains('employee') || lower.contains('staff') || lower.contains('profile') || lower.contains('dossier') || lower.contains('hr')) {
+    if (lower.contains('order') || lower.contains('item')) {
+      return ExportCategory.orders;
+    }
+    if (lower.contains('employee') ||
+        lower.contains('staff') ||
+        lower.contains('profile') ||
+        lower.contains('dossier') ||
+        lower.contains('hr')) {
       return ExportCategory.employees;
     }
-    if (lower.contains('pass') || lower.contains('ticket') || lower.contains('badge')) {
+    if (lower.contains('pass') ||
+        lower.contains('ticket') ||
+        lower.contains('badge')) {
       return ExportCategory.passes;
     }
     return ExportCategory.general;

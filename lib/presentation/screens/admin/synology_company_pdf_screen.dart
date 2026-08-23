@@ -36,6 +36,7 @@ class _SynologyCompanyPdfScreenState
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
+        leading: Navigator.canPop(context) ? const BackButton() : null,
         title: const Text(
           'Company PDF & Synology Sharing',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),

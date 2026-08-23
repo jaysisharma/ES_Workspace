@@ -22,7 +22,10 @@ class PdfExportHelper {
       if (!kIsWeb) {
         // 1. Resolve destination directory using ExportDirectoryService (custom path + auto-arranged subfolders)
         final effectiveCategory = category ?? ExportDirectoryService.deduceCategory(filename);
-        final targetDir = await ExportDirectoryService.resolveExportDirectory(category: effectiveCategory);
+        final targetDir = await ExportDirectoryService.resolveExportDirectory(
+          category: effectiveCategory,
+          filename: sanitizedFilename,
+        );
 
         final file = File('${targetDir.path}/$sanitizedFilename');
         await file.parent.create(recursive: true);

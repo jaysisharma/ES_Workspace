@@ -108,7 +108,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     final notificationState = ref.watch(notificationsStreamProvider);
 
     final unreadCount = notificationState.maybeWhen(
-      data: (list) => list.where((n) => !n.isRead).length,
+      data: (list) => list.where((n) => !n.isReadForUser(ref.watch(authNotifierProvider).user?.id)).length,
       orElse: () => 0,
     );
 
@@ -305,10 +305,10 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
                       // Summary Logic — use full stream for accurate counts
                       final allOrdersAsync = ref.watch(ordersStreamProvider);
-                      final allOrders = allOrdersAsync.maybeWhen(
+                      final allOrders = (allOrdersAsync.maybeWhen(
                         data: (o) => o,
                         orElse: () => orders,
-                      );
+                      )).where((o) => !o.isArchived).toList();
                       final totalOrders = allOrders.length;
                       final upcomingCount = allOrders
                           .where((o) => o.status == OrderStatus.confirmed)
@@ -533,7 +533,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                       OrderStatus.inProgress.name,
                                       OrderStatus.completed.name,
                                       OrderStatus.draft.name,
-                                      'archived',
                                     ];
 
                                     return Row(
@@ -544,8 +543,6 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                         String label;
                                         if (option == 'ALL') {
                                           label = 'ALL';
-                                        } else if (option == 'archived') {
-                                          label = 'ARCHIVED 📦';
                                         } else {
                                           label =
                                               option[0].toUpperCase() +
@@ -620,7 +617,9 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                     dashboardFilterNotifierProvider,
                                   );
                                   final isSearching = _searchQuery.trim().isNotEmpty;
-                                  final initialSource = isSearching ? allOrders : orders;
+                                  final initialSource = (isSearching ? allOrders : orders)
+                                      .where((o) => !o.isArchived)
+                                      .toList();
                                   final List<OrderEntity> sourceOrders;
                                   if (isSearching) {
                                     final idMatches = initialSource
@@ -647,22 +646,13 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
                                   }
 
                                   final filteredOrders = sourceOrders.where((o) {
-                                    final isArchivedFilter =
-                                        filterState.selectedFilter.toLowerCase() == 'archived';
-
-                                    final archiveMatch = isArchivedFilter
-                                        ? o.isArchived
-                                        : (isSearching ? true : !o.isArchived);
-
-                                    final matchesFilter = isArchivedFilter
-                                        ? true
-                                        : (filterState.selectedFilter == 'ALL' ||
-                                            isSearching ||
-                                            o.status.name == filterState.selectedFilter);
+                                    final matchesFilter = filterState.selectedFilter == 'ALL' ||
+                                        isSearching ||
+                                        o.status.name == filterState.selectedFilter;
 
                                     final matchesSearch = _matchesOrderQuery(o, _searchQuery);
 
-                                    return archiveMatch && matchesFilter && matchesSearch;
+                                    return matchesFilter && matchesSearch;
                                   }).toList();
 
                                   if (filteredOrders.isEmpty) {

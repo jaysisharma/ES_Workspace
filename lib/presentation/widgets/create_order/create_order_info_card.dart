@@ -14,10 +14,12 @@ class CreateOrderInfoCardWidget extends StatelessWidget {
   final String dateTextEvent;
   final String dateTextSetup;
   final String? selectedCategory;
+  final String orderType;
   final double vatRate;
   final VoidCallback onSelectEventDate;
   final VoidCallback onSelectSetupDate;
   final ValueChanged<String?> onCategorySelected;
+  final ValueChanged<String> onOrderTypeChanged;
   final ValueChanged<double> onVatRateSelected;
   final Color primaryColor;
   final Color textColor;
@@ -38,10 +40,12 @@ class CreateOrderInfoCardWidget extends StatelessWidget {
     required this.dateTextEvent,
     required this.dateTextSetup,
     required this.selectedCategory,
+    required this.orderType,
     required this.vatRate,
     required this.onSelectEventDate,
     required this.onSelectSetupDate,
     required this.onCategorySelected,
+    required this.onOrderTypeChanged,
     required this.onVatRateSelected,
     required this.primaryColor,
     required this.textColor,
@@ -53,6 +57,8 @@ class CreateOrderInfoCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currentType = (orderType.toLowerCase() == 'rental') ? 'Rental' : 'Event';
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -74,6 +80,92 @@ class CreateOrderInfoCardWidget extends StatelessWidget {
             primaryColor: primaryColor,
             filledColor: filledColor,
             readOnly: isEditMode,
+          ),
+          const SizedBox(height: 16),
+
+          // Order Type (styled exactly like Category dropdown)
+          CreateOrderFormHelpers.buildFieldLabel('Type', labelColor),
+          DropdownButtonFormField<String>(
+            isExpanded: true,
+            initialValue: currentType,
+            decoration: InputDecoration(
+              hintText: 'Select Type',
+              hintStyle: TextStyle(fontSize: 14, color: labelColor),
+              prefixIcon: Icon(
+                currentType == 'Rental'
+                    ? Icons.inventory_2_outlined
+                    : Icons.celebration_outlined,
+                color: labelColor,
+              ),
+              filled: true,
+              fillColor: surfaceColor,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: borderColor),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: borderColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: primaryColor, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+            ),
+            dropdownColor: surfaceColor,
+            items: [
+              DropdownMenuItem(
+                value: 'Event',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.celebration_outlined,
+                      size: 18,
+                      color: primaryColor,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Event',
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              DropdownMenuItem(
+                value: 'Rental',
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.inventory_2_outlined,
+                      size: 18,
+                      color: Color(0xFF8b5cf6),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Rental',
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            onChanged: (val) {
+              if (val != null) {
+                onOrderTypeChanged(val);
+              }
+            },
           ),
           const SizedBox(height: 16),
 

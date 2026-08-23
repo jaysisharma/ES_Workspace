@@ -6,6 +6,7 @@ import 'package:order_app/domain/entities/order_item_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
+import 'package:order_app/presentation/providers/event_notifier.dart';
 import 'package:order_app/presentation/screens/common/orders/create_order_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/revenue_breakdown_screen.dart';
 
@@ -45,26 +46,29 @@ class OrderDetailsAppBarWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userRole = ref.watch(authNotifierProvider).user?.role;
     final isAdminOrFounder = userRole == UserRole.admin || userRole == UserRole.founder;
+    final canManageFinances = isAdminOrFounder || userRole == UserRole.finance;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: bgColor,
-        border: Border(bottom: BorderSide(color: borderColor)),
+        border: Border(bottom: BorderSide(color: borderColor, width: 0.5)),
       ),
       child: Row(
         children: [
           IconButton(
-            icon: Icon(Icons.arrow_back_rounded, color: textColor),
+            icon: Icon(Icons.arrow_back, color: textColor, size: 20),
             onPressed: () => Navigator.pop(context),
+            tooltip: 'Back',
             style: IconButton.styleFrom(
               backgroundColor: surfaceColor,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(6),
+                side: BorderSide(color: borderColor, width: 0.5),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               order.eventName,
@@ -77,7 +81,7 @@ class OrderDetailsAppBarWidget extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (isAdminOrFounder)
+          if (canManageFinances)
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: IconButton(
@@ -145,58 +149,76 @@ class OrderDetailsAppBarWidget extends ConsumerWidget {
                 ),
               ),
             ),
-          const SizedBox(width: 4),
           if (isAdminOrFounder)
             IconButton(
               icon: Icon(
                 order.isArchived
                     ? Icons.unarchive_outlined
                     : Icons.archive_outlined,
-                color: order.isArchived ? Colors.purple : labelColor,
+                color: order.isArchived
+                    ? const Color(0xFF10b981)
+                    : const Color(0xFF64748b),
                 size: 20,
               ),
-              tooltip: order.isArchived ? 'Unarchive Order' : 'Archive Order',
+              tooltip: order.isArchived
+                  ? 'Restore (Unarchive) Order'
+                  : 'Archive Order',
               onPressed: () async {
-                final actionStr = order.isArchived ? 'unarchive' : 'archive';
+                final isCurrentlyArchived = order.isArchived;
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     title: Text(
-                      '${actionStr[0].toUpperCase()}${actionStr.substring(1)} Order?',
+                      isCurrentlyArchived ? 'Restore Order?' : 'Archive Order?',
                     ),
                     content: Text(
-                      'Are you sure you want to $actionStr "${order.eventName}"?\n\n'
-                      '${order.isArchived ? "Unarchiving will restore it to the active homepage list." : "Archiving will hide it from the active homepage to keep your dashboard organized."}',
+                      isCurrentlyArchived
+                          ? 'Move "${order.eventName}" back to active orders and calendar?'
+                          : 'Archive "${order.eventName}"? It will be hidden from active calendar and orders, but saved in Archived Orders.',
                     ),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, false),
                         child: const Text('Cancel'),
                       ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              order.isArchived ? primaryColor : Colors.purple,
-                          foregroundColor: Colors.white,
-                        ),
+                      FilledButton(
                         onPressed: () => Navigator.pop(ctx, true),
-                        child: Text(actionStr.toUpperCase()),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: isCurrentlyArchived
+                              ? const Color(0xFF10b981)
+                              : const Color(0xFF64748b),
+                        ),
+                        child: Text(
+                          isCurrentlyArchived ? 'Restore' : 'Archive',
+                        ),
                       ),
                     ],
                   ),
                 );
-
                 if (confirm == true) {
                   await ref
                       .read(orderNotifierProvider.notifier)
-                      .toggleArchiveOrder(order.id, !order.isArchived);
+                      .toggleArchiveOrder(order.id, !isCurrentlyArchived);
+                  if (eventId != null) {
+                    await ref
+                        .read(eventNotifierProvider.notifier)
+                        .toggleArchiveEvent(eventId!, !isCurrentlyArchived);
+                  }
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Order "${order.eventName}" ${order.isArchived ? "unarchived" : "archived"} successfully.',
+                          isCurrentlyArchived
+                              ? 'Order restored to active list'
+                              : 'Order archived successfully',
                         ),
-                        backgroundColor: Colors.purple,
+                        backgroundColor: isCurrentlyArchived
+                            ? const Color(0xFF10b981)
+                            : const Color(0xFF64748b),
+                        behavior: SnackBarBehavior.floating,
                       ),
                     );
                   }
@@ -204,15 +226,14 @@ class OrderDetailsAppBarWidget extends ConsumerWidget {
               },
               style: IconButton.styleFrom(
                 backgroundColor: (order.isArchived
-                        ? Colors.purple
-                        : labelColor)
+                        ? const Color(0xFF10b981)
+                        : const Color(0xFF64748b))
                     .withValues(alpha: 0.1),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(6),
                 ),
               ),
             ),
-          const SizedBox(width: 4),
           if (!fromCalendar && isAdminOrFounder)
             IconButton(
               icon: const Icon(

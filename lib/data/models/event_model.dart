@@ -21,9 +21,7 @@ class EventModel extends EventEntity {
     final createdDate = json['createdAt'] != null
         ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.parse(json['date'] as String)
         : DateTime.parse(json['date'] as String);
-    final isOlderThan1Month = DateTime.now().difference(createdDate).inDays >= 30;
-    final explicitArchived = json['isArchived'] as bool?;
-    final isArchived = explicitArchived ?? isOlderThan1Month;
+    final isArchived = json['isArchived'] as bool? ?? false;
 
     return EventModel(
       id: json['id'] as String,

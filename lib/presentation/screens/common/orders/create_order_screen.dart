@@ -44,6 +44,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
   final _customCategoryController = TextEditingController();
   bool _isSaving = false;
   String? _selectedCategory;
+  String _orderType = 'Event';
 
   bool get _isEditMode => widget.existingOrder != null;
 
@@ -65,6 +66,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       _setupEndDate = existing.setupEndDate;
       _descriptionController.text = existing.description;
       _vatRate = existing.vatRate;
+      _orderType = existing.orderType.isNotEmpty ? existing.orderType : 'Event';
 
       // Load existing items from Firestore and populate _items list
       Future.microtask(() async {
@@ -192,6 +194,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       setupDate: _setupDate,
       setupEndDate: _setupEndDate,
       selectedCategory: _selectedCategory,
+      orderType: _orderType,
       vatRate: _vatRate,
       items: _items,
       onSavingStateChanged: (saving) {
@@ -245,11 +248,13 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               dateTextEvent: _formatDateRange(_eventDate, _eventEndDate),
               dateTextSetup: _formatDateRange(_setupDate, _setupEndDate),
               selectedCategory: _selectedCategory,
+              orderType: _orderType,
               vatRate: _vatRate,
               onSelectEventDate: () => _selectDate(context, false),
               onSelectSetupDate: () => _selectDate(context, true),
               onCategorySelected: (cat) =>
                   setState(() => _selectedCategory = cat),
+              onOrderTypeChanged: (type) => setState(() => _orderType = type),
               onVatRateSelected: (rate) => setState(() => _vatRate = rate),
               primaryColor: primaryColor,
               textColor: textColor,

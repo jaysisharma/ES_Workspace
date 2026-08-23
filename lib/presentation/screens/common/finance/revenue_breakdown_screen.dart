@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/order_item_entity.dart';
 import 'package:order_app/domain/entities/expense_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/providers/settings_provider.dart';
 import 'package:order_app/presentation/widgets/revenue_breakdown/revenue_form_dialog.dart';
@@ -48,6 +50,10 @@ class _RevenueBreakdownScreenState
   bool _isMgtChargePercent = true;
   bool _isDiscountPercent = true;
   final List<ExpenseEntity> _manualRevenues = [];
+
+  String? _advanceReceiptUrl;
+  String? _advanceReceiptPath;
+  String? _advanceReceiptName;
 
   @override
   void initState() {
@@ -100,6 +106,16 @@ class _RevenueBreakdownScreenState
     _advanceRefNoController = TextEditingController(
       text: widget.order.advanceReferenceNo,
     );
+
+    _advanceReceiptUrl = widget.order.advanceReceiptUrl.isNotEmpty
+        ? widget.order.advanceReceiptUrl
+        : null;
+    _advanceReceiptPath = widget.order.advanceReceiptPath.isNotEmpty
+        ? widget.order.advanceReceiptPath
+        : null;
+    _advanceReceiptName = widget.order.advanceReceiptName.isNotEmpty
+        ? widget.order.advanceReceiptName
+        : null;
 
     if (widget.order.vatRate == 0) {
       _vatOption = VatOption.noVat;
@@ -247,6 +263,13 @@ class _RevenueBreakdownScreenState
     final settings = ref.watch(settingsProvider);
     final currencyLabel = settings.currency.split(' ').first;
 
+    final authState = ref.watch(authNotifierProvider);
+    final user = authState.user;
+    final canEditAdvance = user == null ||
+        user.role == UserRole.admin ||
+        user.role == UserRole.finance ||
+        user.role == UserRole.founder;
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: RevenueBreakdownAppBarWidget(
@@ -267,12 +290,17 @@ class _RevenueBreakdownScreenState
             manualRevenues: _manualRevenues,
             totalRevenue: _totalRevenue,
             effectiveVatRate: _effectiveVatRate,
-            managementCharge: double.tryParse(_mgtChargeController.text.trim()) ?? 0.0,
+            managementCharge:
+                double.tryParse(_mgtChargeController.text.trim()) ?? 0.0,
             isMgtChargePercent: _isMgtChargePercent,
             discount: double.tryParse(_discountController.text.trim()) ?? 0.0,
             isDiscountPercent: _isDiscountPercent,
-            advanceReceived: double.tryParse(_advanceReceivedController.text.trim()) ?? 0.0,
+            advanceReceived:
+                double.tryParse(_advanceReceivedController.text.trim()) ?? 0.0,
             advanceReferenceNo: _advanceRefNoController.text.trim(),
+            advanceReceiptUrl: _advanceReceiptUrl ?? '',
+            advanceReceiptPath: _advanceReceiptPath ?? '',
+            advanceReceiptName: _advanceReceiptName ?? '',
           );
           if (savedItems != null && mounted) {
             setState(() {
@@ -295,134 +323,97 @@ class _RevenueBreakdownScreenState
           discountRate: _discountRate,
           effectiveVatRate: _effectiveVatRate,
           share: false,
+          advanceReceived:
+              double.tryParse(_advanceReceivedController.text.trim()) ?? 0.0,
+          advanceReferenceNo: _advanceRefNoController.text.trim(),
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                RevenueDescriptionCardWidget(
-                  controller: _orderDescriptionController,
-                  primaryColor: primaryColor,
-                  labelColor: labelColor,
-                  borderColor: borderColor,
-                  containerBgColor: colorScheme.surfaceContainerHighest.withValues(
-                    alpha: 0.3,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                RevenueItemsSectionWidget(
-                  items: _items,
-                  itemControllers: _controllers,
-                  itemQtyControllers: _qtyControllers,
-                  itemDaysControllers: _daysControllers,
-                  focusNodes: _focusNodes,
-                  primaryColor: primaryColor,
-                  labelColor: labelColor,
-                  currencyLabel: currencyLabel,
-                  onBillingTypeChanged: (idx, type) {
-                    setState(() {
-                      _items[idx] = _items[idx].copyWith(billingType: type);
-                    });
-                  },
-                  onChanged: () => setState(() {}),
-                ),
-                const SizedBox(height: 24),
-                ManualRevenueSectionWidget(
-                  manualRevenues: _manualRevenues,
-                  primaryColor: primaryColor,
-                  labelColor: labelColor,
-                  currencyLabel: currencyLabel,
-                  onAddManual: () => _openRevenueDialog(currencyLabel),
-                  onEdit: (revenue) => _openRevenueDialog(currencyLabel, revenue: revenue),
-                  onDelete: (revenue) => _deleteRevenue(revenue),
-                ),
-                const SizedBox(height: 24),
-                RevenueFinancialsCardWidget(
-                  mgtChargeController: _mgtChargeController,
-                  discountController: _discountController,
-                  vatRateController: _vatRateController,
-                  advanceReceivedController: _advanceReceivedController,
-                  advanceRefNoController: _advanceRefNoController,
-                  isMgtChargePercent: _isMgtChargePercent,
-                  isDiscountPercent: _isDiscountPercent,
-                  vatOption: _vatOption,
-                  totalRevenue: _totalRevenue,
-                  managementChargeAmount: _managementChargeAmount,
-                  discountAmount: _discountAmount,
-                  netTotalRevenue: _netTotalRevenue,
-                  vatAmount: _vatAmount,
-                  effectiveVatRate: _effectiveVatRate,
-                  grandTotalRevenue: _grandTotalRevenue,
-                  currencyLabel: currencyLabel,
-                  onMgtChargePercentChanged: (val) => setState(() => _isMgtChargePercent = val),
-                  onDiscountPercentChanged: (val) => setState(() => _isDiscountPercent = val),
-                  onVatOptionChanged: (opt) {
-                    setState(() {
-                      _vatOption = opt;
-                      if (opt == VatOption.noVat) {
-                        _vatRateController.text = '0';
-                      } else if (opt == VatOption.vat13) {
-                        _vatRateController.text = '13';
-                      }
-                    });
-                  },
-                  onChanged: () => setState(() {}),
-                  onPreviewPdf: () => RevenueActionsHelper.executeRevenuePdf(
-                    context: context,
-                    order: widget.order,
-                    orderDescription: _orderDescriptionController.text,
-                    items: _items,
-                    itemControllers: _controllers,
-                    itemQtyControllers: _qtyControllers,
-                    itemDaysControllers: _daysControllers,
-                    manualRevenues: _manualRevenues,
-                    managementChargeAmount: _managementChargeAmount,
-                    managementChargeRate: _managementChargeRate,
-                    discountAmount: _discountAmount,
-                    discountRate: _discountRate,
-                    effectiveVatRate: _effectiveVatRate,
-                    share: false,
-                  ),
-                  onSharePdf: () => RevenueActionsHelper.executeRevenuePdf(
-                    context: context,
-                    order: widget.order,
-                    orderDescription: _orderDescriptionController.text,
-                    items: _items,
-                    itemControllers: _controllers,
-                    itemQtyControllers: _qtyControllers,
-                    itemDaysControllers: _daysControllers,
-                    manualRevenues: _manualRevenues,
-                    managementChargeAmount: _managementChargeAmount,
-                    managementChargeRate: _managementChargeRate,
-                    discountAmount: _discountAmount,
-                    discountRate: _discountRate,
-                    effectiveVatRate: _effectiveVatRate,
-                    share: true,
-                  ),
-                  onGenerateInvoice: () {
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (dialogCtx) => InvoiceCustomizerModal(
-                        order: widget.order,
-                        isPreviewDefault: false,
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          RevenueTotalsCardWidget(
-            hasItemsOrRevenues: _items.isNotEmpty || _manualRevenues.isNotEmpty,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isDesktop = constraints.maxWidth >= 1050;
+
+          final descriptionWidget = RevenueDescriptionCardWidget(
+            controller: _orderDescriptionController,
+            primaryColor: primaryColor,
+            labelColor: labelColor,
+            borderColor: borderColor,
+            containerBgColor:
+                colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          );
+
+          final itemsWidget = RevenueItemsSectionWidget(
+            items: _items,
+            itemControllers: _controllers,
+            itemQtyControllers: _qtyControllers,
+            itemDaysControllers: _daysControllers,
+            focusNodes: _focusNodes,
+            primaryColor: primaryColor,
+            labelColor: labelColor,
+            currencyLabel: currencyLabel,
+            onBillingTypeChanged: (idx, type) {
+              setState(() {
+                _items[idx] = _items[idx].copyWith(billingType: type);
+              });
+            },
+            onChanged: () => setState(() {}),
+          );
+
+          final manualRevenuesWidget = ManualRevenueSectionWidget(
+            manualRevenues: _manualRevenues,
+            primaryColor: primaryColor,
+            labelColor: labelColor,
+            currencyLabel: currencyLabel,
+            onAddManual: () => _openRevenueDialog(currencyLabel),
+            onEdit: (revenue) =>
+                _openRevenueDialog(currencyLabel, revenue: revenue),
+            onDelete: (revenue) => _deleteRevenue(revenue),
+          );
+
+          final financialsWidget = RevenueFinancialsCardWidget(
+            mgtChargeController: _mgtChargeController,
+            discountController: _discountController,
+            vatRateController: _vatRateController,
+            advanceReceivedController: _advanceReceivedController,
+            advanceRefNoController: _advanceRefNoController,
+            isMgtChargePercent: _isMgtChargePercent,
+            isDiscountPercent: _isDiscountPercent,
+            vatOption: _vatOption,
+            totalRevenue: _totalRevenue,
+            managementChargeAmount: _managementChargeAmount,
+            discountAmount: _discountAmount,
+            netTotalRevenue: _netTotalRevenue,
+            vatAmount: _vatAmount,
+            effectiveVatRate: _effectiveVatRate,
             grandTotalRevenue: _grandTotalRevenue,
             currencyLabel: currencyLabel,
-            onFinalize: () => RevenueActionsHelper.confirmFinalize(
+            canEditAdvance: canEditAdvance,
+            advanceReceiptUrl: _advanceReceiptUrl,
+            advanceReceiptPath: _advanceReceiptPath,
+            advanceReceiptName: _advanceReceiptName,
+            onReceiptChanged: (receipt) {
+              setState(() {
+                _advanceReceiptUrl = receipt.url;
+                _advanceReceiptPath = receipt.path;
+                _advanceReceiptName = receipt.name;
+              });
+            },
+            onMgtChargePercentChanged: (val) =>
+                setState(() => _isMgtChargePercent = val),
+            onDiscountPercentChanged: (val) =>
+                setState(() => _isDiscountPercent = val),
+            onVatOptionChanged: (opt) {
+              setState(() {
+                _vatOption = opt;
+                if (opt == VatOption.noVat) {
+                  _vatRateController.text = '0';
+                } else if (opt == VatOption.vat13) {
+                  _vatRateController.text = '13';
+                }
+              });
+            },
+            onChanged: () => setState(() {}),
+            onPreviewPdf: () => RevenueActionsHelper.executeRevenuePdf(
               context: context,
-              ref: ref,
               order: widget.order,
               orderDescription: _orderDescriptionController.text,
               items: _items,
@@ -430,19 +421,152 @@ class _RevenueBreakdownScreenState
               itemQtyControllers: _qtyControllers,
               itemDaysControllers: _daysControllers,
               manualRevenues: _manualRevenues,
-              totalRevenue: _totalRevenue,
-              grandTotalRevenue: _grandTotalRevenue,
+              managementChargeAmount: _managementChargeAmount,
+              managementChargeRate: _managementChargeRate,
+              discountAmount: _discountAmount,
+              discountRate: _discountRate,
               effectiveVatRate: _effectiveVatRate,
-              managementCharge: double.tryParse(_mgtChargeController.text.trim()) ?? 0.0,
-              isMgtChargePercent: _isMgtChargePercent,
-              discount: double.tryParse(_discountController.text.trim()) ?? 0.0,
-              isDiscountPercent: _isDiscountPercent,
-              advanceReceived: double.tryParse(_advanceReceivedController.text.trim()) ?? 0.0,
+              share: false,
+              advanceReceived:
+                  double.tryParse(_advanceReceivedController.text.trim()) ??
+                      0.0,
               advanceReferenceNo: _advanceRefNoController.text.trim(),
-              currencyLabel: currencyLabel,
             ),
-          ),
-        ],
+            onGenerateInvoice: () {
+              final currentAdv =
+                  double.tryParse(_advanceReceivedController.text.trim()) ?? 0.0;
+              final currentAdvRef = _advanceRefNoController.text.trim();
+              final currentDisc =
+                  double.tryParse(_discountController.text.trim()) ?? 0.0;
+              final currentMgt =
+                  double.tryParse(_mgtChargeController.text.trim()) ?? 0.0;
+
+              final currentOrderSnapshot = widget.order.copyWith(
+                description: _orderDescriptionController.text.trim(),
+                managementCharge: currentMgt,
+                isMgtChargePercent: _isMgtChargePercent,
+                discount: currentDisc,
+                isDiscountPercent: _isDiscountPercent,
+                vatRate: _effectiveVatRate,
+                advanceReceived: currentAdv,
+                advanceReferenceNo: currentAdvRef,
+                advanceReceiptUrl: _advanceReceiptUrl ?? '',
+                advanceReceiptPath: _advanceReceiptPath ?? '',
+                advanceReceiptName: _advanceReceiptName ?? '',
+                totalAmount: _grandTotalRevenue,
+              );
+
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (dialogCtx) => InvoiceCustomizerModal(
+                  order: currentOrderSnapshot,
+                  isPreviewDefault: false,
+                ),
+              );
+            },
+          );
+
+          return Column(
+            children: [
+              Expanded(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isDesktop ? 1380 : 860,
+                    ),
+                    child: isDesktop
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Left Column: Items, Notes, Additional Revenue
+                                Expanded(
+                                  flex: 6,
+                                  child: ListView(
+                                    padding: const EdgeInsets.only(right: 12),
+                                    children: [
+                                      descriptionWidget,
+                                      const SizedBox(height: 20),
+                                      itemsWidget,
+                                      const SizedBox(height: 20),
+                                      manualRevenuesWidget,
+                                      const SizedBox(height: 24),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Right Column: Financials & Action Summary Card
+                                Expanded(
+                                  flex: 5,
+                                  child: ListView(
+                                    padding: const EdgeInsets.only(left: 12),
+                                    children: [
+                                      financialsWidget,
+                                      const SizedBox(height: 24),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView(
+                            padding: const EdgeInsets.all(16),
+                            children: [
+                              descriptionWidget,
+                              const SizedBox(height: 24),
+                              itemsWidget,
+                              const SizedBox(height: 24),
+                              manualRevenuesWidget,
+                              const SizedBox(height: 24),
+                              financialsWidget,
+                              const SizedBox(height: 24),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
+              RevenueTotalsCardWidget(
+                hasItemsOrRevenues:
+                    _items.isNotEmpty || _manualRevenues.isNotEmpty,
+                grandTotalRevenue: _grandTotalRevenue,
+                currencyLabel: currencyLabel,
+                onFinalize: () => RevenueActionsHelper.confirmFinalize(
+                  context: context,
+                  ref: ref,
+                  order: widget.order,
+                  orderDescription: _orderDescriptionController.text,
+                  items: _items,
+                  itemControllers: _controllers,
+                  itemQtyControllers: _qtyControllers,
+                  itemDaysControllers: _daysControllers,
+                  manualRevenues: _manualRevenues,
+                  totalRevenue: _totalRevenue,
+                  grandTotalRevenue: _grandTotalRevenue,
+                  effectiveVatRate: _effectiveVatRate,
+                  managementCharge:
+                      double.tryParse(_mgtChargeController.text.trim()) ?? 0.0,
+                  isMgtChargePercent: _isMgtChargePercent,
+                  discount:
+                      double.tryParse(_discountController.text.trim()) ?? 0.0,
+                  isDiscountPercent: _isDiscountPercent,
+                  advanceReceived:
+                      double.tryParse(_advanceReceivedController.text.trim()) ??
+                          0.0,
+                  advanceReferenceNo: _advanceRefNoController.text.trim(),
+                  advanceReceiptUrl: _advanceReceiptUrl ?? '',
+                  advanceReceiptPath: _advanceReceiptPath ?? '',
+                  advanceReceiptName: _advanceReceiptName ?? '',
+                  currencyLabel: currencyLabel,
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

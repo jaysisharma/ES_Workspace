@@ -1,13 +1,14 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import 'package:order_app/core/utils/receipt_compressor.dart';
 import 'package:order_app/data/services/synology_service.dart';
 import 'package:order_app/domain/entities/expense_entity.dart';
 import 'package:order_app/presentation/providers/company_document_provider.dart';
 import 'package:order_app/presentation/providers/vendor_provider.dart';
+import 'package:order_app/presentation/widgets/common/receipt_viewer_modal.dart';
 import 'package:order_app/presentation/widgets/common/vendor_autocomplete_field.dart';
 
 class RevenueFormDialog extends ConsumerStatefulWidget {
@@ -419,14 +420,42 @@ class _RevenueFormDialogState extends ConsumerState<RevenueFormDialog> {
                     const Icon(Icons.receipt_long, color: Colors.green, size: 20),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        currentBillName ?? 'Bill Document',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green),
+                      child: InkWell(
+                        onTap: () {
+                          ReceiptViewerModal.show(
+                            context,
+                            title: currentBillName ?? 'Bill Document',
+                            url: currentBillUrl,
+                            path: currentBillPath,
+                          );
+                        },
+                        child: Text(
+                          currentBillName ?? 'Bill Document',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Colors.green,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
                       ),
                     ),
                     IconButton(
+                      icon: const Icon(Icons.visibility_outlined, size: 18, color: Colors.green),
+                      tooltip: 'View in App',
+                      onPressed: () {
+                        ReceiptViewerModal.show(
+                          context,
+                          title: currentBillName ?? 'Bill Document',
+                          url: currentBillUrl,
+                          path: currentBillPath,
+                        );
+                      },
+                    ),
+                    IconButton(
                       icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                      tooltip: 'Remove',
                       onPressed: () {
                         setState(() {
                           currentBillUrl = null;
@@ -452,22 +481,33 @@ class _RevenueFormDialogState extends ConsumerState<RevenueFormDialog> {
                           );
                           if (result != null && result.files.isNotEmpty) {
                             final picked = result.files.first;
-                            Uint8List? bytes = picked.bytes;
-                            if (bytes == null && picked.path != null) {
-                              bytes = await File(picked.path!).readAsBytes();
-                            }
-                            if (bytes != null) {
-                              final filename = 'Bill_${DateTime.now().millisecondsSinceEpoch}_${picked.name}';
-                              final synologyConfig = ref.read(companyDocumentNotifierProvider).synologyConfig;
-                              final uploadRes = await SynologyService().uploadPdf(
+                            final rawBytes = picked.bytes ??
+                                (picked.path != null
+                                    ? await File(picked.path!).readAsBytes()
+                                    : null);
+                            if (rawBytes != null) {
+                              final compressedBytes =
+                                  await ReceiptCompressor.compressReceiptBytes(
+                                rawBytes: rawBytes,
+                                fileName: picked.name,
+                              );
+                              final filename =
+                                  'Bill_${DateTime.now().millisecondsSinceEpoch}_${picked.name}';
+                              final synologyConfig = ref
+                                  .read(companyDocumentNotifierProvider)
+                                  .synologyConfig;
+                              final uploadRes =
+                                  await SynologyService().uploadPdf(
                                 config: synologyConfig,
-                                fileBytes: bytes,
+                                fileBytes: compressedBytes,
                                 filename: filename,
                               );
                               setState(() {
                                 currentBillName = picked.name;
-                                currentBillPath = uploadRes?['synologyPath'] ?? '/EventSolution/ESWORKSPACE_app/$filename';
-                                currentBillUrl = uploadRes?['shareUrl'] ?? '${synologyConfig.host}/sharing/$filename';
+                                currentBillPath = uploadRes?['synologyPath'] ??
+                                    '/EventSolution/ESWORKSPACE_app/$filename';
+                                currentBillUrl = uploadRes?['shareUrl'] ??
+                                    '${synologyConfig.host}/sharing/$filename';
                                 isUploadingBill = false;
                               });
                             } else {

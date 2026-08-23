@@ -456,9 +456,9 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        childAspectRatio: 0.84,
-        crossAxisSpacing: 4,
-        mainAxisSpacing: 4,
+        childAspectRatio: 1.15,
+        crossAxisSpacing: 3,
+        mainAxisSpacing: 3,
       ),
       itemCount: totalCells,
       itemBuilder: (context, index) {
@@ -643,7 +643,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
           hoverColor: primaryColor.withValues(alpha: 0.08),
           child: Container(
             decoration: cellDecoration,
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -655,7 +655,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                     Text(
                       '$dayNumber',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 16.5,
                         fontWeight:
                             (isSelected ||
                                 isRangeStart ||
@@ -663,7 +663,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                                 isToday ||
                                 eventCount > 0)
                             ? FontWeight.w900
-                            : FontWeight.w700,
+                            : FontWeight.w800,
                         color: cellTextColor,
                         fontFamily: 'Manrope',
                       ),
@@ -672,8 +672,8 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                       Text(
                         '$adDay',
                         style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
                           color: (isSelected || isRangeStart || isRangeEnd)
                               ? Colors.white.withValues(alpha: 0.75)
                               : (eventCount == 1

@@ -209,7 +209,10 @@ class ExcelExportHelper {
       if (!kIsWeb) {
         // Resolve target directory using ExportDirectoryService (supports custom destination folder & auto-arranged category subfolders)
         final effectiveCategory = category ?? ExportDirectoryService.deduceCategory(filename);
-        final targetDir = await ExportDirectoryService.resolveExportDirectory(category: effectiveCategory);
+        final targetDir = await ExportDirectoryService.resolveExportDirectory(
+          category: effectiveCategory,
+          filename: sanitizedFilename,
+        );
 
         final file = File('${targetDir.path}/$sanitizedFilename');
         await file.parent.create(recursive: true);

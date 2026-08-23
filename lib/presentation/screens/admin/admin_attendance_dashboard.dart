@@ -7,13 +7,11 @@ import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/presentation/providers/attendance_providers.dart';
 import 'package:order_app/presentation/providers/hr_providers.dart';
-import 'package:order_app/presentation/screens/staff/staff_attendance_screen.dart';
 import 'package:order_app/presentation/widgets/hr_management/manage_geofence_dialog.dart';
 import 'package:order_app/presentation/widgets/calendar/nepali_date_picker_dialog.dart';
 import 'package:order_app/presentation/widgets/hr_management/admin_attendance_card.dart';
 import 'package:order_app/presentation/widgets/hr_management/admin_attendance_filter_bar.dart';
 import 'package:order_app/presentation/widgets/hr_management/admin_attendance_month_view.dart';
-import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
 class AdminAttendanceDashboard extends ConsumerStatefulWidget {
@@ -182,6 +180,9 @@ class _AdminAttendanceDashboardState
                   s.email.toLowerCase().contains(dialogSearch.toLowerCase());
             }).toList();
 
+            final theme = Theme.of(context);
+            final isDark = theme.brightness == Brightness.dark;
+
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               constraints: BoxConstraints(
@@ -197,13 +198,21 @@ class _AdminAttendanceDashboardState
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Export Attendance to Excel',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
                           ),
                           Text(
                             '$nepaliMonthHeader BS Month Report',
-                            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.primary),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.primary,
+                            ),
                           ),
                         ],
                       ),
@@ -215,28 +224,11 @@ class _AdminAttendanceDashboardState
                   ),
                   const SizedBox(height: 12),
 
-                  // Option 1: Export ALL Staff
-                  Card(
-                    color: Colors.green.shade50,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(color: Colors.green.shade300),
-                    ),
-                    elevation: 0,
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.green.shade700,
-                        child: const Icon(Icons.table_chart_rounded, color: Colors.white, size: 20),
-                      ),
-                      title: const Text(
-                        'Export All Employees (Consolidated)',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      subtitle: Text(
-                        'Total ${monthRecords.length} records across all staff in $nepaliMonthHeader',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                      trailing: const Icon(Icons.download_rounded, color: Colors.green),
+                  // Option 1: Export ALL Staff (Consolidated)
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
                       onTap: () {
                         Navigator.pop(context);
                         AttendanceExcelExportService.exportMonthlyAttendance(
@@ -245,9 +237,87 @@ class _AdminAttendanceDashboardState
                           selectedMonth: _selectedDate,
                         );
                       },
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF064E3B).withValues(alpha: 0.45)
+                              : const Color(0xFFECFDF5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark
+                                ? const Color(0xFF059669)
+                                : const Color(0xFFA7F3D0),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 42,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF059669),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.table_chart_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Export All Employees (Consolidated)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14.5,
+                                      color: isDark
+                                          ? const Color(0xFF6EE7B7)
+                                          : const Color(0xFF065F46),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Total ${monthRecords.length} records across all staff in $nepaliMonthHeader',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w500,
+                                      color: isDark
+                                          ? const Color(0xFFA7F3D0)
+                                          : const Color(0xFF047857),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF059669).withValues(alpha: 0.3)
+                                    : const Color(0xFFD1FAE5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.download_rounded,
+                                color: isDark
+                                    ? const Color(0xFF6EE7B7)
+                                    : const Color(0xFF059669),
+                                size: 20,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
 
                   // Search for employee
                   TextField(
@@ -368,35 +438,6 @@ class _AdminAttendanceDashboardState
                 );
               });
             },
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              ),
-              icon: const Icon(Icons.touch_app, size: 16, color: Colors.white),
-              label: const Text(
-                'Mark Attendance',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  SlidePageRoute(page: const StaffAttendanceScreen()),
-                );
-              },
-            ),
           ),
           IconButton(
             icon: const Icon(Icons.share_location_rounded),

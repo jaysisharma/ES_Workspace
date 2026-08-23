@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/presentation/providers/notification_notifier.dart';
 import 'package:order_app/domain/entities/notification_entity.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/providers/event_providers.dart';
 import 'package:order_app/presentation/screens/common/orders/order_details_screen.dart';
@@ -527,17 +528,19 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         iconColor = primaryColor;
     }
 
+    final currentUserId = ref.watch(authNotifierProvider).user?.uid;
+    final isItemRead = notification.isReadForUser(currentUserId);
     final dateStr = formatNepaliDate(notification.timestamp, 'hh:mm a');
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: notification.isRead
+        color: isItemRead
             ? Colors.transparent
             : (isDarkMode ? const Color(0xFF16202c) : Colors.white),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isSelected ? primaryColor : (notification.isRead ? Colors.transparent : borderColor),
+          color: isSelected ? primaryColor : (isItemRead ? Colors.transparent : borderColor),
           width: isSelected ? 1.5 : 1,
         ),
       ),
@@ -583,7 +586,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                               notification.title,
                               style: TextStyle(
                                 fontSize: 14,
-                                fontWeight: notification.isRead
+                                fontWeight: isItemRead
                                     ? FontWeight.w500
                                     : FontWeight.bold,
                                 color: textColor,
@@ -604,7 +607,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         notification.description,
                         style: TextStyle(
                           fontSize: 12,
-                          color: notification.isRead
+                          color: isItemRead
                               ? labelColor
                               : textColor.withValues(alpha: 0.8),
                         ),
@@ -614,7 +617,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     ],
                   ),
                 ),
-                if (!notification.isRead && !isSelectionMode) ...[
+                if (!isItemRead && !isSelectionMode) ...[
                   const SizedBox(width: 8),
                   Container(
                     margin: const EdgeInsets.only(top: 6),

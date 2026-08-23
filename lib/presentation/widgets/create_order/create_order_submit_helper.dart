@@ -28,6 +28,7 @@ class CreateOrderSubmitHelper {
     required DateTime setupDate,
     required DateTime? setupEndDate,
     required String? selectedCategory,
+    required String orderType,
     required double vatRate,
     required List<ItemRow> items,
     required ValueChanged<bool> onSavingStateChanged,
@@ -149,6 +150,7 @@ class CreateOrderSubmitHelper {
         client: contactName,
         description: descriptionController.text.trim(),
         vatRate: vatRate,
+        orderType: orderType,
       );
 
       if (isEditMode) {

@@ -15,6 +15,7 @@ import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:order_app/presentation/widgets/hr_management/leave_request_sheet.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
 class StaffAttendanceScreen extends ConsumerStatefulWidget {
   const StaffAttendanceScreen({super.key});
@@ -654,7 +655,9 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
         : currentUser.email;
 
     return Scaffold(
+      floatingActionButton: const BottomRightBackButton(),
       appBar: AppBar(
+        leading: Navigator.canPop(context) ? const BackButton() : null,
         title: const Text('My Attendance & Shift'),
         centerTitle: true,
         actions: [

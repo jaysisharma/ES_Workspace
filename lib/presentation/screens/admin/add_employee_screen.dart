@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,6 +22,7 @@ class AddEmployeeScreen extends ConsumerStatefulWidget {
   final String? userEmail;
   final UserRole? userRole;
   final bool isNewUser;
+  final bool isStaffSelfEdit;
   final EmployeeProfileEntity? initialProfile;
 
   const AddEmployeeScreen({
@@ -31,6 +32,7 @@ class AddEmployeeScreen extends ConsumerStatefulWidget {
     this.userEmail,
     this.userRole,
     this.isNewUser = false,
+    this.isStaffSelfEdit = false,
     this.initialProfile,
   });
 
@@ -84,7 +86,10 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(
+      length: widget.isStaffSelfEdit ? 2 : 4,
+      vsync: this,
+    );
 
     final p = widget.initialProfile;
 
@@ -240,9 +245,11 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
         title: Text(
-          widget.isNewUser
-              ? 'New Employee Registration'
-              : 'Edit Employee File: ${_nameController.text}',
+          widget.isStaffSelfEdit
+              ? 'Edit My Profile Details'
+              : (widget.isNewUser
+                  ? 'New Employee Registration'
+                  : 'Edit Employee File: ${_nameController.text}'),
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
@@ -259,7 +266,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
                       ),
                     )
                   : const Icon(Icons.check, size: 16),
-              label: const Text('Save Record'),
+              label: const Text('Save Changes'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: colorScheme.primary,
                 foregroundColor: Colors.white,
@@ -273,12 +280,17 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
           labelColor: colorScheme.primary,
           unselectedLabelColor: labelColor,
           indicatorColor: colorScheme.primary,
-          tabs: const [
-            Tab(icon: Icon(Icons.person), text: 'Personal & Family'),
-            Tab(icon: Icon(Icons.work), text: 'Office & Payroll'),
-            Tab(icon: Icon(Icons.badge), text: 'Identity & Documents'),
-            Tab(icon: Icon(Icons.event_busy), text: 'Leave Allocations'),
-          ],
+          tabs: widget.isStaffSelfEdit
+              ? const [
+                  Tab(icon: Icon(Icons.person), text: 'Personal & Family'),
+                  Tab(icon: Icon(Icons.badge), text: 'Identity & Documents'),
+                ]
+              : const [
+                  Tab(icon: Icon(Icons.person), text: 'Personal & Family'),
+                  Tab(icon: Icon(Icons.work), text: 'Office & Payroll'),
+                  Tab(icon: Icon(Icons.badge), text: 'Identity & Documents'),
+                  Tab(icon: Icon(Icons.event_busy), text: 'Leave Allocations'),
+                ],
         ),
       ),
       body: Center(
@@ -287,19 +299,17 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
           padding: const EdgeInsets.all(20.0),
           child: TabBarView(
             controller: _tabController,
-            children: [
-              // Tab 1: Personal & Family
-              _buildPersonalTab(labelColor, colorScheme),
-
-              // Tab 2: Office & Payroll
-              _buildPayrollTab(labelColor, colorScheme),
-
-              // Tab 3: Documents
-              _buildDocumentsTab(labelColor, colorScheme),
-
-              // Tab 4: Leave Allocations
-              _buildLeaveAllocationsTab(labelColor, colorScheme),
-            ],
+            children: widget.isStaffSelfEdit
+                ? [
+                    _buildPersonalTab(labelColor, colorScheme),
+                    _buildDocumentsTab(labelColor, colorScheme),
+                  ]
+                : [
+                    _buildPersonalTab(labelColor, colorScheme),
+                    _buildPayrollTab(labelColor, colorScheme),
+                    _buildDocumentsTab(labelColor, colorScheme),
+                    _buildLeaveAllocationsTab(labelColor, colorScheme),
+                  ],
           ),
         ),
       ),
@@ -311,7 +321,29 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.isNewUser) ...[
+          if (widget.isStaffSelfEdit) ...[
+            Text(
+              'Account Credentials',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildTextField(
+              'Account Email Address',
+              _emailController,
+              enabled: false,
+              keyboardType: TextInputType.emailAddress,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '🔒 Email and password are managed by administration and cannot be changed.',
+              style: TextStyle(fontSize: 11, color: labelColor, fontStyle: FontStyle.italic),
+            ),
+            const Divider(height: 28),
+          ] else if (widget.isNewUser) ...[
             Text(
               'Account Authentication Details',
               style: TextStyle(
@@ -978,6 +1010,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     int maxLines = 1,
     bool isPassword = false,
     bool readOnly = false,
+    bool enabled = true,
     ValueChanged<String>? onChanged,
   }) {
     return TextField(
@@ -986,6 +1019,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
       obscureText: isPassword,
       maxLines: maxLines,
       readOnly: readOnly,
+      enabled: enabled,
       onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
@@ -1099,22 +1133,22 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
         bloodGroup: _bloodGroup,
         officeJoinDate: _officeJoinDate,
         officeLeavingDate: _officeLeavingDate,
-        basicSalary: double.tryParse(_basicSalaryController.text) ?? 0.0,
-        fuelAllowance: double.tryParse(_fuelAllowanceController.text) ?? 0.0,
+        basicSalary: double.tryParse(_basicSalaryController.text) ?? (widget.initialProfile?.basicSalary ?? 0.0),
+        fuelAllowance: double.tryParse(_fuelAllowanceController.text) ?? (widget.initialProfile?.fuelAllowance ?? 0.0),
         communicationAllowance:
-            double.tryParse(_communicationAllowanceController.text) ?? 0.0,
+            double.tryParse(_communicationAllowanceController.text) ?? (widget.initialProfile?.communicationAllowance ?? 0.0),
         dearnessAllowance:
-            double.tryParse(_dearnessAllowanceController.text) ?? 0.0,
-        bonus: double.tryParse(_bonusController.text) ?? 0.0,
-        ssf: double.tryParse(_ssfController.text) ?? 0.0,
-        cit: double.tryParse(_citController.text) ?? 0.0,
-        lifeInsurance: double.tryParse(_lifeInsuranceController.text) ?? 0.0,
-        healthInsurance: double.tryParse(_healthInsuranceController.text) ?? 0.0,
-        insurance: (double.tryParse(_lifeInsuranceController.text) ?? 0.0) +
-            (double.tryParse(_healthInsuranceController.text) ?? 0.0),
-        tds: double.tryParse(_tdsController.text) ?? 0.0,
+            double.tryParse(_dearnessAllowanceController.text) ?? (widget.initialProfile?.dearnessAllowance ?? 0.0),
+        bonus: double.tryParse(_bonusController.text) ?? (widget.initialProfile?.bonus ?? 0.0),
+        ssf: double.tryParse(_ssfController.text) ?? (widget.initialProfile?.ssf ?? 0.0),
+        cit: double.tryParse(_citController.text) ?? (widget.initialProfile?.cit ?? 0.0),
+        lifeInsurance: double.tryParse(_lifeInsuranceController.text) ?? (widget.initialProfile?.lifeInsurance ?? 0.0),
+        healthInsurance: double.tryParse(_healthInsuranceController.text) ?? (widget.initialProfile?.healthInsurance ?? 0.0),
+        insurance: (double.tryParse(_lifeInsuranceController.text) ?? (widget.initialProfile?.lifeInsurance ?? 0.0)) +
+            (double.tryParse(_healthInsuranceController.text) ?? (widget.initialProfile?.healthInsurance ?? 0.0)),
+        tds: double.tryParse(_tdsController.text) ?? (widget.initialProfile?.tds ?? 0.0),
         netPayableSalary:
-            double.tryParse(_netPayableSalaryController.text) ?? 0.0,
+            double.tryParse(_netPayableSalaryController.text) ?? (widget.initialProfile?.netPayableSalary ?? 0.0),
         photoUrl: _photoUrlController.text.trim(),
         citizenshipNumber: _citizenshipNumberController.text.trim(),
         citizenshipPhotoFrontUrl: _citizenshipFrontController.text.trim(),
@@ -1125,17 +1159,19 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
         panPhotoUrl: _panPhotoController.text.trim(),
         createdAt: widget.initialProfile?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
-        allowedLeaves: _leaveAllocationsControllers.map(
-          (key, controller) =>
-              MapEntry(key, int.tryParse(controller.text) ?? 0),
-        ),
+        allowedLeaves: widget.isStaffSelfEdit
+            ? (widget.initialProfile?.allowedLeaves ?? {})
+            : _leaveAllocationsControllers.map(
+                (key, controller) =>
+                    MapEntry(key, int.tryParse(controller.text) ?? 0),
+              ),
       );
 
       await ref
           .read(employeeProfileNotifierProvider.notifier)
           .saveProfile(profile);
 
-      if (!widget.isNewUser) {
+      if (!widget.isNewUser && !widget.isStaffSelfEdit) {
         final email = _emailController.text.trim();
         final password = _passwordController.text.trim();
 
@@ -1143,18 +1179,31 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
           throw 'Password must be at least 6 characters.';
         }
 
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.userId)
-            .update({
-          'name': _nameController.text.trim(),
-          if (email.isNotEmpty) 'email': email,
-          'role': _selectedRole.name,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+        await AdminAuthService.updateEmployeeCredentials(
+          userId: widget.userId,
+          oldEmail: widget.userEmail ?? '',
+          newEmail: email,
+          newPassword: password.isNotEmpty ? password : null,
+          role: _selectedRole,
+          name: _nameController.text.trim(),
+          profileId: profile.id,
+        );
+      } else if (widget.isStaffSelfEdit) {
+        // Update display name in Firestore user profile without touching credentials
+        try {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(widget.userId)
+              .set({
+            'name': _nameController.text.trim(),
+            'displayName': _nameController.text.trim(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        } catch (_) {}
       }
 
       ref.invalidate(usersStreamProvider);
+      ref.invalidate(employeeProfilesStreamProvider);
 
       final updatedEmail = _emailController.text.trim().isNotEmpty
           ? _emailController.text.trim()

@@ -19,6 +19,20 @@ void main() {
       expect(backToBs.day, 1);
     });
 
+    test('Bhadra 7 (2081-05-07) converts accurately to 2024 August 23 without off-by-one error', () {
+      final bs7 = NepaliDateTime(2081, 5, 7);
+      final ad = NepaliCalendarEngine.bsToAd(bs7);
+
+      expect(ad.year, 2024);
+      expect(ad.month, 8);
+      expect(ad.day, 23);
+
+      final reconvert = NepaliCalendarEngine.adToBs(ad);
+      expect(reconvert.year, 2081);
+      expect(reconvert.month, 5);
+      expect(reconvert.day, 7);
+    });
+
     test('Midnight AD dates do not experience off-by-one date shifts', () {
       final midnightAd = DateTime(2024, 4, 13, 0, 0, 0);
       final middayAd = DateTime(2024, 4, 13, 12, 0, 0);

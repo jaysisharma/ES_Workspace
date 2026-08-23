@@ -9,10 +9,15 @@ import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/core/utils/number_to_words_converter.dart';
 import 'package:order_app/core/utils/share_helper.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/domain/entities/order_item_entity.dart';
+import 'package:order_app/domain/entities/expense_entity.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/providers/finance_navigation_provider.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 import 'package:order_app/presentation/widgets/finance/payment_receipt_dialog.dart';
+import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
+import 'package:order_app/presentation/widgets/revenue_breakdown/revenue_financials_card.dart';
+import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class EventInvoicesScreen extends ConsumerStatefulWidget {
@@ -220,6 +225,7 @@ class _EventInvoicesScreenState extends ConsumerState<EventInvoicesScreen>
           final searchResults = isSearching
               ? orders.where((o) {
                   final q = _searchQuery.toLowerCase().trim();
+                  final cleanNoSymbols = q.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
                   final cleanNoPrefix = q
                       .replaceAll('#', '')
                       .replaceAll('order-', '')
@@ -228,15 +234,25 @@ class _EventInvoicesScreenState extends ConsumerState<EventInvoicesScreen>
                       .replaceAll('id:', '')
                       .trim();
                   final orderIdLower = o.id.toLowerCase();
+                  final orderIdNoSymbols = orderIdLower.replaceAll(
+                    RegExp(r'[^a-zA-Z0-9]'),
+                    '',
+                  );
                   final isIdMatch = orderIdLower == q ||
+                      (cleanNoPrefix.isNotEmpty && orderIdLower == cleanNoPrefix) ||
+                      (cleanNoSymbols.isNotEmpty && orderIdNoSymbols == cleanNoSymbols) ||
+                      orderIdLower.contains(q) ||
                       (cleanNoPrefix.isNotEmpty &&
                           orderIdLower.contains(cleanNoPrefix)) ||
-                      orderIdLower.contains(q);
+                      (cleanNoSymbols.isNotEmpty &&
+                          orderIdNoSymbols.contains(cleanNoSymbols));
 
                   return isIdMatch ||
                       o.eventName.toLowerCase().contains(q) ||
                       o.client.toLowerCase().contains(q) ||
-                      o.contactPerson.toLowerCase().contains(q);
+                      o.contactPerson.toLowerCase().contains(q) ||
+                      o.venue.toLowerCase().contains(q) ||
+                      o.notes.toLowerCase().contains(q);
                 }).toList()
               : <OrderEntity>[];
 
@@ -1370,7 +1386,7 @@ class _EventSelectorModalState extends State<_EventSelectorModal> {
   }
 }
 
-// ── Manual Proforma Invoice Customizer Dialog ─────────────────────────────────
+// ── Manual Invoice Customizer Dialog (With Before/After VAT, Management & Discount Toggles) ──
 
 class InvoiceCustomizerModal extends ConsumerStatefulWidget {
   final OrderEntity order;
@@ -1393,54 +1409,81 @@ class _InvoiceCustomizerModalState
   late TextEditingController _buyerNameCtrl;
   late TextEditingController _buyerAddressCtrl;
   late TextEditingController _buyerVatCtrl;
-  late TextEditingController _hsCodeCtrl;
   late TextEditingController _paymentTermsCtrl;
   late TextEditingController _advanceCtrl;
   late TextEditingController _discountCtrl;
+  late TextEditingController _mgtChargeCtrl;
+  late TextEditingController _customVatCtrl;
   late TextEditingController _wordsCtrl;
   late DateTime _invoiceDate;
-  final String _selectedInvoiceType = 'PROFORMA INVOICE';
+
+  // Toggle & Option States
+  VatOption _vatOption = VatOption.noVat;
+  bool _enableManagementCharge = false;
+  bool _isMgtPercent = true;
+  bool _enableDiscount = false;
+  bool _isDiscountPercent = false;
+  bool _enableAdvance = false;
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+
+    final order = widget.order;
+    _vatOption = order.vatRate > 0.0001
+        ? VatOption.vat13
+        : VatOption.noVat;
+
     final defaultInvNo = InvoiceSequenceService.generateSuggestedInvoiceNumber(
-      isProforma: true,
-      orderId: widget.order.id,
-      date: widget.order.eventDate,
+      isProforma: _vatOption == VatOption.noVat,
+      orderId: order.id,
+      date: order.eventDate,
     );
     _invNumberCtrl = TextEditingController(text: defaultInvNo);
 
-    final clientName = widget.order.client.trim().isNotEmpty
-        ? widget.order.client.trim()
-        : (widget.order.contactPerson.trim().isNotEmpty
-            ? widget.order.contactPerson.trim()
-            : widget.order.eventName);
+    final clientName = order.client.trim().isNotEmpty
+        ? order.client.trim()
+        : (order.contactPerson.trim().isNotEmpty
+            ? order.contactPerson.trim()
+            : order.eventName);
 
     _buyerNameCtrl = TextEditingController(text: clientName);
     _buyerAddressCtrl = TextEditingController(
-      text: widget.order.venue.isNotEmpty
-          ? widget.order.venue
-          : 'Kathmandu, Nepal',
+      text: order.venue.isNotEmpty ? order.venue : 'Kathmandu, Nepal',
     );
     _buyerVatCtrl = TextEditingController();
-    _hsCodeCtrl = TextEditingController();
     _paymentTermsCtrl = TextEditingController(text: 'Cash / Credit / Cheque');
+
+    _enableAdvance = order.advanceReceived > 0;
     _advanceCtrl = TextEditingController(
-      text: widget.order.advanceReceived > 0
-          ? widget.order.advanceReceived.toStringAsFixed(2)
+      text: order.advanceReceived > 0
+          ? order.advanceReceived.toStringAsFixed(2)
           : '0.00',
     );
+
+    _enableDiscount = order.discount > 0;
+    _isDiscountPercent = false;
     _discountCtrl = TextEditingController(
-      text: widget.order.discount > 0
-          ? widget.order.discount.toStringAsFixed(2)
-          : '0.00',
+      text: order.discount > 0 ? order.discount.toStringAsFixed(2) : '0.00',
     );
+
+    _enableManagementCharge = order.managementCharge > 0;
+    _isMgtPercent = order.managementCharge == 0;
+    _mgtChargeCtrl = TextEditingController(
+      text: order.managementCharge > 0
+          ? order.managementCharge.toStringAsFixed(2)
+          : '10.0',
+    );
+
+    _customVatCtrl = TextEditingController(
+      text: order.vatRate > 0 ? (order.vatRate * 100).toStringAsFixed(1) : '13.0',
+    );
+
     _invoiceDate = DateTime.now();
 
     final defaultWords =
-        NumberToWordsConverter.convertToRupees(widget.order.totalAmount);
+        NumberToWordsConverter.convertToRupees(order.totalAmount);
     _wordsCtrl = TextEditingController(text: defaultWords);
   }
 
@@ -1450,12 +1493,95 @@ class _InvoiceCustomizerModalState
     _buyerNameCtrl.dispose();
     _buyerAddressCtrl.dispose();
     _buyerVatCtrl.dispose();
-    _hsCodeCtrl.dispose();
     _paymentTermsCtrl.dispose();
     _advanceCtrl.dispose();
     _discountCtrl.dispose();
+    _mgtChargeCtrl.dispose();
+    _customVatCtrl.dispose();
     _wordsCtrl.dispose();
     super.dispose();
+  }
+
+  void _onVatOptionChanged(VatOption option) {
+    setState(() {
+      _vatOption = option;
+      final isProforma = option == VatOption.noVat;
+      _invNumberCtrl.text =
+          InvoiceSequenceService.generateSuggestedInvoiceNumber(
+        isProforma: isProforma,
+        orderId: widget.order.id,
+        date: _invoiceDate,
+      );
+    });
+  }
+
+  // Live calculation model for modal preview
+  ({
+    double subtotal,
+    double discountAmount,
+    double mgtAmount,
+    double taxableAmount,
+    double vatRate,
+    double vatAmount,
+    double grandTotal,
+    double advanceAmount,
+    double balanceDue,
+  }) _calculateBreakdown(
+    List<OrderItemEntity> items,
+    List<ExpenseEntity> additionalRevenue,
+  ) {
+    final itemSubtotal = items.fold(0.0, (s, i) => s + i.amount);
+    final extraSubtotal =
+        additionalRevenue.fold(0.0, (s, r) => s + r.amount);
+    double subtotal = itemSubtotal + extraSubtotal;
+    if (subtotal <= 0) {
+      subtotal = widget.order.totalAmount;
+    }
+
+    double discountAmount = 0.0;
+    if (_enableDiscount) {
+      final rawDisc = double.tryParse(_discountCtrl.text.trim()) ?? 0.0;
+      discountAmount = _isDiscountPercent ? (subtotal * rawDisc / 100) : rawDisc;
+    }
+
+    double mgtAmount = 0.0;
+    if (_enableManagementCharge) {
+      final rawMgt = double.tryParse(_mgtChargeCtrl.text.trim()) ?? 0.0;
+      final baseForMgt = (subtotal - discountAmount).clamp(0.0, double.infinity);
+      mgtAmount = _isMgtPercent ? (baseForMgt * rawMgt / 100) : rawMgt;
+    }
+
+    final taxableAmount = (subtotal - discountAmount + mgtAmount).clamp(0.0, double.infinity);
+
+    double vatRate = 0.0;
+    if (_vatOption == VatOption.vat13) {
+      vatRate = 0.13;
+    } else if (_vatOption == VatOption.custom) {
+      final customRate = double.tryParse(_customVatCtrl.text.trim()) ?? 0.0;
+      vatRate = (customRate / 100).clamp(0.0, 1.0);
+    } else {
+      vatRate = 0.0; // Before VAT / Non-VAT
+    }
+
+    final vatAmount = taxableAmount * vatRate;
+    final grandTotal = taxableAmount + vatAmount;
+
+    final advanceAmount = _enableAdvance
+        ? (double.tryParse(_advanceCtrl.text.trim()) ?? 0.0)
+        : 0.0;
+    final balanceDue = (grandTotal - advanceAmount).clamp(0.0, double.infinity);
+
+    return (
+      subtotal: subtotal,
+      discountAmount: discountAmount,
+      mgtAmount: mgtAmount,
+      taxableAmount: taxableAmount,
+      vatRate: vatRate,
+      vatAmount: vatAmount,
+      grandTotal: grandTotal,
+      advanceAmount: advanceAmount,
+      balanceDue: balanceDue,
+    );
   }
 
   Future<void> _processInvoice({required bool isPreview}) async {
@@ -1472,16 +1598,35 @@ class _InvoiceCustomizerModalState
       final orderRevenue =
           allRevenue.where((r) => r.orderId == widget.order.id).toList();
 
-      final parsedAdvance = double.tryParse(_advanceCtrl.text.trim()) ??
-          widget.order.advanceReceived;
-      final parsedDiscount =
-          double.tryParse(_discountCtrl.text.trim()) ?? widget.order.discount;
+      final breakdown = _calculateBreakdown(orderItems, orderRevenue);
+
+      final isProforma = _vatOption == VatOption.noVat;
+      final selectedInvoiceType =
+          isProforma ? 'PROFORMA INVOICE' : 'TAX INVOICE';
+
+      final parsedDiscountRate =
+          _enableDiscount && _isDiscountPercent
+              ? (double.tryParse(_discountCtrl.text.trim()) ?? 0.0)
+              : 0.0;
+      final parsedDiscountAmount =
+          _enableDiscount && !_isDiscountPercent
+              ? (double.tryParse(_discountCtrl.text.trim()) ?? 0.0)
+              : 0.0;
+
+      final parsedMgtRate =
+          _enableManagementCharge && _isMgtPercent
+              ? (double.tryParse(_mgtChargeCtrl.text.trim()) ?? 0.0)
+              : 0.0;
+      final parsedMgtAmount =
+          _enableManagementCharge && !_isMgtPercent
+              ? (double.tryParse(_mgtChargeCtrl.text.trim()) ?? 0.0)
+              : 0.0;
 
       final pdfBytes = await OrderPdfService.generateInvoicePdf(
         order: widget.order,
         items: orderItems,
         additionalRevenue: orderRevenue,
-        invoiceType: _selectedInvoiceType,
+        invoiceType: selectedInvoiceType,
         companyName: 'Event Solution Pvt Ltd',
         companyAddress: 'Jwagal - 10, Lalitpur',
         companyPhone: 'Ph: 01-5268535, 01-5268103',
@@ -1490,9 +1635,12 @@ class _InvoiceCustomizerModalState
         buyerAddress: _buyerAddressCtrl.text.trim(),
         buyerVatNo: _buyerVatCtrl.text.trim(),
         paymentTerms: _paymentTermsCtrl.text.trim(),
-        defaultHsCode: _hsCodeCtrl.text.trim(),
-        discount: parsedDiscount,
-        advanceReceived: parsedAdvance,
+        discount: parsedDiscountAmount,
+        discountRate: parsedDiscountRate,
+        managementCharge: parsedMgtAmount,
+        managementChargeRate: parsedMgtRate,
+        customVatRate: breakdown.vatRate,
+        advanceReceived: breakdown.advanceAmount,
         invoiceNumber: _invNumberCtrl.text.trim(),
         invoiceDate: _invoiceDate,
         manualAmountInWords: _wordsCtrl.text.trim(),
@@ -1504,21 +1652,27 @@ class _InvoiceCustomizerModalState
       final invNo = _invNumberCtrl.text.trim();
       final fileName =
           '${invNo}_${widget.order.eventName.replaceAll(' ', '_')}.pdf';
-      const subjectTitle = 'Proforma Invoice';
+      final subjectTitle = isProforma ? 'Proforma Invoice' : 'Tax Invoice';
 
       if (isPreview) {
-        await ShareHelper.sharePdf(
-          context: context,
-          pdfBytes: pdfBytes,
-          fileName: fileName,
-          subject: '$subjectTitle: ${widget.order.eventName}',
+        await Navigator.push(
+          context,
+          SlidePageRoute(
+            page: PdfPreviewScreen(
+              pdfData: pdfBytes,
+              title: '$subjectTitle: $invNo',
+              fileName: fileName,
+            ),
+          ),
         );
       } else {
         _showShareOptionsBottomSheet(
           pdfBytes: pdfBytes,
           fileName: fileName,
           invNo: invNo,
-          invoiceType: _selectedInvoiceType,
+          invoiceType: selectedInvoiceType,
+          grandTotal: breakdown.grandTotal,
+          balanceDue: breakdown.balanceDue,
         );
       }
     } catch (e) {
@@ -1537,22 +1691,21 @@ class _InvoiceCustomizerModalState
     required Uint8List pdfBytes,
     required String fileName,
     required String invNo,
-    String invoiceType = 'PROFORMA INVOICE',
+    required String invoiceType,
+    required double grandTotal,
+    required double balanceDue,
   }) {
-    const docTitle = 'Proforma Invoice';
+    final isProforma = invoiceType.toUpperCase().contains('PROFORMA');
+    final docTitle = isProforma ? 'Proforma Invoice' : 'Tax Invoice';
     final clientName = _buyerNameCtrl.text.trim().isNotEmpty
         ? _buyerNameCtrl.text.trim()
         : 'Valued Client';
     final clientPhone =
         widget.order.contactNumber.replaceAll(RegExp(r'[^0-9+]'), '');
     final totalFormatted =
-        CurrencyFormatter.formatWithLabel(widget.order.totalAmount, 'NPR');
-    final parsedAdvance = double.tryParse(_advanceCtrl.text.trim()) ??
-        widget.order.advanceReceived;
-    final dueFormatted = CurrencyFormatter.formatWithLabel(
-      (widget.order.totalAmount - parsedAdvance).clamp(0.0, double.infinity),
-      'NPR',
-    );
+        CurrencyFormatter.formatWithLabel(grandTotal, 'NPR');
+    final dueFormatted =
+        CurrencyFormatter.formatWithLabel(balanceDue, 'NPR');
 
     final defaultMessage =
         'Dear $clientName,\n\nPlease find attached the $docTitle ($invNo) for ${widget.order.eventName}.\n\n'
@@ -1732,24 +1885,41 @@ class _InvoiceCustomizerModalState
     final txtColor = isDark ? Colors.white : const Color(0xFF0f172a);
     final borderColor =
         isDark ? const Color(0xFF334155) : const Color(0xFFe2e8f0);
+    final primaryColor = const Color(0xFF0075db);
+
+    final allItemsAsync = ref.watch(allItemsStreamProvider);
+    final allRevAsync = ref.watch(allAdditionalRevenueStreamProvider);
+
+    final orderItems = allItemsAsync.maybeWhen(
+      data: (items) => items.where((i) => i.orderId == widget.order.id).toList(),
+      orElse: () => <OrderItemEntity>[],
+    );
+    final orderRevenue = allRevAsync.maybeWhen(
+      data: (revs) => revs.where((r) => r.orderId == widget.order.id).toList(),
+      orElse: () => <ExpenseEntity>[],
+    );
+
+    final breakdown = _calculateBreakdown(orderItems, orderRevenue);
 
     return Dialog(
       backgroundColor: dialogBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        width: 600,
-        constraints: const BoxConstraints(maxHeight: 720),
+        width: 650,
+        constraints: const BoxConstraints(maxHeight: 780),
         padding: const EdgeInsets.all(20),
         child: _isLoading
-            ? const Center(
+            ? Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 16),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 16),
                     Text(
-                      'Generating Proforma Invoice...',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                      _vatOption == VatOption.noVat
+                          ? 'Generating Proforma Invoice...'
+                          : 'Generating Tax Invoice...',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -1767,13 +1937,12 @@ class _InvoiceCustomizerModalState
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0075db)
-                                      .withValues(alpha: 0.1),
+                              color: primaryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(
-                              Icons.receipt_long,
-                              color: Color(0xFF0075db),
+                            child: Icon(
+                              Icons.receipt_long_rounded,
+                              color: primaryColor,
                               size: 22,
                             ),
                           ),
@@ -1782,7 +1951,9 @@ class _InvoiceCustomizerModalState
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Proforma Invoice Configuration',
+                                _vatOption == VatOption.noVat
+                                    ? 'Proforma Invoice Configuration'
+                                    : 'Tax Invoice Configuration',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -1814,7 +1985,88 @@ class _InvoiceCustomizerModalState
                   Expanded(
                     child: ListView(
                       children: [
-                        // Row 1: Proforma Number & Date
+                        // VAT Option Choice Chips (Before VAT vs After VAT)
+                        Text(
+                          'INVOICE TYPE & VAT OPTION',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? const Color(0xFF94a3b8) : const Color(0xFF64748b),
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Center(
+                                  child: Text(
+                                    'BEFORE VAT (PROFORMA)',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5),
+                                  ),
+                                ),
+                                selected: _vatOption == VatOption.noVat,
+                                selectedColor: primaryColor.withValues(alpha: 0.15),
+                                onSelected: (selected) {
+                                  if (selected) _onVatOptionChanged(VatOption.noVat);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Center(
+                                  child: Text(
+                                    'AFTER VAT (13% TAX INV)',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5),
+                                  ),
+                                ),
+                                selected: _vatOption == VatOption.vat13,
+                                selectedColor: const Color(0xFF10b981).withValues(alpha: 0.2),
+                                onSelected: (selected) {
+                                  if (selected) _onVatOptionChanged(VatOption.vat13);
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Center(
+                                  child: Text(
+                                    'CUSTOM VAT %',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5),
+                                  ),
+                                ),
+                                selected: _vatOption == VatOption.custom,
+                                onSelected: (selected) {
+                                  if (selected) _onVatOptionChanged(VatOption.custom);
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        if (_vatOption == VatOption.custom) ...[
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _customVatCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            onChanged: (_) => setState(() {}),
+                            style: TextStyle(fontSize: 13, color: txtColor),
+                            decoration: InputDecoration(
+                              labelText: 'Custom VAT Rate %',
+                              hintText: 'e.g. 13',
+                              isDense: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                              prefixIcon: const Icon(Icons.percent, size: 16),
+                            ),
+                          ),
+                        ],
+
+                        const SizedBox(height: 14),
+
+                        // Row 1: Invoice Number & Date
                         Row(
                           children: [
                             Expanded(
@@ -1822,11 +2074,14 @@ class _InvoiceCustomizerModalState
                               child: TextField(
                                 controller: _invNumberCtrl,
                                 style: TextStyle(
-                                    fontSize: 13,
-                                    color: txtColor,
-                                    fontWeight: FontWeight.bold),
+                                  fontSize: 13,
+                                  color: txtColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
                                 decoration: InputDecoration(
-                                  labelText: 'Proforma Number *',
+                                  labelText: _vatOption == VatOption.noVat
+                                      ? 'Proforma Number *'
+                                      : 'Invoice Number *',
                                   isDense: true,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -1846,7 +2101,15 @@ class _InvoiceCustomizerModalState
                                     lastDate: DateTime(2035),
                                   );
                                   if (picked != null) {
-                                    setState(() => _invoiceDate = picked);
+                                    setState(() {
+                                      _invoiceDate = picked;
+                                      _invNumberCtrl.text =
+                                          InvoiceSequenceService.generateSuggestedInvoiceNumber(
+                                        isProforma: _vatOption == VatOption.noVat,
+                                        orderId: widget.order.id,
+                                        date: picked,
+                                      );
+                                    });
                                   }
                                 },
                                 child: Container(
@@ -1909,45 +2172,22 @@ class _InvoiceCustomizerModalState
                         ),
                         const SizedBox(height: 12),
 
-                        // Row 3: Buyer's PAN/VAT & HS Code
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: TextField(
-                                controller: _buyerVatCtrl,
-                                style: TextStyle(fontSize: 13, color: txtColor),
-                                decoration: InputDecoration(
-                                  labelText: "Buyer's PAN / VAT No.",
-                                  hintText: 'e.g. 601234567',
-                                  isDense: true,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
+                        // Row 3: Buyer's PAN/VAT
+                        TextField(
+                          controller: _buyerVatCtrl,
+                          style: TextStyle(fontSize: 13, color: txtColor),
+                          decoration: InputDecoration(
+                            labelText: "Buyer's PAN / VAT No.",
+                            hintText: 'e.g. 601234567',
+                            isDense: true,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              flex: 2,
-                              child: TextField(
-                                controller: _hsCodeCtrl,
-                                style: TextStyle(fontSize: 13, color: txtColor),
-                                decoration: InputDecoration(
-                                  labelText: 'HS Code',
-                                  hintText: 'Optional',
-                                  isDense: true,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                         const SizedBox(height: 12),
 
-                        // Row 4: Payment Terms (Cash / Credit / Cheque)
+                        // Row 4: Payment Terms
                         TextField(
                           controller: _paymentTermsCtrl,
                           style: TextStyle(fontSize: 13, color: txtColor),
@@ -1960,62 +2200,337 @@ class _InvoiceCustomizerModalState
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
 
-                        // Row 5: Advance Received & Discount
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _advanceCtrl,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                style: TextStyle(fontSize: 13, color: txtColor),
-                                decoration: InputDecoration(
-                                  labelText: 'Advance Received (Rs.)',
-                                  isDense: true,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
+                        // Management Fee & Discount Toggles Section
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF0f172a).withValues(alpha: 0.5) : const Color(0xFFf8fafc),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Management Charge Toggle
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  InkWell(
+                                    onTap: () => setState(() => _enableManagementCharge = !_enableManagementCharge),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.business_center_outlined,
+                                          size: 16,
+                                          color: _enableManagementCharge ? primaryColor : const Color(0xFF64748b),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'MANAGEMENT CHARGE',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            color: _enableManagementCharge ? primaryColor : txtColor,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: 24,
+                                    child: Transform.scale(
+                                      scale: 0.75,
+                                      alignment: Alignment.centerRight,
+                                      child: Switch.adaptive(
+                                        value: _enableManagementCharge,
+                                        activeThumbColor: primaryColor,
+                                        onChanged: (val) => setState(() => _enableManagementCharge = val),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_enableManagementCharge) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _mgtChargeCtrl,
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        onChanged: (_) => setState(() {}),
+                                        style: TextStyle(fontSize: 13, color: txtColor),
+                                        decoration: InputDecoration(
+                                          labelText: _isMgtPercent ? 'Management Charge (%)' : 'Management Charge (Rs.)',
+                                          hintText: _isMgtPercent ? 'e.g. 10' : 'e.g. 5000',
+                                          isDense: true,
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ToggleButtons(
+                                      isSelected: [_isMgtPercent, !_isMgtPercent],
+                                      onPressed: (idx) => setState(() => _isMgtPercent = idx == 0),
+                                      borderRadius: BorderRadius.circular(8),
+                                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                                      selectedColor: Colors.white,
+                                      fillColor: primaryColor,
+                                      children: const [
+                                        Text('%', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        Text('Rs', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+
+                              const SizedBox(height: 12),
+                              Divider(height: 1, color: borderColor.withValues(alpha: 0.5)),
+                              const SizedBox(height: 12),
+
+                              // Discount Toggle
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  InkWell(
+                                    onTap: () => setState(() => _enableDiscount = !_enableDiscount),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.local_offer_outlined,
+                                          size: 16,
+                                          color: _enableDiscount ? const Color(0xFF10b981) : const Color(0xFF64748b),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'DISCOUNT',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            color: _enableDiscount ? const Color(0xFF10b981) : txtColor,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: 24,
+                                    child: Transform.scale(
+                                      scale: 0.75,
+                                      alignment: Alignment.centerRight,
+                                      child: Switch.adaptive(
+                                        value: _enableDiscount,
+                                        activeThumbColor: const Color(0xFF10b981),
+                                        onChanged: (val) => setState(() => _enableDiscount = val),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_enableDiscount) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextField(
+                                        controller: _discountCtrl,
+                                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        onChanged: (_) => setState(() {}),
+                                        style: TextStyle(fontSize: 13, color: txtColor),
+                                        decoration: InputDecoration(
+                                          labelText: _isDiscountPercent ? 'Discount (%)' : 'Discount (Rs.)',
+                                          hintText: _isDiscountPercent ? 'e.g. 5' : 'e.g. 2000',
+                                          isDense: true,
+                                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    ToggleButtons(
+                                      isSelected: [_isDiscountPercent, !_isDiscountPercent],
+                                      onPressed: (idx) => setState(() => _isDiscountPercent = idx == 0),
+                                      borderRadius: BorderRadius.circular(8),
+                                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                                      selectedColor: Colors.white,
+                                      fillColor: const Color(0xFF10b981),
+                                      children: const [
+                                        Text('%', style: TextStyle(fontWeight: FontWeight.bold)),
+                                        Text('Rs', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+
+                              const SizedBox(height: 12),
+                              Divider(height: 1, color: borderColor.withValues(alpha: 0.5)),
+                              const SizedBox(height: 12),
+
+                              // Advance Payment Toggle
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  InkWell(
+                                    onTap: () => setState(() => _enableAdvance = !_enableAdvance),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.payments_outlined,
+                                          size: 16,
+                                          color: _enableAdvance ? const Color(0xFFf59e0b) : const Color(0xFF64748b),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'ADVANCE RECEIVED',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            color: _enableAdvance ? const Color(0xFFf59e0b) : txtColor,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: 24,
+                                    child: Transform.scale(
+                                      scale: 0.75,
+                                      alignment: Alignment.centerRight,
+                                      child: Switch.adaptive(
+                                        value: _enableAdvance,
+                                        activeThumbColor: const Color(0xFFf59e0b),
+                                        onChanged: (val) => setState(() => _enableAdvance = val),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_enableAdvance) ...[
+                                const SizedBox(height: 8),
+                                TextField(
+                                  controller: _advanceCtrl,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  onChanged: (_) => setState(() {}),
+                                  style: TextStyle(fontSize: 13, color: txtColor),
+                                  decoration: InputDecoration(
+                                    labelText: 'Advance Received Amount (Rs.)',
+                                    hintText: 'e.g. 50000',
+                                    isDense: true,
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                    prefixIcon: const Icon(Icons.payments_rounded, size: 16),
                                   ),
                                 ),
-                                onChanged: (val) {
-                                  final total = widget.order.totalAmount;
-                                  _wordsCtrl.text =
-                                      NumberToWordsConverter.convertToRupees(
-                                          total);
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: TextField(
-                                controller: _discountCtrl,
-                                keyboardType:
-                                    const TextInputType.numberWithOptions(
-                                        decimal: true),
-                                style: TextStyle(fontSize: 13, color: txtColor),
-                                decoration: InputDecoration(
-                                  labelText: 'Discount (Rs.)',
-                                  isDense: true,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                              ],
+                            ],
+                          ),
                         ),
+
+                        const SizedBox(height: 14),
+
+                        // Live Real-Time Financial Summary Preview Box
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF0f172a) : const Color(0xFFf1f5f9),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: borderColor),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'CALCULATED INVOICE TOTALS',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: primaryColor,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                  Text(
+                                    _vatOption == VatOption.noVat
+                                        ? 'Non-VAT (Before VAT)'
+                                        : '${(breakdown.vatRate * 100).toStringAsFixed(0)}% VAT Applied',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: _vatOption == VatOption.noVat
+                                          ? const Color(0xFF64748b)
+                                          : const Color(0xFF10b981),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              _modalSummaryRow('Subtotal:', 'Rs. ${CurrencyFormatter.formatCompact(breakdown.subtotal)}', txtColor),
+                              if (breakdown.discountAmount > 0)
+                                _modalSummaryRow(
+                                  _isDiscountPercent
+                                      ? 'Discount (${_discountCtrl.text.trim()}%):'
+                                      : 'Discount:',
+                                  '- Rs. ${CurrencyFormatter.formatCompact(breakdown.discountAmount)}',
+                                  const Color(0xFFef4444),
+                                ),
+                              if (breakdown.mgtAmount > 0)
+                                _modalSummaryRow(
+                                  _isMgtPercent
+                                      ? 'Management Charge (${_mgtChargeCtrl.text.trim()}%):'
+                                      : 'Management Charge:',
+                                  '+ Rs. ${CurrencyFormatter.formatCompact(breakdown.mgtAmount)}',
+                                  primaryColor,
+                                ),
+                              _modalSummaryRow('Taxable Amount:', 'Rs. ${CurrencyFormatter.formatCompact(breakdown.taxableAmount)}', txtColor),
+                              if (breakdown.vatAmount > 0)
+                                _modalSummaryRow(
+                                  '${(breakdown.vatRate * 100).toStringAsFixed(0)}% VAT:',
+                                  '+ Rs. ${CurrencyFormatter.formatCompact(breakdown.vatAmount)}',
+                                  const Color(0xFF10b981),
+                                ),
+                              Divider(height: 10, color: borderColor),
+                              _modalSummaryRow(
+                                'Grand Total:',
+                                'Rs. ${CurrencyFormatter.format(breakdown.grandTotal)}',
+                                txtColor,
+                                isBold: true,
+                              ),
+                              if (breakdown.advanceAmount > 0)
+                                _modalSummaryRow(
+                                  'Advance Received:',
+                                  '- Rs. ${CurrencyFormatter.formatCompact(breakdown.advanceAmount)}',
+                                  const Color(0xFFf59e0b),
+                                ),
+                              Divider(height: 10, color: borderColor),
+                              _modalSummaryRow(
+                                'BALANCE DUE:',
+                                'Rs. ${CurrencyFormatter.format(breakdown.balanceDue)}',
+                                breakdown.balanceDue > 0 ? const Color(0xFFef4444) : const Color(0xFF10b981),
+                                isBold: true,
+                                fontSize: 13.5,
+                              ),
+                            ],
+                          ),
+                        ),
+
                         const SizedBox(height: 12),
 
-                        // Row 6: Amount in Words (Editable)
+                        // Row 6: Amount in Words (Editable & Live Synced)
                         TextField(
                           controller: _wordsCtrl,
                           maxLines: 2,
                           style: TextStyle(
-                              fontSize: 12,
-                              color: txtColor,
-                              fontStyle: FontStyle.italic),
+                            fontSize: 12,
+                            color: txtColor,
+                            fontStyle: FontStyle.italic,
+                          ),
                           decoration: InputDecoration(
                             labelText: 'Amount in Words *',
                             isDense: true,
@@ -2049,7 +2564,7 @@ class _InvoiceCustomizerModalState
                       const SizedBox(width: 8),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0075db),
+                          backgroundColor: primaryColor,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -2070,6 +2585,39 @@ class _InvoiceCustomizerModalState
                   ),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _modalSummaryRow(
+    String label,
+    String value,
+    Color color, {
+    bool isBold = false,
+    double fontSize = 12,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+              color: isBold ? color : const Color(0xFF64748b),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: fontSize,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
       ),
     );
   }

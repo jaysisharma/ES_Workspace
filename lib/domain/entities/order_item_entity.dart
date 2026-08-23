@@ -15,6 +15,9 @@ class OrderItemEntity {
   final bool isCompleted;
   final String? assignedStaffId;
   final String? assignedStaffName;
+  final String? vendorBillUrl;
+  final String? vendorBillPath;
+  final String? vendorBillName;
 
   const OrderItemEntity({
     required this.id,
@@ -33,7 +36,12 @@ class OrderItemEntity {
     this.isCompleted = false,
     this.assignedStaffId,
     this.assignedStaffName,
+    this.vendorBillUrl,
+    this.vendorBillPath,
+    this.vendorBillName,
   });
+
+  bool get hasVendorBill => vendorBillUrl != null && vendorBillUrl!.isNotEmpty;
 
   OrderItemEntity copyWith({
     String? id,
@@ -53,6 +61,10 @@ class OrderItemEntity {
     String? assignedStaffId,
     String? assignedStaffName,
     bool clearAssignedStaff = false,
+    String? vendorBillUrl,
+    String? vendorBillPath,
+    String? vendorBillName,
+    bool clearVendorBill = false,
   }) {
     return OrderItemEntity(
       id: id ?? this.id,
@@ -71,6 +83,9 @@ class OrderItemEntity {
       isCompleted: isCompleted ?? this.isCompleted,
       assignedStaffId: clearAssignedStaff ? null : (assignedStaffId ?? this.assignedStaffId),
       assignedStaffName: clearAssignedStaff ? null : (assignedStaffName ?? this.assignedStaffName),
+      vendorBillUrl: clearVendorBill ? null : (vendorBillUrl ?? this.vendorBillUrl),
+      vendorBillPath: clearVendorBill ? null : (vendorBillPath ?? this.vendorBillPath),
+      vendorBillName: clearVendorBill ? null : (vendorBillName ?? this.vendorBillName),
     );
   }
 
@@ -94,7 +109,10 @@ class OrderItemEntity {
         other.vendorAmount == vendorAmount &&
         other.isCompleted == isCompleted &&
         other.assignedStaffId == assignedStaffId &&
-        other.assignedStaffName == assignedStaffName;
+        other.assignedStaffName == assignedStaffName &&
+        other.vendorBillUrl == vendorBillUrl &&
+        other.vendorBillPath == vendorBillPath &&
+        other.vendorBillName == vendorBillName;
   }
 
   @override
@@ -114,6 +132,9 @@ class OrderItemEntity {
         vendorAmount.hashCode ^
         isCompleted.hashCode ^
         assignedStaffId.hashCode ^
-        assignedStaffName.hashCode;
+        assignedStaffName.hashCode ^
+        vendorBillUrl.hashCode ^
+        vendorBillPath.hashCode ^
+        vendorBillName.hashCode;
   }
 }

@@ -42,10 +42,14 @@ class OrderEntity {
   final bool isArchived;
   final double advanceReceived;
   final String advanceReferenceNo;
+  final String advanceReceiptUrl;
+  final String advanceReceiptPath;
+  final String advanceReceiptName;
   final double managementCharge;
   final bool isMgtChargePercent;
   final double discount;
   final bool isDiscountPercent;
+  final String orderType; // 'Event' or 'Rental'
 
   const OrderEntity({
     required this.id,
@@ -72,10 +76,14 @@ class OrderEntity {
     this.isArchived = false,
     this.advanceReceived = 0.0,
     this.advanceReferenceNo = '',
+    this.advanceReceiptUrl = '',
+    this.advanceReceiptPath = '',
+    this.advanceReceiptName = '',
     this.managementCharge = 0.0,
     this.isMgtChargePercent = true,
     this.discount = 0.0,
     this.isDiscountPercent = true,
+    this.orderType = 'Event',
   });
 
   OrderEntity copyWith({
@@ -102,10 +110,14 @@ class OrderEntity {
     bool? isArchived,
     double? advanceReceived,
     String? advanceReferenceNo,
+    String? advanceReceiptUrl,
+    String? advanceReceiptPath,
+    String? advanceReceiptName,
     double? managementCharge,
     bool? isMgtChargePercent,
     double? discount,
     bool? isDiscountPercent,
+    String? orderType,
   }) {
     return OrderEntity(
       id: id,
@@ -132,10 +144,14 @@ class OrderEntity {
       isArchived: isArchived ?? this.isArchived,
       advanceReceived: advanceReceived ?? this.advanceReceived,
       advanceReferenceNo: advanceReferenceNo ?? this.advanceReferenceNo,
+      advanceReceiptUrl: advanceReceiptUrl ?? this.advanceReceiptUrl,
+      advanceReceiptPath: advanceReceiptPath ?? this.advanceReceiptPath,
+      advanceReceiptName: advanceReceiptName ?? this.advanceReceiptName,
       managementCharge: managementCharge ?? this.managementCharge,
       isMgtChargePercent: isMgtChargePercent ?? this.isMgtChargePercent,
       discount: discount ?? this.discount,
       isDiscountPercent: isDiscountPercent ?? this.isDiscountPercent,
+      orderType: orderType ?? this.orderType,
     );
   }
 
@@ -167,10 +183,14 @@ class OrderEntity {
         other.description == description &&
         other.advanceReceived == advanceReceived &&
         other.advanceReferenceNo == advanceReferenceNo &&
+        other.advanceReceiptUrl == advanceReceiptUrl &&
+        other.advanceReceiptPath == advanceReceiptPath &&
+        other.advanceReceiptName == advanceReceiptName &&
         other.managementCharge == managementCharge &&
         other.isMgtChargePercent == isMgtChargePercent &&
         other.discount == discount &&
-        other.isDiscountPercent == isDiscountPercent;
+        other.isDiscountPercent == isDiscountPercent &&
+        other.orderType == orderType;
   }
 
   @override
@@ -196,9 +216,13 @@ class OrderEntity {
         description.hashCode ^
         advanceReceived.hashCode ^
         advanceReferenceNo.hashCode ^
+        advanceReceiptUrl.hashCode ^
+        advanceReceiptPath.hashCode ^
+        advanceReceiptName.hashCode ^
         managementCharge.hashCode ^
         isMgtChargePercent.hashCode ^
         discount.hashCode ^
-        isDiscountPercent.hashCode;
+        isDiscountPercent.hashCode ^
+        orderType.hashCode;
   }
 }

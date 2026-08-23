@@ -20,7 +20,10 @@ class PushNotificationService {
   static const _channelName = 'Order App Notifications';
   static const _channelDescription = 'Real-time updates from Order App';
 
-  static StreamSubscription<QuerySnapshot>? _firestoreSubscription;
+  static final List<StreamSubscription<QuerySnapshot>> _firestoreSubscriptions = [];
+
+  // Deduplication cache to prevent dual-delivery duplicate banners in foreground
+  static final Set<String> _recentNotificationKeys = {};
 
   // Track when we started listening so we only show NEW notifications
   static DateTime? _listeningSince;
@@ -66,11 +69,16 @@ class PushNotificationService {
             ),
           );
 
-      // Show a local notification for FCM messages received in foreground
+      // Show a local notification for FCM messages received in foreground with deduplication
       FirebaseMessaging.onMessage.listen((message) {
         final n = message.notification;
         if (n != null) {
-          showLocalNotification(title: n.title ?? '', body: n.body ?? '');
+          final notifId = message.data['notificationId'] ?? message.messageId;
+          showLocalNotification(
+            title: n.title ?? '',
+            body: n.body ?? '',
+            notificationId: notifId,
+          );
         }
       });
     } catch (e) {
@@ -89,12 +97,21 @@ class PushNotificationService {
       await Future.wait([
         FirebaseMessaging.instance.unsubscribeFromTopic('role_admin'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_founder'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_finance'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_staff'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_management'),
       ]);
       // Subscribe to this user's role topic
-      await FirebaseMessaging.instance.subscribeToTopic('role_$role');
+      final cleanRole = role.toLowerCase().trim();
+      await FirebaseMessaging.instance.subscribeToTopic('role_$cleanRole');
+
+      if (cleanRole == 'admin' || cleanRole == 'founder' || cleanRole == 'finance') {
+        await FirebaseMessaging.instance.subscribeToTopic('role_management');
+      }
+
       // Subscribe to personal topic for user-specific notifications
       await FirebaseMessaging.instance.subscribeToTopic('user_$userId');
+      debugPrint('🔔 [PushNotificationService] Subscribed to role_$cleanRole and user_$userId');
     } catch (e) {
       debugPrint('PushNotificationService topic subscription skipped/failed: $e');
     }
@@ -108,6 +125,11 @@ class PushNotificationService {
     try {
       await Future.wait([
         FirebaseMessaging.instance.unsubscribeFromTopic('role_$role'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_admin'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_founder'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_finance'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_staff'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_management'),
         FirebaseMessaging.instance.unsubscribeFromTopic('user_$userId'),
       ]);
     } catch (e) {
@@ -116,84 +138,118 @@ class PushNotificationService {
   }
 
   /// Call right after login.
-  /// Starts watching Firestore for notifications targeted at this user/role
-  /// and pops a system notification for each new one that arrives.
+  /// Starts watching Firestore with targeted streams (User-specific + Role-broadcast)
+  /// so individual notifications are NEVER missed or pushed out by global query limits.
   static Future<void> startListening({
     required String userId,
     required String role,
   }) async {
-    // Cancel any previous listener first
+    // Cancel any previous listeners first
     await stopListening();
 
     _listeningSince = DateTime.now();
     final allowedRoles = _allowedTargetRoles(role);
 
-    _firestoreSubscription = FirebaseFirestore.instance
+    // 1. User-Specific Listener (Never eclipsed by global limits)
+    final userSub = FirebaseFirestore.instance
         .collection('notifications')
+        .where('targetUserId', isEqualTo: userId)
         .orderBy('timestamp', descending: true)
-        .limit(30)
+        .limit(25)
         .snapshots()
         .listen(
-          (snapshot) {
-            for (final change in snapshot.docChanges) {
-              // Only react to genuinely new documents
-              if (change.type != DocumentChangeType.added) continue;
-
-              final data = change.doc.data();
-              if (data == null) continue;
-
-              // Ignore notifications that existed before we started listening
-              final rawTs = data['timestamp'];
-              DateTime? ts;
-              try {
-                ts = rawTs is String ? DateTime.parse(rawTs) : null;
-              } catch (_) {}
-              if (ts == null || !ts.isAfter(_listeningSince!)) continue;
-
-              final targetRole = data['targetRole'] as String? ?? 'admin_founder';
-              final targetUserId = data['targetUserId'] as String?;
-
-              // Decide if this notification is meant for this user
-              final bool isForMe = targetUserId != null
-                  ? targetUserId == userId
-                  : allowedRoles.contains(targetRole);
-
-              if (!isForMe) continue;
-
-              final title = data['title'] as String? ?? 'New Notification';
-              final body = data['description'] as String? ?? '';
-              showLocalNotification(title: title, body: body);
-            }
-          },
-          onError: (e) => debugPrint('Notification listener error: $e'),
+          (snapshot) => _handleSnapshot(snapshot),
+          onError: (e) => debugPrint('User notification listener error: $e'),
         );
+    _firestoreSubscriptions.add(userSub);
+
+    // 2. Role / Broadcast Listener
+    final roleSub = FirebaseFirestore.instance
+        .collection('notifications')
+        .where('targetRole', whereIn: allowedRoles)
+        .orderBy('timestamp', descending: true)
+        .limit(25)
+        .snapshots()
+        .listen(
+          (snapshot) => _handleSnapshot(snapshot),
+          onError: (e) => debugPrint('Role notification listener error: $e'),
+        );
+    _firestoreSubscriptions.add(roleSub);
   }
 
-  /// Call on logout — stops the Firestore listener.
+  static void _handleSnapshot(QuerySnapshot<Map<String, dynamic>> snapshot) {
+    for (final change in snapshot.docChanges) {
+      // Only react to genuinely new documents
+      if (change.type != DocumentChangeType.added) continue;
+
+      final data = change.doc.data();
+      if (data == null) continue;
+
+      // Ignore notifications that existed before we started listening
+      final rawTs = data['timestamp'];
+      DateTime? ts;
+      try {
+        ts = rawTs is String ? DateTime.parse(rawTs) : null;
+      } catch (_) {}
+      if (ts == null || !ts.isAfter(_listeningSince!)) continue;
+
+      final title = data['title'] as String? ?? 'New Notification';
+      final body = data['description'] as String? ?? '';
+      final notifId = change.doc.id;
+
+      showLocalNotification(
+        title: title,
+        body: body,
+        notificationId: notifId,
+      );
+    }
+  }
+
+  /// Call on logout — stops all Firestore listeners.
   static Future<void> stopListening() async {
-    await _firestoreSubscription?.cancel();
-    _firestoreSubscription = null;
+    for (final sub in _firestoreSubscriptions) {
+      await sub.cancel();
+    }
+    _firestoreSubscriptions.clear();
     _listeningSince = null;
   }
 
   /// Which targetRole values a given role should receive.
   static List<String> _allowedTargetRoles(String role) {
-    switch (role) {
+    switch (role.toLowerCase()) {
       case 'founder':
-        return ['admin_founder', 'founder', 'all'];
+      case 'director':
+      case 'ceo':
+        return ['admin_founder', 'founder', 'management', 'all'];
+      case 'finance':
+        return ['finance', 'management', 'all'];
       case 'staff':
         return ['staff', 'all'];
-      default: // admin
-        return ['admin_founder', 'admin', 'all'];
+      case 'admin':
+      default:
+        return ['admin_founder', 'admin', 'management', 'all'];
     }
   }
 
-  /// Immediately shows a notification in the phone's notification panel.
+  /// Immediately shows a notification in the phone/desktop notification panel
+  /// with automatic deduplication across FCM and Firestore.
   static Future<void> showLocalNotification({
     required String title,
     required String body,
     String? payload,
+    String? notificationId,
   }) async {
+    final dedupKey = notificationId ?? '$title::$body';
+    if (_recentNotificationKeys.contains(dedupKey)) {
+      debugPrint('🔕 [PushNotificationService] Skipped duplicate notification: $dedupKey');
+      return;
+    }
+    _recentNotificationKeys.add(dedupKey);
+    // Expire deduplication key after 8 seconds
+    Future.delayed(const Duration(seconds: 8), () {
+      _recentNotificationKeys.remove(dedupKey);
+    });
+
     await _localNotifications.show(
       DateTime.now().millisecondsSinceEpoch ~/ 1000,
       title,

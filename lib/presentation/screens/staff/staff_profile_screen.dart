@@ -1,6 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/services/employee_pdf_service.dart';
+import 'package:order_app/core/utils/nepali_date_formatter.dart';
+import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:order_app/domain/entities/employee_profile_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
@@ -9,9 +13,11 @@ import 'package:order_app/presentation/providers/settings_provider.dart';
 import 'package:order_app/presentation/providers/event_providers.dart';
 import 'package:order_app/domain/entities/event_entity.dart';
 import 'package:order_app/presentation/widgets/hr_management/leave_request_sheet.dart';
+import 'package:order_app/presentation/screens/admin/add_employee_screen.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
 import 'package:order_app/presentation/widgets/common/role_based_router.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
 class StaffProfileScreen extends ConsumerStatefulWidget {
   const StaffProfileScreen({super.key});
@@ -22,6 +28,28 @@ class StaffProfileScreen extends ConsumerStatefulWidget {
 
 class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
   bool _isLoggingOut = false;
+
+  void _openEditProfile(
+    BuildContext context,
+    EmployeeProfileEntity? profile,
+    String uid,
+    String name,
+    String email,
+  ) {
+    Navigator.push(
+      context,
+      SlidePageRoute(
+        page: AddEmployeeScreen(
+          userId: uid,
+          userName: profile?.name.isNotEmpty == true ? profile!.name : name,
+          userEmail: email,
+          userRole: UserRole.staff,
+          isStaffSelfEdit: true,
+          initialProfile: profile,
+        ),
+      ),
+    );
+  }
 
   Future<void> _printMyEmployeePdf(BuildContext context, dynamic firebaseUser) async {
     if (firebaseUser == null) return;
@@ -131,12 +159,91 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
     }
   }
 
+  Widget _buildAvatar(String? photoUrl, String initials, Color primaryColor, Color cardColor) {
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
+        return ClipOval(
+          child: Image.network(
+            photoUrl,
+            width: 84,
+            height: 84,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => _buildInitialsAvatar(initials, primaryColor),
+          ),
+        );
+      } else if (photoUrl.startsWith('data:image')) {
+        try {
+          final base64Data = photoUrl.split(',').last;
+          final bytes = base64Decode(base64Data);
+          return ClipOval(
+            child: Image.memory(
+              bytes,
+              width: 84,
+              height: 84,
+              fit: BoxFit.cover,
+            ),
+          );
+        } catch (_) {}
+      } else {
+        final file = File(photoUrl);
+        if (file.existsSync()) {
+          return ClipOval(
+            child: Image.file(
+              file,
+              width: 84,
+              height: 84,
+              fit: BoxFit.cover,
+            ),
+          );
+        }
+      }
+    }
+    return _buildInitialsAvatar(initials, primaryColor);
+  }
+
+  Widget _buildInitialsAvatar(String initials, Color primaryColor) {
+    return Container(
+      width: 84,
+      height: 84,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            primaryColor,
+            primaryColor.withValues(alpha: 0.6),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          initials,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final authState = ref.watch(authNotifierProvider);
     final settings = ref.watch(settingsProvider);
     final eventsAsync = ref.watch(eventsStreamProvider);
+    final profilesAsync = ref.watch(employeeProfilesStreamProvider);
 
     // Design tokens
     final primaryColor = const Color(0xFF0075db);
@@ -157,7 +264,22 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
     final user = authState.user;
     final userEmail = user?.email ?? 'staff@eventflow.app';
     final userId = user?.uid ?? '';
-    final displayName = userEmail.split('@').first;
+    final rawDisplayName = userEmail.split('@').first;
+
+    final myProfile = profilesAsync.maybeWhen(
+      data: (profiles) => profiles.cast<EmployeeProfileEntity?>().firstWhere(
+        (p) => p != null && (p.userId == userId || (userEmail.isNotEmpty && p.name.toLowerCase() == rawDisplayName.toLowerCase())),
+        orElse: () => null,
+      ),
+      orElse: () => null,
+    );
+
+    final displayName = myProfile?.name.isNotEmpty == true
+        ? myProfile!.name
+        : (rawDisplayName.isNotEmpty
+            ? rawDisplayName.replaceFirst(rawDisplayName[0], rawDisplayName[0].toUpperCase())
+            : 'Staff Member');
+
     final initials = displayName.isNotEmpty
         ? displayName
               .substring(0, displayName.length >= 2 ? 2 : 1)
@@ -169,7 +291,6 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
       data: (e) => e,
       orElse: () => <EventEntity>[],
     );
-    // Compute stats from all non-draft events (since specific assignment was removed)
     final assignedEvents = allEvents.where((e) => e.status != 'Draft').toList();
     final activeEvents = assignedEvents
         .where((e) => e.status == 'In Progress' || e.status == 'Pending')
@@ -184,6 +305,7 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
 
     return Scaffold(
       backgroundColor: bgColor,
+      floatingActionButton: const BottomRightBackButton(),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -192,17 +314,58 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // ── Header ──────────────────────────────────────────────
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
-                child: Text(
-                  'Profile',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        if (Navigator.canPop(context)) ...[
+                          IconButton(
+                            icon: Icon(Icons.arrow_back_rounded, color: textColor),
+                            tooltip: 'Back',
+                            onPressed: () => Navigator.pop(context),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        const Text(
+                          'My Profile',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => _openEditProfile(
+                        context,
+                        myProfile,
+                        userId,
+                        displayName,
+                        userEmail,
+                      ),
+                      icon: const Icon(Icons.edit_note, size: 18),
+                      label: const Text('Edit Details'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
               // ── Profile Card ────────────────────────────────────────
               Container(
-                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: cardColor,
@@ -212,63 +375,37 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                 child: Column(
                   children: [
                     // Avatar + Edit Button
-                    Stack(
-                      alignment: Alignment.bottomRight,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                primaryColor,
-                                primaryColor.withValues(alpha: 0.6),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: primaryColor.withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              initials,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.0,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: primaryColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: cardColor, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt_outlined,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      displayName.replaceFirst(
-                        displayName[0],
-                        displayName[0].toUpperCase(),
+                    GestureDetector(
+                      onTap: () => _openEditProfile(
+                        context,
+                        myProfile,
+                        userId,
+                        displayName,
+                        userEmail,
                       ),
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          _buildAvatar(myProfile?.photoUrl, initials, primaryColor, cardColor),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: primaryColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: cardColor, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt_outlined,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      displayName,
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -280,28 +417,59 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                       userEmail,
                       style: TextStyle(fontSize: 13, color: labelColor),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: primaryColor.withValues(alpha: 0.2),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: primaryColor.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Text(
+                            myProfile?.designation.isNotEmpty == true
+                                ? myProfile!.designation.toUpperCase()
+                                : 'STAFF MEMBER',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        'STAFF MEMBER',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: primaryColor,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
+                        if (myProfile?.bloodGroup.isNotEmpty == true && myProfile!.bloodGroup != 'N/A') ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: Colors.red.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Text(
+                              '🩸 ${myProfile.bloodGroup}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -354,6 +522,69 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                 ),
               ),
 
+              // ── Personal & KYC Details Section ────────────────────────
+              _SectionHeader(label: 'Personal Information & KYC', labelColor: labelColor),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: borderColor),
+                ),
+                child: Column(
+                  children: [
+                    _buildInfoRow('Full Name', displayName, textColor, labelColor),
+                    Divider(height: 20, color: borderColor),
+                    _buildInfoRow('Designation', myProfile?.designation ?? 'Staff Member', textColor, labelColor),
+                    Divider(height: 20, color: borderColor),
+                    _buildInfoRow(
+                      'Date of Birth',
+                      myProfile?.dob != null
+                          ? formatNepaliDate(myProfile!.dob!, 'dd MMM yyyy (BS)')
+                          : 'Not provided',
+                      textColor,
+                      labelColor,
+                    ),
+                    Divider(height: 20, color: borderColor),
+                    _buildInfoRow('Blood Group', myProfile?.bloodGroup ?? 'N/A', textColor, labelColor),
+                    Divider(height: 20, color: borderColor),
+                    _buildInfoRow('Address', myProfile?.address.isNotEmpty == true ? myProfile!.address : 'Not provided', textColor, labelColor),
+                    Divider(height: 20, color: borderColor),
+                    _buildInfoRow('Father\'s Name', myProfile?.fatherName.isNotEmpty == true ? myProfile!.fatherName : 'Not provided', textColor, labelColor),
+                    Divider(height: 20, color: borderColor),
+                    _buildInfoRow('Mother\'s Name', myProfile?.motherName.isNotEmpty == true ? myProfile!.motherName : 'Not provided', textColor, labelColor),
+                    Divider(height: 20, color: borderColor),
+                    _buildInfoRow('Citizenship Number', myProfile?.citizenshipNumber.isNotEmpty == true ? myProfile!.citizenshipNumber : 'Not provided', textColor, labelColor),
+                    Divider(height: 20, color: borderColor),
+                    _buildInfoRow('PAN Number', myProfile?.panNumber.isNotEmpty == true ? myProfile!.panNumber : 'Not provided', textColor, labelColor),
+                    Divider(height: 20, color: borderColor),
+                    _buildInfoRow('National ID (NIN)', myProfile?.ninNumber.isNotEmpty == true ? myProfile!.ninNumber : 'Not provided', textColor, labelColor),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.edit_note, size: 16),
+                        label: const Text('Update Personal & KYC Info'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primaryColor,
+                          side: BorderSide(color: primaryColor.withValues(alpha: 0.5)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () => _openEditProfile(
+                          context,
+                          myProfile,
+                          userId,
+                          displayName,
+                          userEmail,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               // ── Work & Leave Section ─────────────────────────────────────
               _SectionHeader(label: 'Work & Leave', labelColor: labelColor),
               Container(
@@ -389,12 +620,28 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                       ),
                       onTap: () => _printMyEmployeePdf(context, user),
                     ),
+                    _SettingsTile(
+                      icon: Icons.business_outlined,
+                      iconColor: const Color(0xFF8b5cf6),
+                      title: 'Company Profile & Share (Synology)',
+                      subtitle: 'Generate, preview & share company profile PDF',
+                      borderColor: borderColor,
+                      isLast: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SynologyCompanyPdfScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
 
-              // ── Appearance Section ──────────────────────────────────
-              _SectionHeader(label: 'Appearance', labelColor: labelColor),
+              // ── Appearance & Notifications ───────────────────────────
+              _SectionHeader(label: 'Preferences', labelColor: labelColor),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
@@ -421,41 +668,11 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                         },
                       ),
                     ),
-                  ],
-                ),
-              ),
-
-              // ── Notifications Section ───────────────────────────────
-              _SectionHeader(label: 'Notifications', labelColor: labelColor),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: borderColor),
-                ),
-                child: Column(
-                  children: [
-                    _SettingsTile(
-                      icon: Icons.picture_as_pdf_outlined,
-                      iconColor: primaryColor,
-                      title: 'Company Profile & Share (Synology)',
-                      subtitle: 'Generate, preview & share company profile PDF',
-                      borderColor: borderColor,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SynologyCompanyPdfScreen(),
-                          ),
-                        );
-                      },
-                    ),
                     _SettingsTile(
                       icon: Icons.notifications_active_outlined,
                       iconColor: const Color(0xFFf59e0b),
                       title: 'Push Notifications',
-                      subtitle: 'Alerts for new tasks and events',
+                      subtitle: 'Alerts for tasks, assignments and announcements',
                       borderColor: borderColor,
                       isLast: true,
                       trailing: Switch.adaptive(
@@ -472,8 +689,8 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                 ),
               ),
 
-              // ── Account Section ─────────────────────────────────────
-              _SectionHeader(label: 'Account', labelColor: labelColor),
+              // ── Account & Credentials Section ───────────────────────
+              _SectionHeader(label: 'Account & Security', labelColor: labelColor),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
@@ -484,18 +701,47 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                 child: Column(
                   children: [
                     _SettingsTile(
-                      icon: Icons.lock_outline_rounded,
-                      iconColor: const Color(0xFF10b981),
-                      title: 'Change Password',
-                      subtitle: 'Update your account password',
+                      icon: Icons.email_outlined,
+                      iconColor: primaryColor,
+                      title: 'Login Email Address',
+                      subtitle: userEmail,
                       borderColor: borderColor,
-                      onTap: () => _showChangePasswordSheet(
-                        context,
-                        primaryColor,
-                        cardColor,
-                        borderColor,
-                        textColor,
-                        labelColor,
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.lock_outline, size: 12, color: Colors.grey),
+                            SizedBox(width: 4),
+                            Text('Locked', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    _SettingsTile(
+                      icon: Icons.security_rounded,
+                      iconColor: const Color(0xFF10b981),
+                      title: 'Account Password',
+                      subtitle: 'Managed securely by Company Administration',
+                      borderColor: borderColor,
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.lock_outline, size: 12, color: Colors.grey),
+                            SizedBox(width: 4),
+                            Text('Locked', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
                       ),
                     ),
                     _SettingsTile(
@@ -550,7 +796,7 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                 ),
               ),
 
-              // ── User ID Debug Info ──────────────────────────────────
+              // ── User ID Info ────────────────────────────────────────
               if (userId.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -573,25 +819,32 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
     );
   }
 
-  void _showChangePasswordSheet(
-    BuildContext context,
-    Color primaryColor,
-    Color cardColor,
-    Color borderColor,
-    Color textColor,
-    Color labelColor,
-  ) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _ChangePasswordSheet(
-        primaryColor: primaryColor,
-        cardColor: cardColor,
-        borderColor: borderColor,
-        textColor: textColor,
-        labelColor: labelColor,
-      ),
+  Widget _buildInfoRow(String label, String value, Color textColor, Color labelColor) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: labelColor,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: 13,
+              color: textColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -770,258 +1023,6 @@ class _SettingsTile extends StatelessWidget {
         if (!isLast)
           Divider(height: 1, indent: 56, endIndent: 0, color: borderColor),
       ],
-    );
-  }
-}
-
-// ── Change Password Bottom Sheet ──────────────────────────────────────────────
-
-class _ChangePasswordSheet extends ConsumerStatefulWidget {
-  final Color primaryColor;
-  final Color cardColor;
-  final Color borderColor;
-  final Color textColor;
-  final Color labelColor;
-
-  const _ChangePasswordSheet({
-    required this.primaryColor,
-    required this.cardColor,
-    required this.borderColor,
-    required this.textColor,
-    required this.labelColor,
-  });
-
-  @override
-  ConsumerState<_ChangePasswordSheet> createState() =>
-      _ChangePasswordSheetState();
-}
-
-class _ChangePasswordSheetState extends ConsumerState<_ChangePasswordSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _currentPassCtrl = TextEditingController();
-  final _newPassCtrl = TextEditingController();
-  final _confirmPassCtrl = TextEditingController();
-  bool _obscureCurrent = true;
-  bool _obscureNew = true;
-  bool _obscureConfirm = true;
-  bool _isLoading = false;
-
-  @override
-  void dispose() {
-    _currentPassCtrl.dispose();
-    _newPassCtrl.dispose();
-    _confirmPassCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    setState(() => _isLoading = true);
-    try {
-      await ref
-          .read(authNotifierProvider.notifier)
-          .changePassword(_newPassCtrl.text);
-      if (mounted) {
-        setState(() => _isLoading = false);
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Password updated successfully!'),
-            backgroundColor: const Color(0xFF10b981),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: widget.cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle bar
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: widget.borderColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Change Password',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: widget.textColor,
-                ),
-              ),
-              const SizedBox(height: 20),
-              _PasswordField(
-                controller: _currentPassCtrl,
-                label: 'Current Password',
-                obscure: _obscureCurrent,
-                onToggle: () =>
-                    setState(() => _obscureCurrent = !_obscureCurrent),
-                borderColor: widget.borderColor,
-                labelColor: widget.labelColor,
-                primaryColor: widget.primaryColor,
-                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
-              ),
-              const SizedBox(height: 14),
-              _PasswordField(
-                controller: _newPassCtrl,
-                label: 'New Password',
-                obscure: _obscureNew,
-                onToggle: () => setState(() => _obscureNew = !_obscureNew),
-                borderColor: widget.borderColor,
-                labelColor: widget.labelColor,
-                primaryColor: widget.primaryColor,
-                validator: (v) => (v == null || v.length < 6)
-                    ? 'At least 6 characters'
-                    : null,
-              ),
-              const SizedBox(height: 14),
-              _PasswordField(
-                controller: _confirmPassCtrl,
-                label: 'Confirm New Password',
-                obscure: _obscureConfirm,
-                onToggle: () =>
-                    setState(() => _obscureConfirm = !_obscureConfirm),
-                borderColor: widget.borderColor,
-                labelColor: widget.labelColor,
-                primaryColor: widget.primaryColor,
-                validator: (v) =>
-                    v != _newPassCtrl.text ? 'Passwords do not match' : null,
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submit,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: widget.primaryColor,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Text(
-                          'Update Password',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: Colors.white,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PasswordField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final bool obscure;
-  final VoidCallback onToggle;
-  final Color borderColor;
-  final Color labelColor;
-  final Color primaryColor;
-  final String? Function(String?) validator;
-
-  const _PasswordField({
-    required this.controller,
-    required this.label,
-    required this.obscure,
-    required this.onToggle,
-    required this.borderColor,
-    required this.labelColor,
-    required this.primaryColor,
-    required this.validator,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscure,
-      validator: validator,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: labelColor, fontSize: 13),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: borderColor),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: BorderSide(color: primaryColor, width: 1.5),
-        ),
-        suffixIcon: IconButton(
-          icon: Icon(
-            obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-            color: labelColor,
-            size: 18,
-          ),
-          onPressed: onToggle,
-        ),
-      ),
     );
   }
 }

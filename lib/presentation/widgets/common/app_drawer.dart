@@ -7,7 +7,6 @@ import 'package:order_app/presentation/screens/common/finance/revenue_summary_sc
 import 'package:order_app/presentation/screens/common/events/calendar_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/settings_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/event_financial_report_screen.dart';
-import 'package:order_app/presentation/screens/common/finance/event_invoices_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/financial_ledger_screen.dart';
 import 'package:order_app/presentation/screens/common/orders/purchase_order_list_screen.dart';
 import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
@@ -16,6 +15,7 @@ import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/screens/common/inventory/inventory_management_screen.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
+import 'package:order_app/presentation/screens/admin/archived_orders_screen.dart';
 import 'package:order_app/presentation/widgets/common/role_based_router.dart';
 
 class AppDrawer extends ConsumerWidget {
@@ -81,6 +81,14 @@ class AppDrawer extends ConsumerWidget {
                       context.pushPage(const PurchaseOrderListScreen());
                     },
                   ),
+                  _DrawerTile(
+                    icon: Icons.inventory_2_outlined,
+                    label: 'Archived Orders',
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.pushPage(const ArchivedOrdersScreen());
+                    },
+                  ),
                 ],
                 if (role == UserRole.admin ||
                     role == UserRole.founder ||
@@ -107,14 +115,6 @@ class AppDrawer extends ConsumerWidget {
                     onTap: () {
                       Navigator.pop(context);
                       context.pushPage(const EventFinancialReportScreen());
-                    },
-                  ),
-                  _DrawerTile(
-                    icon: Icons.receipt_long_outlined,
-                    label: 'Invoices & Billing',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.pushPage(const EventInvoicesScreen());
                     },
                   ),
                   _DrawerTile(

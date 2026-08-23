@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:order_app/core/calendar/nepali_calendar_engine.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
@@ -16,6 +15,7 @@ import 'package:order_app/presentation/providers/employee_profile_providers.dart
 import 'package:order_app/presentation/providers/hr_providers.dart';
 import 'package:order_app/presentation/providers/settings_provider.dart';
 import 'package:order_app/presentation/providers/user_providers.dart';
+import 'package:order_app/core/services/admin_auth_service.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
 import 'package:order_app/presentation/screens/admin/add_employee_screen.dart';
 
@@ -199,10 +199,11 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   Future<void> _showChangeCredentialsDialog(
     BuildContext context,
     EmployeeProfileEntity profile,
+    UserEntity currentUser,
   ) async {
-    final emailController = TextEditingController(text: widget.user.email);
+    final emailController = TextEditingController(text: currentUser.email);
     final passwordController = TextEditingController();
-    UserRole selectedRole = widget.user.role;
+    UserRole selectedRole = currentUser.role;
     bool isSaving = false;
     bool obscurePassword = true;
 
@@ -338,16 +339,19 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 
                       setDialogState(() => isSaving = true);
                       try {
-                        await FirebaseFirestore.instance
-                            .collection('users')
-                            .doc(widget.user.id)
-                            .update({
-                          if (newEmail.isNotEmpty) 'email': newEmail,
-                          'role': selectedRole.name,
-                          'updatedAt': FieldValue.serverTimestamp(),
-                        });
+                        await AdminAuthService.updateEmployeeCredentials(
+                          userId: currentUser.id,
+                          oldEmail: currentUser.email,
+                          newEmail: newEmail,
+                          newPassword: newPassword.isNotEmpty ? newPassword : null,
+                          role: selectedRole,
+                          name: profile.name,
+                          profileId: profile.id,
+                        );
 
                         ref.invalidate(usersStreamProvider);
+                        ref.invalidate(employeeProfilesStreamProvider);
+
                         if (context.mounted) {
                           Navigator.pop(dialogCtx);
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -391,11 +395,27 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     final labelColor = colorScheme.onSurfaceVariant;
     final borderColor = colorScheme.outline.withValues(alpha: 0.2);
 
+    final usersStream = ref.watch(usersStreamProvider);
+    final currentUser = usersStream.maybeWhen(
+      data: (users) =>
+          users
+              .where(
+                (u) =>
+                    u.id == widget.user.id ||
+                    (widget.user.email.isNotEmpty &&
+                        u.email.toLowerCase() ==
+                            widget.user.email.toLowerCase()),
+              )
+              .firstOrNull ??
+          widget.user,
+      orElse: () => widget.user,
+    );
+
     final profilesStream = ref.watch(employeeProfilesStreamProvider);
 
     final profile = profilesStream.maybeWhen(
       data: (list) => list.cast<EmployeeProfileEntity>().firstWhere(
-        (p) => p.userId == widget.user.id,
+        (p) => p.userId == widget.user.id || (currentUser.id.isNotEmpty && p.userId == currentUser.id),
         orElse: () => widget.initialProfile ?? _createDefaultProfile(),
       ),
       orElse: () => widget.initialProfile ?? _createDefaultProfile(),
@@ -422,17 +442,17 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           IconButton(
             icon: const Icon(Icons.lock_reset, color: Color(0xFF0075db)),
             tooltip: 'Change Password & Role',
-            onPressed: () => _showChangeCredentialsDialog(context, profile),
+            onPressed: () => _showChangeCredentialsDialog(context, profile, currentUser),
           ),
           IconButton(
             icon: const Icon(Icons.edit_note),
             tooltip: 'Edit HR Profile',
             onPressed: () {
               context.pushPage(AddEmployeeScreen(
-                  userId: widget.user.id,
-                  userName: widget.user.name,
-                  userEmail: widget.user.email,
-                  userRole: widget.user.role,
+                  userId: currentUser.id,
+                  userName: currentUser.name,
+                  userEmail: currentUser.email,
+                  userRole: currentUser.role,
                   initialProfile: profile));
             },
           ),
@@ -449,7 +469,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         child: Column(
           children: [
             // 1. Header Profile Card
-            _buildProfileHeaderCard(context, profile, isDarkMode),
+            _buildProfileHeaderCard(context, profile, currentUser, isDarkMode),
             const SizedBox(height: 16),
 
             // 2. Office & Salary Breakdown Card
@@ -457,7 +477,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             const SizedBox(height: 16),
 
             // 3. Personal & Family Information Card
-            _buildPersonalTab(context, profile, borderColor, labelColor, textColor),
+            _buildPersonalTab(context, profile, currentUser, borderColor, labelColor, textColor),
             const SizedBox(height: 16),
 
             // 4. Leave Allocations Card
@@ -520,7 +540,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   }
 
   Widget _buildProfileHeaderCard(
-      BuildContext context, EmployeeProfileEntity profile, bool isDarkMode) {
+      BuildContext context, EmployeeProfileEntity profile, UserEntity currentUser, bool isDarkMode) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
@@ -589,6 +609,23 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                           ),
                         ),
                       ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          currentUser.role.displayName,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -601,17 +638,40 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 4,
                     children: [
-                      Icon(Icons.calendar_today,
-                          size: 14, color: colorScheme.onSurfaceVariant),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Joined: ${formatNepaliDate(profile.officeJoinDate, 'dd MMM yyyy')}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.onSurfaceVariant,
+                      if (currentUser.email.isNotEmpty)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.email_outlined,
+                                size: 14, color: colorScheme.onSurfaceVariant),
+                            const SizedBox(width: 4),
+                            Text(
+                              currentUser.email,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
                         ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.calendar_today,
+                              size: 14, color: colorScheme.onSurfaceVariant),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Joined: ${formatNepaliDate(profile.officeJoinDate, 'dd MMM yyyy')}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -628,6 +688,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   Widget _buildPersonalTab(
     BuildContext context,
     EmployeeProfileEntity profile,
+    UserEntity currentUser,
     Color borderColor,
     Color labelColor,
     Color textColor,
@@ -644,10 +705,17 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Personal Details',
+              const Text('Personal & Account Details',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const Divider(height: 20),
               _buildDetailRow('Full Name', profile.name, labelColor, textColor),
+              _buildDetailRow(
+                  'Login Email Address',
+                  currentUser.email.isNotEmpty ? currentUser.email : 'N/A',
+                  labelColor,
+                  textColor),
+              _buildDetailRow('System Access Role', currentUser.role.displayName,
+                  labelColor, textColor),
               _buildDetailRow(
                   'Date of Birth',
                   profile.dob != null

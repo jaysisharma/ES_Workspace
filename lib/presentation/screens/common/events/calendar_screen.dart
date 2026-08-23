@@ -50,6 +50,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     // Filtered unified events for the timeline — filter by Nepali month/year
     final monthEvents = eventsAsync.maybeWhen(
       data: (events) => events.where((e) {
+        if (e.isArchived) return false;
         final np = safeDateTimeToNepali(e.date);
         return np.year == selectedNepali.year &&
             np.month == selectedNepali.month;
@@ -59,6 +60,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     final monthOrders = ordersAsync.maybeWhen(
       data: (orders) => orders.where((o) {
+        if (o.isArchived) return false;
         final np = safeDateTimeToNepali(o.eventDate);
         return np.year == selectedNepali.year &&
             np.month == selectedNepali.month &&
@@ -189,18 +191,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             ),
                             onPressed: () {
                               setState(() {
-                                final np = _selectedDate.toNepaliDateTime();
+                                final np = safeDateTimeToNepali(_selectedDate);
                                 final newMonth = np.month == 1
                                     ? 12
                                     : np.month - 1;
                                 final newYear = np.month == 1
                                     ? np.year - 1
                                     : np.year;
-                                _selectedDate = NepaliDateTime(
+                                _selectedDate = safeNepaliToDateTime(NepaliDateTime(
                                   newYear,
                                   newMonth,
                                   1,
-                                ).toDateTime();
+                                ));
                                 _isDayFiltered = false;
                               });
                             },
@@ -233,18 +235,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             ),
                             onPressed: () {
                               setState(() {
-                                final np = _selectedDate.toNepaliDateTime();
+                                final np = safeDateTimeToNepali(_selectedDate);
                                 final newMonth = np.month == 12
                                     ? 1
                                     : np.month + 1;
                                 final newYear = np.month == 12
                                     ? np.year + 1
                                     : np.year;
-                                _selectedDate = NepaliDateTime(
+                                _selectedDate = safeNepaliToDateTime(NepaliDateTime(
                                   newYear,
                                   newMonth,
                                   1,
-                                ).toDateTime();
+                                ));
                                 _isDayFiltered = false;
                               });
                             },

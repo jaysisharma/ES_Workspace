@@ -26,17 +26,22 @@ class OrderModel extends OrderEntity {
     super.isArchived = false,
     super.advanceReceived = 0.0,
     super.advanceReferenceNo = '',
+    super.advanceReceiptUrl = '',
+    super.advanceReceiptPath = '',
+    super.advanceReceiptName = '',
     super.managementCharge = 0.0,
     super.isMgtChargePercent = true,
     super.discount = 0.0,
     super.isDiscountPercent = true,
+    super.orderType = 'Event',
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
     final createdAtDate = _parseDateTime(json['createdAt'] as String);
-    final isOlderThan1Month = DateTime.now().difference(createdAtDate).inDays >= 30;
-    final explicitArchived = json['isArchived'] as bool?;
-    final isArchived = explicitArchived ?? isOlderThan1Month;
+    final isArchived = json['isArchived'] as bool? ?? false;
+    final orderType = json['orderType'] as String? ??
+        json['type'] as String? ??
+        'Event';
 
     return OrderModel(
       id: json['id'] as String,
@@ -71,10 +76,14 @@ class OrderModel extends OrderEntity {
       isArchived: isArchived,
       advanceReceived: (json['advanceReceived'] as num?)?.toDouble() ?? 0.0,
       advanceReferenceNo: json['advanceReferenceNo'] as String? ?? '',
+      advanceReceiptUrl: json['advanceReceiptUrl'] as String? ?? '',
+      advanceReceiptPath: json['advanceReceiptPath'] as String? ?? '',
+      advanceReceiptName: json['advanceReceiptName'] as String? ?? '',
       managementCharge: (json['managementCharge'] as num?)?.toDouble() ?? 0.0,
       isMgtChargePercent: json['isMgtChargePercent'] as bool? ?? true,
       discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
       isDiscountPercent: json['isDiscountPercent'] as bool? ?? true,
+      orderType: orderType,
     );
   }
 
@@ -103,10 +112,15 @@ class OrderModel extends OrderEntity {
       'isArchived': isArchived,
       'advanceReceived': advanceReceived,
       'advanceReferenceNo': advanceReferenceNo,
+      'advanceReceiptUrl': advanceReceiptUrl,
+      'advanceReceiptPath': advanceReceiptPath,
+      'advanceReceiptName': advanceReceiptName,
       'managementCharge': managementCharge,
       'isMgtChargePercent': isMgtChargePercent,
       'discount': discount,
       'isDiscountPercent': isDiscountPercent,
+      'orderType': orderType,
+      'type': orderType,
       'logs': logs
           .map(
             (log) => {
@@ -172,10 +186,14 @@ class OrderModel extends OrderEntity {
       isArchived: entity.isArchived,
       advanceReceived: entity.advanceReceived,
       advanceReferenceNo: entity.advanceReferenceNo,
+      advanceReceiptUrl: entity.advanceReceiptUrl,
+      advanceReceiptPath: entity.advanceReceiptPath,
+      advanceReceiptName: entity.advanceReceiptName,
       managementCharge: entity.managementCharge,
       isMgtChargePercent: entity.isMgtChargePercent,
       discount: entity.discount,
       isDiscountPercent: entity.isDiscountPercent,
+      orderType: entity.orderType,
     );
   }
 }

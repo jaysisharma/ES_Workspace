@@ -164,6 +164,9 @@ class RevenueActionsHelper {
     bool isDiscountPercent = true,
     double advanceReceived = 0.0,
     String advanceReferenceNo = '',
+    String advanceReceiptUrl = '',
+    String advanceReceiptPath = '',
+    String advanceReceiptName = '',
   }) async {
     final updatedItems = items.map((item) {
       final rate = RevenueCalculations.parseRate(itemControllers[item.id]?.text, item.rate);
@@ -193,6 +196,9 @@ class RevenueActionsHelper {
       isDiscountPercent: isDiscountPercent,
       advanceReceived: advanceReceived,
       advanceReferenceNo: advanceReferenceNo,
+      advanceReceiptUrl: advanceReceiptUrl,
+      advanceReceiptPath: advanceReceiptPath,
+      advanceReceiptName: advanceReceiptName,
     );
 
     debugPrint('=== [REVENUE SAVE DEBUG] ===');
@@ -201,7 +207,7 @@ class RevenueActionsHelper {
     debugPrint('Management Charge: $managementCharge (isPercent: $isMgtChargePercent)');
     debugPrint('Discount: $discount (isPercent: $isDiscountPercent)');
     debugPrint('VAT Rate: $effectiveVatRate');
-    debugPrint('Advance Received: $advanceReceived (Ref: $advanceReferenceNo)');
+    debugPrint('Advance Received: $advanceReceived (Ref: $advanceReferenceNo, Receipt: $advanceReceiptName)');
     debugPrint('Total Revenue: $totalRevenue');
     for (final item in updatedItems) {
       debugPrint('Item "${item.itemName}" (ID: ${item.id}): rate=${item.rate}, qty=${item.quantity}, days=${item.days}, amount=${item.amount}');
@@ -257,6 +263,9 @@ class RevenueActionsHelper {
     bool isDiscountPercent = true,
     double advanceReceived = 0.0,
     String advanceReferenceNo = '',
+    String advanceReceiptUrl = '',
+    String advanceReceiptPath = '',
+    String advanceReceiptName = '',
   }) async {
     bool? proceed = await showDialog<bool>(
       context: context,
@@ -307,6 +316,9 @@ class RevenueActionsHelper {
       isDiscountPercent: isDiscountPercent,
       advanceReceived: advanceReceived,
       advanceReferenceNo: advanceReferenceNo,
+      advanceReceiptUrl: advanceReceiptUrl,
+      advanceReceiptPath: advanceReceiptPath,
+      advanceReceiptName: advanceReceiptName,
     );
 
     if (context.mounted) {

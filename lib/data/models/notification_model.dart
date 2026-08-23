@@ -7,6 +7,7 @@ class NotificationModel extends NotificationEntity {
     required super.description,
     required super.timestamp,
     super.isRead = false,
+    super.readBy = const [],
     required super.type,
     super.relatedId,
     super.targetRole = 'admin_founder',
@@ -14,12 +15,18 @@ class NotificationModel extends NotificationEntity {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    final rawReadBy = json['readBy'];
+    final List<String> readBy = rawReadBy is List
+        ? rawReadBy.map((e) => e.toString()).toList()
+        : <String>[];
+
     return NotificationModel(
       id: json['id'] as String,
       title: json['title'] as String,
       description: json['description'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
       isRead: json['isRead'] as bool? ?? false,
+      readBy: readBy,
       type: json['type'] as String,
       relatedId: json['relatedId'] as String?,
       targetRole: json['targetRole'] as String? ?? 'admin_founder',
@@ -34,6 +41,7 @@ class NotificationModel extends NotificationEntity {
       'description': description,
       'timestamp': timestamp.toIso8601String(),
       'isRead': isRead,
+      'readBy': readBy,
       'type': type,
       'relatedId': relatedId,
       'targetRole': targetRole,
@@ -48,6 +56,7 @@ class NotificationModel extends NotificationEntity {
       description: entity.description,
       timestamp: entity.timestamp,
       isRead: entity.isRead,
+      readBy: entity.readBy,
       type: entity.type,
       relatedId: entity.relatedId,
       targetRole: entity.targetRole,

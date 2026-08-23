@@ -118,13 +118,19 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
     final notificationState = ref.watch(notificationsStreamProvider);
 
     final unreadCount = notificationState.maybeWhen(
-      data: (list) => list.where((n) => !n.isRead).length,
+      data: (list) => list.where((n) => !n.isReadForUser(user?.id)).length,
       orElse: () => 0,
+    );
+
+    final ordersStream = ref.watch(ordersStreamProvider);
+    final allOrders = ordersStream.maybeWhen(
+      data: (list) => list,
+      orElse: () => orderState.orders,
     );
 
     final isSearching = _searchQuery.trim().isNotEmpty;
     final searchResults = isSearching
-        ? orderState.orders
+        ? allOrders
             .where((o) => _matchesOrderQuery(o, _searchQuery))
             .toList()
         : <OrderEntity>[];
@@ -485,10 +491,8 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Weekly Events Strip at the Top
-              if (events.isNotEmpty) ...[
-                ThisWeekEventsStrip(events: events),
-                const SizedBox(height: 28),
-              ],
+              ThisWeekEventsStrip(events: events),
+              const SizedBox(height: 20),
 
               // Section Title
               Row(

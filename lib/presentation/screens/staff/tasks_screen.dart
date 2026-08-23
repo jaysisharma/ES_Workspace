@@ -6,6 +6,7 @@ import 'package:order_app/domain/entities/order_item_entity.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
 class TasksScreen extends ConsumerWidget {
   const TasksScreen({super.key});
@@ -34,6 +35,7 @@ class TasksScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: bgColor,
+      floatingActionButton: const BottomRightBackButton(),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(64),
         child: Container(
@@ -43,9 +45,17 @@ class TasksScreen extends ConsumerWidget {
             border: Border(bottom: BorderSide(color: borderColor)),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
               children: [
+                if (Navigator.canPop(context)) ...[
+                  IconButton(
+                    icon: Icon(Icons.arrow_back_rounded, color: textColor),
+                    tooltip: 'Back',
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 Text(
                   'All Tasks',
                   style: TextStyle(

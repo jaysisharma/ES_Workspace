@@ -275,6 +275,7 @@ class OrderNotifier extends Notifier<OrderState> {
       final updatedOrder = order.copyWith(logs: newLogs, updatedAt: now);
       await ref.read(updateOrderUseCaseProvider)(updatedOrder);
       await loadOrders();
+      ref.invalidate(ordersStreamProvider);
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -317,9 +318,15 @@ class OrderNotifier extends Notifier<OrderState> {
           updatedAt: now,
         );
         await repository.updateOrder(updatedOrder);
-        final updatedList = state.orders
-            .map((o) => o.id == orderId ? updatedOrder : o)
-            .toList();
+        final existingIndex = state.orders.indexWhere((o) => o.id == orderId);
+        List<OrderEntity> updatedList;
+        if (existingIndex >= 0) {
+          updatedList = state.orders
+              .map((o) => o.id == orderId ? updatedOrder : o)
+              .toList();
+        } else {
+          updatedList = [updatedOrder, ...state.orders];
+        }
         state = state.copyWith(orders: updatedList);
       }
     } catch (e) {
@@ -400,6 +407,7 @@ class OrderNotifier extends Notifier<OrderState> {
       await loadOrders();
       ref.invalidate(allItemsStreamProvider);
       ref.invalidate(allAdditionalRevenueStreamProvider);
+      ref.invalidate(ordersStreamProvider);
       await ref.read(orderItemNotifierProvider.notifier).loadItems(order.id);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());

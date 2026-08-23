@@ -17,10 +17,10 @@ import 'package:order_app/presentation/screens/common/contacts/vendor_screen.dar
 import 'package:order_app/presentation/screens/common/contacts/client_screen.dart';
 import 'package:order_app/presentation/screens/common/orders/purchase_order_list_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/financial_ledger_screen.dart';
-import 'package:order_app/presentation/screens/common/finance/event_invoices_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/event_financial_report_screen.dart';
 import 'package:order_app/presentation/screens/common/events/calendar_screen.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
+import 'package:order_app/presentation/screens/admin/archived_orders_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/settings_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/notifications_screen.dart';
 
@@ -120,14 +120,20 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
     final notificationState = ref.watch(notificationsStreamProvider);
 
     final unreadCount = notificationState.maybeWhen(
-      data: (list) => list.where((n) => !n.isRead).length,
+      data: (list) => list.where((n) => !n.isReadForUser(user?.id)).length,
       orElse: () => 0,
+    );
+
+    final ordersStream = ref.watch(ordersStreamProvider);
+    final allOrders = ordersStream.maybeWhen(
+      data: (list) => list,
+      orElse: () => orderState.orders,
     );
 
     final isSearching = _searchQuery.trim().isNotEmpty;
     final searchResults = isSearching
-        ? orderState.orders
-              .where((o) => _matchesOrderQuery(o, _searchQuery))
+        ? allOrders
+              .where((o) => !o.isArchived && _matchesOrderQuery(o, _searchQuery))
               .toList()
         : <OrderEntity>[];
 
@@ -734,22 +740,6 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                     ),
                   ),
 
-                  // Invoices & Billing
-                  _buildModuleCard(
-                    title: 'Invoices & Billing',
-                    subtitle: 'Tax & Proforma invoices',
-                    icon: Icons.receipt_rounded,
-                    accentColor: const Color(0xFF0075db),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const EventInvoicesScreen()),
-                    ),
-                  ),
-
                   // Financial Ledger
                   _buildModuleCard(
                     title: 'Financial Ledger',
@@ -814,12 +804,28 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                     ),
                   ),
 
+                  // Archived Orders
+                  _buildModuleCard(
+                    title: 'Archived Orders',
+                    subtitle: 'View & restore archived events',
+                    icon: Icons.inventory_2_rounded,
+                    accentColor: const Color(0xFF64748b),
+                    cardBgColor: cardBgColor,
+                    borderColor: borderColor,
+                    textMuted: textMuted,
+                    isMobile: isMobile,
+                    onTap: () => Navigator.push(
+                      context,
+                      SlidePageRoute(page: const ArchivedOrdersScreen()),
+                    ),
+                  ),
+
                   // System Settings
                   _buildModuleCard(
                     title: 'System Settings',
                     subtitle: 'Preferences & configurations',
                     icon: Icons.settings_rounded,
-                    accentColor: const Color(0xFF64748b),
+                    accentColor: const Color(0xFF475569),
                     cardBgColor: cardBgColor,
                     borderColor: borderColor,
                     textMuted: textMuted,

@@ -5,6 +5,8 @@ class AuthEntity {
   final String email;
   final UserRole role;
 
+  String get id => uid;
+
   const AuthEntity({
     required this.uid,
     required this.email,

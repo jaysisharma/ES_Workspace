@@ -329,7 +329,6 @@ class ReportsPdfBuilder {
     String? buyerAddress,
     String? buyerVatNo,
     String paymentTerms = 'Cash / Credit / Cheque',
-    String defaultHsCode = '',
     double discount = 0.0,
     double discountRate = 0.0,
     double managementCharge = 0.0,
@@ -398,14 +397,13 @@ class ReportsPdfBuilder {
 
     final headers = [
       'S.No.',
-      'HS Code',
       'Description',
       'Rate (Rs.)',
       'Qty',
       'Amount (Rs.)',
       'Ps.',
     ];
-    final headerWidths = [0.8, 1.4, 4.0, 1.6, 0.9, 1.8, 0.7];
+    final headerWidths = [0.8, 5.0, 1.8, 1.0, 2.0, 0.8];
 
     final tableData = <List<String>>[];
     int sn = 1;
@@ -417,7 +415,6 @@ class ReportsPdfBuilder {
       final amtPs = ((item.amount - amtFloor) * 100).round();
       tableData.add([
         '${sn++}',
-        defaultHsCode,
         desc,
         item.rate.toStringAsFixed(2),
         item.quantity.toString(),
@@ -433,7 +430,6 @@ class ReportsPdfBuilder {
       final amtPs = ((rev.amount - amtFloor) * 100).round();
       tableData.add([
         '${sn++}',
-        defaultHsCode,
         desc,
         rev.rate.toStringAsFixed(2),
         rev.quantity.toString(),
@@ -668,12 +664,11 @@ class ReportsPdfBuilder {
                 const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3.5),
             cellAlignments: {
               0: pw.Alignment.center,
-              1: pw.Alignment.center,
-              2: pw.Alignment.centerLeft,
-              3: pw.Alignment.centerRight,
-              4: pw.Alignment.center,
-              5: pw.Alignment.centerRight,
-              6: pw.Alignment.center,
+              1: pw.Alignment.centerLeft,
+              2: pw.Alignment.centerRight,
+              3: pw.Alignment.center,
+              4: pw.Alignment.centerRight,
+              5: pw.Alignment.center,
             },
           ),
           pw.SizedBox(height: 10),

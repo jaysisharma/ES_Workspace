@@ -54,27 +54,75 @@ class OrderDetailsHeaderWidget extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: statusColor.withValues(alpha: 0.3),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: statusColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      statusLabel(order.status).toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
                   ),
-                ),
-                child: Text(
-                  statusLabel(order.status).toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: statusColor,
-                    letterSpacing: 1.2,
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: order.orderType.toLowerCase() == 'rental'
+                          ? const Color(0xFF8b5cf6).withValues(alpha: 0.15)
+                          : primaryColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: order.orderType.toLowerCase() == 'rental'
+                            ? const Color(0xFF8b5cf6).withValues(alpha: 0.35)
+                            : primaryColor.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          order.orderType.toLowerCase() == 'rental'
+                              ? Icons.inventory_2_outlined
+                              : Icons.celebration_outlined,
+                          size: 11,
+                          color: order.orderType.toLowerCase() == 'rental'
+                              ? const Color(0xFF8b5cf6)
+                              : primaryColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          (order.orderType.isNotEmpty ? order.orderType : 'Event').toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.w800,
+                            color: order.orderType.toLowerCase() == 'rental'
+                                ? const Color(0xFF8b5cf6)
+                                : primaryColor,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
               Text(
                 'ID: ${order.id.length > 10 ? order.id.substring(0, 10) : order.id}',
