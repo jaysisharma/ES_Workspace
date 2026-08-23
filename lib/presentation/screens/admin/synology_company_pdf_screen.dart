@@ -28,7 +28,8 @@ class _SynologyCompanyPdfScreenState
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final authState = ref.watch(authNotifierProvider);
-    final isStaff = authState.user?.role == UserRole.staff;
+    final userRole = authState.user?.role;
+    final canManage = userRole == UserRole.admin || userRole == UserRole.founder;
     final docState = ref.watch(companyDocumentNotifierProvider);
     final synologyConfig = docState.synologyConfig;
     final documents = docState.documents;
@@ -42,7 +43,7 @@ class _SynologyCompanyPdfScreenState
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
         ),
         actions: [
-          if (!isStaff)
+          if (canManage)
             IconButton(
               icon: const Icon(Icons.settings_outlined),
               tooltip: 'Configure Synology NAS',
@@ -64,7 +65,7 @@ class _SynologyCompanyPdfScreenState
             const BottomRightBackButton(),
             const SizedBox(width: 12),
           ],
-          if (!isStaff)
+          if (canManage)
             FloatingActionButton.extended(
               heroTag: 'synology_company_pdf_fab',
               onPressed: docState.isLoading ? null : () => _showUploadCustomDialog(context),
@@ -86,13 +87,13 @@ class _SynologyCompanyPdfScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Synology Connection Status Card (Admin & Founder Only)
-              if (!isStaff) ...[
+              if (canManage) ...[
                 _buildSynologyStatusCard(context, synologyConfig),
                 const SizedBox(height: 16),
               ],
 
               // Upload PDF Action Buttons (Admin & Founder Only)
-              if (!isStaff) ...[
+              if (canManage) ...[
                 Text(
                   'UPLOAD & ADD DOCUMENTS',
                   style: TextStyle(
@@ -129,9 +130,9 @@ class _SynologyCompanyPdfScreenState
 
               // Document Roster Header
               Text(
-                isStaff
-                    ? 'AVAILABLE COMPANY DOCUMENTS & RATE CARDS'
-                    : 'MANAGED COMPANY DOCUMENTS',
+                canManage
+                    ? 'MANAGED COMPANY DOCUMENTS'
+                    : 'AVAILABLE COMPANY DOCUMENTS & RATE CARDS',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
@@ -185,7 +186,7 @@ class _SynologyCompanyPdfScreenState
                   ),
                 )
               else
-                ...documents.map((doc) => _buildDocumentCard(context, doc, isStaff)),
+                ...documents.map((doc) => _buildDocumentCard(context, doc, canManage)),
 
               const SizedBox(height: 40),
             ],
@@ -289,7 +290,7 @@ class _SynologyCompanyPdfScreenState
   }
 
   Widget _buildDocumentCard(
-      BuildContext context, CompanyDocumentEntity doc, bool isStaff) {
+      BuildContext context, CompanyDocumentEntity doc, bool canManage) {
     final colorScheme = Theme.of(context).colorScheme;
     final sizeKb = (doc.fileSize / 1024).toStringAsFixed(1);
 
@@ -356,7 +357,7 @@ class _SynologyCompanyPdfScreenState
                   ],
                 ),
               ),
-              if (!isStaff)
+              if (canManage)
                 IconButton(
                   icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
                   onPressed: () => _confirmDeleteDoc(context, doc),
