@@ -409,7 +409,7 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
   late final TextEditingController _descCtrl;
   late final TextEditingController _searchCtrl;
 
-  UserEntity? _selectedStaff;
+  final Map<String, UserEntity> _selectedStaffMap = {};
   DateTime? _dueDate;
   bool _saving = false;
   String _staffSearch = '';
@@ -448,15 +448,22 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
         )
         .toList();
 
-    if (_selectedStaff == null && widget.existing?.assignedStaffId != null) {
+    // Pre-select existing assignment on edit
+    if (_selectedStaffMap.isEmpty && widget.existing?.assignedStaffId != null) {
       try {
-        _selectedStaff = allUsers.firstWhere(
+        final existingStaff = allUsers.firstWhere(
           (u) => u.id == widget.existing!.assignedStaffId,
         );
+        _selectedStaffMap[existingStaff.id] = existingStaff;
       } catch (_) {}
     }
 
     final isEdit = widget.existing != null;
+    final activeStaffList = allUsers
+        .where((u) => u.role == UserRole.staff && u.isActive)
+        .toList();
+    final allSelected = activeStaffList.isNotEmpty &&
+        _selectedStaffMap.length == activeStaffList.length;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -487,7 +494,7 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  isEdit ? 'Edit Task' : 'Assign New Task',
+                  isEdit ? 'Edit Task' : 'Assign Task to Staff',
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -501,7 +508,7 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             TextFormField(
               controller: _titleCtrl,
               decoration: InputDecoration(
@@ -517,7 +524,7 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
                   (v == null || v.trim().isEmpty) ? 'Required' : null,
               textCapitalization: TextCapitalization.sentences,
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _descCtrl,
               decoration: InputDecoration(
@@ -529,25 +536,108 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
                 ),
                 filled: true,
               ),
-              maxLines: 3,
+              maxLines: 2,
               textCapitalization: TextCapitalization.sentences,
             ),
             const SizedBox(height: 14),
+            Row(
+              children: [
+                Text(
+                  isEdit
+                      ? 'Assigned To'
+                      : 'Assign To (${_selectedStaffMap.length} selected)',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                if (!isEdit && activeStaffList.isNotEmpty)
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    icon: Icon(
+                      allSelected
+                          ? Icons.deselect_rounded
+                          : Icons.select_all_rounded,
+                      size: 16,
+                      color: primaryColor,
+                    ),
+                    label: Text(
+                      allSelected ? 'Deselect All' : 'Select All (${activeStaffList.length})',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        if (allSelected) {
+                          _selectedStaffMap.clear();
+                        } else {
+                          for (final u in activeStaffList) {
+                            _selectedStaffMap[u.id] = u;
+                          }
+                        }
+                      });
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (_selectedStaffMap.isNotEmpty) ...[
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: _selectedStaffMap.values.map((staff) {
+                  return Chip(
+                    avatar: CircleAvatar(
+                      backgroundColor: primaryColor,
+                      child: Text(
+                        staff.name.isNotEmpty ? staff.name[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    label: Text(staff.name, style: const TextStyle(fontSize: 12)),
+                    deleteIcon: const Icon(Icons.close_rounded, size: 14),
+                    onDeleted: () {
+                      setState(() => _selectedStaffMap.remove(staff.id));
+                    },
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 8),
+            ],
             TextField(
               controller: _searchCtrl,
               decoration: InputDecoration(
-                labelText: 'Search Staff Member',
-                prefixIcon: const Icon(Icons.search_rounded),
+                hintText: 'Filter staff by name or email…',
+                prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 filled: true,
               ),
               onChanged: (v) => setState(() => _staffSearch = v),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Container(
-              constraints: const BoxConstraints(maxHeight: 180),
+              constraints: const BoxConstraints(maxHeight: 160),
               decoration: BoxDecoration(
                 border: Border.all(
                   color: isDark
@@ -568,22 +658,22 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
                           const Divider(height: 1, indent: 16),
                       itemBuilder: (ctx, i) {
                         final staff = staffList[i];
-                        final selected = _selectedStaff?.id == staff.id;
+                        final selected = _selectedStaffMap.containsKey(staff.id);
                         return ListTile(
                           dense: true,
                           leading: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: primaryColor.withValues(
-                              alpha: 0.15,
-                            ),
+                            radius: 14,
+                            backgroundColor: selected
+                                ? primaryColor
+                                : primaryColor.withValues(alpha: 0.15),
                             child: Text(
                               staff.name.isNotEmpty
                                   ? staff.name[0].toUpperCase()
                                   : '?',
                               style: TextStyle(
-                                color: primaryColor,
+                                color: selected ? Colors.white : primaryColor,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                                fontSize: 12,
                               ),
                             ),
                           ),
@@ -593,24 +683,56 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
                               fontWeight: selected
                                   ? FontWeight.bold
                                   : FontWeight.normal,
+                              fontSize: 13,
                             ),
                           ),
                           subtitle: Text(
                             staff.email,
                             style: const TextStyle(fontSize: 11),
                           ),
-                          trailing: selected
-                              ? Icon(
-                                  Icons.check_circle_rounded,
-                                  color: primaryColor,
-                                )
-                              : null,
-                          onTap: () => setState(() => _selectedStaff = staff),
+                          trailing: isEdit
+                              ? (selected
+                                  ? Icon(
+                                      Icons.check_circle_rounded,
+                                      color: primaryColor,
+                                      size: 20,
+                                    )
+                                  : null)
+                              : Checkbox(
+                                  value: selected,
+                                  activeColor: primaryColor,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      if (val == true) {
+                                        _selectedStaffMap[staff.id] = staff;
+                                      } else {
+                                        _selectedStaffMap.remove(staff.id);
+                                      }
+                                    });
+                                  },
+                                ),
+                          onTap: () {
+                            setState(() {
+                              if (isEdit) {
+                                _selectedStaffMap.clear();
+                                _selectedStaffMap[staff.id] = staff;
+                              } else {
+                                if (selected) {
+                                  _selectedStaffMap.remove(staff.id);
+                                } else {
+                                  _selectedStaffMap[staff.id] = staff;
+                                }
+                              }
+                            });
+                          },
                         );
                       },
                     ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             InkWell(
               onTap: () async {
                 final picked = await showDatePicker(
@@ -626,26 +748,26 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
-                  vertical: 14,
+                  vertical: 12,
                 ),
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: isDark
-                        ? const Color(0xFF334155)
-                        : const Color(0xFFe2e8f0),
+                      ? const Color(0xFF334155)
+                      : const Color(0xFFe2e8f0),
                   ),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.event_outlined, size: 20),
-                    const SizedBox(width: 12),
+                    const Icon(Icons.event_outlined, size: 18),
+                    const SizedBox(width: 10),
                     Text(
                       _dueDate == null
                           ? 'Set Due Date (optional)'
                           : 'Due: ${DateFormat('d MMM yyyy').format(_dueDate!)}',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         color: _dueDate == null ? Colors.grey : null,
                       ),
                     ),
@@ -663,7 +785,7 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -679,7 +801,11 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
                       )
                     : const Icon(Icons.send_rounded, size: 18),
                 label: Text(
-                  isEdit ? 'Save Changes' : 'Assign Task',
+                  isEdit
+                      ? 'Save Changes'
+                      : (_selectedStaffMap.length > 1
+                          ? 'Assign to ${_selectedStaffMap.length} Staff Members'
+                          : 'Assign Task'),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -703,9 +829,9 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
 
   Future<void> _save(BuildContext context, WidgetRef ref) async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedStaff == null) {
+    if (_selectedStaffMap.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a staff member')),
+        const SnackBar(content: Text('Please select at least one staff member')),
       );
       return;
     }
@@ -716,63 +842,70 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
       final notifier = ref.read(orderItemNotifierProvider.notifier);
 
       if (widget.existing != null) {
+        final singleStaff = _selectedStaffMap.values.first;
         final updated = widget.existing!.copyWith(
           itemName: _titleCtrl.text.trim(),
           specification: _descCtrl.text.trim(),
-          assignedStaffId: _selectedStaff!.id,
-          assignedStaffName: _selectedStaff!.name,
+          assignedStaffId: singleStaff.id,
+          assignedStaffName: singleStaff.name,
           dueDate: _dueDate,
           clearDueDate: _dueDate == null,
         );
         await notifier.updateItem(updated);
       } else {
-        final task = OrderItemEntity(
-          id: const Uuid().v4(),
-          orderId: 'manual',
-          itemName: _titleCtrl.text.trim(),
-          specification: _descCtrl.text.trim(),
-          quantity: 1,
-          unit: 'task',
-          days: 1,
-          vendor: '',
-          billingType: 'event',
-          assignedStaffId: _selectedStaff!.id,
-          assignedStaffName: _selectedStaff!.name,
-          dueDate: _dueDate,
-          createdBy: currentUser?.id,
-        );
-        await notifier.addItem(task, reload: false);
+        // Create an individual task instance for each selected staff member
+        for (final staff in _selectedStaffMap.values) {
+          final task = OrderItemEntity(
+            id: const Uuid().v4(),
+            orderId: 'manual',
+            itemName: _titleCtrl.text.trim(),
+            specification: _descCtrl.text.trim(),
+            quantity: 1,
+            unit: 'task',
+            days: 1,
+            vendor: '',
+            billingType: 'event',
+            assignedStaffId: staff.id,
+            assignedStaffName: staff.name,
+            dueDate: _dueDate,
+            createdBy: currentUser?.id,
+          );
+          await notifier.addItem(task, reload: false);
 
-        // Send notification to the assigned staff member
-        await ref
-            .read(notificationNotifierProvider.notifier)
-            .addNotification(
-              NotificationEntity(
-                id: const Uuid().v4(),
-                title: 'New Task Assigned',
-                description: 'You have been assigned: "${task.itemName}"',
-                timestamp: DateTime.now(),
-                type: 'task',
-                relatedId: task.id,
-                targetRole: 'staff',
-                targetUserId: _selectedStaff!.id,
-              ),
-            );
-        FcmSender.sendToUser(
-          userId: _selectedStaff!.id,
-          title: 'New Task Assigned',
-          body: 'You have been assigned: "${task.itemName}"',
-        );
+          // Send in-app notification to this staff member
+          await ref
+              .read(notificationNotifierProvider.notifier)
+              .addNotification(
+                NotificationEntity(
+                  id: const Uuid().v4(),
+                  title: 'New Task Assigned',
+                  description: 'You have been assigned: "${task.itemName}"',
+                  timestamp: DateTime.now(),
+                  type: 'task',
+                  relatedId: task.id,
+                  targetRole: 'staff',
+                  targetUserId: staff.id,
+                ),
+              );
+          FcmSender.sendToUser(
+            userId: staff.id,
+            title: 'New Task Assigned',
+            body: 'You have been assigned: "${task.itemName}"',
+          );
+        }
       }
 
       if (context.mounted) {
         Navigator.pop(context);
+        final count = _selectedStaffMap.length;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               widget.existing != null
                   ? 'Task updated!'
-                  : 'Task assigned to ${_selectedStaff!.name}',
+                  : (count > 1
+                      ? 'Task assigned to $count staff members'
+                      : 'Task assigned to ${_selectedStaffMap.values.first.name}'),
             ),
             backgroundColor: Colors.green,
           ),
