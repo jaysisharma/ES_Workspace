@@ -47,7 +47,7 @@ class FirestoreOrderItemRemoteDataSource implements OrderItemRemoteDataSource {
       await _firestore
           .collection('order_items')
           .doc(itemModel.id)
-          .update(itemModel.toJson());
+          .set(itemModel.toJson(), SetOptions(merge: true));
     } catch (e) {
       throw ServerException('Failed to update order item: ${e.toString()}');
     }
@@ -62,7 +62,7 @@ class FirestoreOrderItemRemoteDataSource implements OrderItemRemoteDataSource {
           .get();
 
       return querySnapshot.docs.map((doc) {
-        return OrderItemModel.fromJson(doc.data());
+        return OrderItemModel.fromJson(doc.data(), docId: doc.id);
       }).toList();
     } catch (e) {
       throw ServerException('Failed to fetch order items: ${e.toString()}');
@@ -75,7 +75,7 @@ class FirestoreOrderItemRemoteDataSource implements OrderItemRemoteDataSource {
       final querySnapshot = await _firestore.collection('order_items').get();
 
       return querySnapshot.docs.map((doc) {
-        return OrderItemModel.fromJson(doc.data());
+        return OrderItemModel.fromJson(doc.data(), docId: doc.id);
       }).toList();
     } catch (e) {
       throw ServerException('Failed to fetch all order items: ${e.toString()}');
@@ -86,7 +86,7 @@ class FirestoreOrderItemRemoteDataSource implements OrderItemRemoteDataSource {
   Stream<List<OrderItemEntity>> getAllItemsStream() {
     return _firestore.collection('order_items').snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
-        return OrderItemModel.fromJson(doc.data());
+        return OrderItemModel.fromJson(doc.data(), docId: doc.id);
       }).toList();
     });
   }

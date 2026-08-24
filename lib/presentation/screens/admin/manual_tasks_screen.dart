@@ -84,20 +84,26 @@ class ManualTasksScreen extends ConsumerWidget {
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-            itemCount: manualTasks.length,
-            itemBuilder: (context, i) => _TaskCard(
-              task: manualTasks[i],
-              cardColor: cardColor,
-              borderColor: borderColor,
-              textColor: textColor,
-              labelColor: labelColor,
-              primaryColor: primaryColor,
-              ref: ref,
-              onDelete: () => _confirmDelete(context, ref, manualTasks[i]),
-              onEdit: () =>
-                  _showAssignTaskSheet(context, ref, existing: manualTasks[i]),
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(allItemsStreamProvider);
+            },
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+              itemCount: manualTasks.length,
+              itemBuilder: (context, i) => _TaskCard(
+                task: manualTasks[i],
+                cardColor: cardColor,
+                borderColor: borderColor,
+                textColor: textColor,
+                labelColor: labelColor,
+                primaryColor: primaryColor,
+                ref: ref,
+                onDelete: () => _confirmDelete(context, ref, manualTasks[i]),
+                onEdit: () =>
+                    _showAssignTaskSheet(context, ref, existing: manualTasks[i]),
+              ),
             ),
           );
         },

@@ -26,8 +26,7 @@ class OrderItemModel extends OrderItemEntity {
     super.createdBy,
   });
 
-  factory OrderItemModel.fromJson(Map<String, dynamic> json) {
-    // dueDate stored as Firestore Timestamp or ISO string
+  factory OrderItemModel.fromJson(Map<String, dynamic> json, {String? docId}) {
     DateTime? dueDate;
     final rawDue = json['dueDate'];
     if (rawDue is Timestamp) {
@@ -36,21 +35,33 @@ class OrderItemModel extends OrderItemEntity {
       dueDate = DateTime.tryParse(rawDue);
     }
 
+    bool isCompleted = false;
+    final rawCompleted = json['isCompleted'];
+    if (rawCompleted is bool) {
+      isCompleted = rawCompleted;
+    } else if (rawCompleted is String) {
+      isCompleted = rawCompleted.toLowerCase() == 'true' || rawCompleted == '1';
+    } else if (rawCompleted is num) {
+      isCompleted = rawCompleted == 1;
+    }
+
     return OrderItemModel(
-      id: json['id'] as String,
-      orderId: json['orderId'] as String,
-      itemName: json['itemName'] as String,
-      specification: json['specification'] as String,
+      id: (json['id'] as String?)?.isNotEmpty == true
+          ? json['id'] as String
+          : (docId ?? ''),
+      orderId: json['orderId'] as String? ?? 'manual',
+      itemName: json['itemName'] as String? ?? '',
+      specification: json['specification'] as String? ?? '',
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
-      unit: json['unit'] as String? ?? 'pcs',
+      unit: json['unit'] as String? ?? 'task',
       days: (json['days'] as num?)?.toInt() ?? 1,
-      vendor: json['vendor'] as String,
+      vendor: json['vendor'] as String? ?? '',
       billingType: json['billingType'] as String? ?? 'daily',
       rate: (json['rate'] as num?)?.toDouble() ?? 0.0,
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       vendorRate: (json['vendorRate'] as num?)?.toDouble() ?? 0.0,
       vendorAmount: (json['vendorAmount'] as num?)?.toDouble() ?? 0.0,
-      isCompleted: json['isCompleted'] as bool? ?? false,
+      isCompleted: isCompleted,
       assignedStaffId: json['assignedStaffId'] as String?,
       assignedStaffName: json['assignedStaffName'] as String?,
       vendorBillUrl: json['vendorBillUrl'] as String?,
