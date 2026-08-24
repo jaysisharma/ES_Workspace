@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.CAMERA"/>
 
     <application
-        android:label="Event Order Pro"
+        android:label="ES Workspace"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/event_entity.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/presentation/providers/dashboard_strip_notifier.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/providers/event_providers.dart';
 import 'package:order_app/presentation/providers/notification_notifier.dart';
@@ -21,8 +23,10 @@ import 'package:order_app/presentation/screens/common/finance/event_financial_re
 import 'package:order_app/presentation/screens/common/events/calendar_screen.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
 import 'package:order_app/presentation/screens/admin/archived_orders_screen.dart';
+import 'package:order_app/presentation/screens/admin/bulk_delete_orders_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/settings_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/notifications_screen.dart';
+import 'package:order_app/presentation/screens/admin/manual_tasks_screen.dart';
 
 class NewDashboard extends ConsumerStatefulWidget {
   const NewDashboard({super.key});
@@ -133,7 +137,9 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
     final isSearching = _searchQuery.trim().isNotEmpty;
     final searchResults = isSearching
         ? allOrders
-              .where((o) => !o.isArchived && _matchesOrderQuery(o, _searchQuery))
+              .where(
+                (o) => !o.isArchived && _matchesOrderQuery(o, _searchQuery),
+              )
               .toList()
         : <OrderEntity>[];
 
@@ -146,7 +152,8 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
             LayoutBuilder(
               builder: (context, headerConstraints) {
                 final isMobile = headerConstraints.maxWidth < 650;
-                final isMobileSearching = isMobile && (_isSearchExpanded || _searchQuery.isNotEmpty);
+                final isMobileSearching =
+                    isMobile && (_isSearchExpanded || _searchQuery.isNotEmpty);
 
                 return Container(
                   padding: EdgeInsets.symmetric(
@@ -164,7 +171,10 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                             key: const ValueKey('mobile_search_header'),
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.arrow_back_rounded, size: 20),
+                                icon: const Icon(
+                                  Icons.arrow_back_rounded,
+                                  size: 20,
+                                ),
                                 onPressed: () {
                                   _searchController.clear();
                                   setState(() {
@@ -178,31 +188,55 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                                 child: Container(
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    color: isDarkMode ? const Color(0xFF192532) : const Color(0xFFf1f5f9),
+                                    color: isDarkMode
+                                        ? const Color(0xFF192532)
+                                        : const Color(0xFFf1f5f9),
                                     borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: primaryColor, width: 1.5),
+                                    border: Border.all(
+                                      color: primaryColor,
+                                      width: 1.5,
+                                    ),
                                   ),
                                   child: TextField(
                                     controller: _searchController,
                                     focusNode: _searchFocusNode,
                                     autofocus: true,
-                                    onChanged: (val) => setState(() => _searchQuery = val),
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                    onChanged: (val) =>
+                                        setState(() => _searchQuery = val),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                     decoration: InputDecoration(
                                       hintText: 'Search order name, ID...',
-                                      hintStyle: TextStyle(fontSize: 12, color: textMuted),
-                                      prefixIcon: Icon(Icons.search_rounded, size: 18, color: textMuted),
+                                      hintStyle: TextStyle(
+                                        fontSize: 12,
+                                        color: textMuted,
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.search_rounded,
+                                        size: 18,
+                                        color: textMuted,
+                                      ),
                                       suffixIcon: _searchQuery.isNotEmpty
                                           ? IconButton(
-                                              icon: const Icon(Icons.close_rounded, size: 16),
+                                              icon: const Icon(
+                                                Icons.close_rounded,
+                                                size: 16,
+                                              ),
                                               onPressed: () {
                                                 _searchController.clear();
-                                                setState(() => _searchQuery = '');
+                                                setState(
+                                                  () => _searchQuery = '',
+                                                );
                                               },
                                             )
                                           : null,
                                       border: InputBorder.none,
-                                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            vertical: 10,
+                                          ),
                                       isDense: true,
                                     ),
                                   ),
@@ -213,31 +247,6 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                         : Row(
                             key: const ValueKey('standard_header'),
                             children: [
-                              // Optional Hamburger Drawer Button if embedded in Scaffold with Drawer
-                              Builder(
-                                builder: (ctx) {
-                                  if (Scaffold.of(ctx).hasDrawer) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(right: 12),
-                                      child: IconButton(
-                                        icon: const Icon(Icons.menu_rounded, size: 22),
-                                        tooltip: 'Open Drawer',
-                                        style: IconButton.styleFrom(
-                                          backgroundColor: isDarkMode
-                                              ? const Color(0xFF1e2d3d)
-                                              : const Color(0xFFf1f5f9),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                        ),
-                                        onPressed: () => Scaffold.of(ctx).openDrawer(),
-                                      ),
-                                    );
-                                  }
-                                  return const SizedBox.shrink();
-                                },
-                              ),
-
                               // Greeting & Title Column
                               Expanded(
                                 child: Column(
@@ -267,8 +276,12 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                                             vertical: 2,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: primaryColor.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(6),
+                                            color: primaryColor.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                           ),
                                           child: Text(
                                             'ADMIN',
@@ -302,7 +315,10 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                               // Search Widget (Icon on mobile, Expandable bar on Desktop/Tablet)
                               if (isMobile)
                                 IconButton(
-                                  icon: const Icon(Icons.search_rounded, size: 22),
+                                  icon: const Icon(
+                                    Icons.search_rounded,
+                                    size: 22,
+                                  ),
                                   tooltip: 'Search',
                                   style: IconButton.styleFrom(
                                     backgroundColor: isDarkMode
@@ -332,9 +348,16 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                                 clipBehavior: Clip.none,
                                 children: [
                                   IconButton(
-                                    icon: const Icon(
-                                      Icons.notifications_none_rounded,
+                                    icon: Icon(
+                                      unreadCount > 0
+                                          ? Icons.notifications_active_rounded
+                                          : Icons.notifications_none_rounded,
                                       size: 22,
+                                      color: unreadCount > 0
+                                          ? primaryColor
+                                          : colorScheme.onSurface.withValues(
+                                              alpha: 0.85,
+                                            ),
                                     ),
                                     tooltip: 'Notifications',
                                     style: IconButton.styleFrom(
@@ -348,37 +371,106 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                                     onPressed: () {
                                       Navigator.push(
                                         context,
-                                        SlidePageRoute(page: const NotificationsScreen()),
+                                        SlidePageRoute(
+                                          page: const NotificationsScreen(),
+                                        ),
                                       );
                                     },
                                   ),
                                   if (unreadCount > 0)
                                     Positioned(
-                                      top: 2,
-                                      right: 2,
+                                      top: -1,
+                                      right: -1,
                                       child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.redAccent,
-                                          shape: BoxShape.circle,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 5,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFef4444),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          border: Border.all(
+                                            color: cardBgColor,
+                                            width: 2,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(
+                                                0xFFef4444,
+                                              ).withValues(alpha: 0.4),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
                                         ),
                                         constraints: const BoxConstraints(
-                                          minWidth: 16,
-                                          minHeight: 16,
+                                          minWidth: 18,
+                                          minHeight: 18,
                                         ),
-                                        child: Text(
-                                          unreadCount > 9 ? '9+' : '$unreadCount',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
+                                        child: Center(
+                                          child: Text(
+                                            unreadCount > 99
+                                                ? '99+'
+                                                : '$unreadCount',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w900,
+                                              height: 1.0,
+                                              letterSpacing: -0.2,
+                                            ),
+                                            textAlign: TextAlign.center,
                                           ),
-                                          textAlign: TextAlign.center,
                                         ),
                                       ),
                                     ),
                                 ],
                               ),
+
+                              // Desktop Refresh Button
+                              if (!isMobile) ...[
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 22,
+                                  ),
+                                  tooltip: 'Refresh Dashboard',
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: isDarkMode
+                                        ? const Color(0xFF1e2d3d)
+                                        : const Color(0xFFf1f5f9),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    HapticFeedback.lightImpact();
+                                    ref.invalidate(eventsStreamProvider);
+                                    ref.invalidate(ordersStreamProvider);
+                                    ref.invalidate(notificationsStreamProvider);
+                                    ref.invalidate(
+                                      dashboardStripNotifierProvider,
+                                    );
+                                    await ref
+                                        .read(orderNotifierProvider.notifier)
+                                        .loadOrders();
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Dashboard refreshed'),
+                                          duration: Duration(seconds: 1),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
                             ],
                           ),
                   ),
@@ -584,265 +676,324 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
           childAspectRatio = 1.05;
         } else {
           crossAxisCount = 2;
-          childAspectRatio = 0.95; // Extra headroom on mobile screens
+          childAspectRatio = 0.98; // Well-proportioned for mobile screens
         }
 
         final hPadding = isMobile ? 16.0 : 24.0;
         final vPadding = isMobile ? 14.0 : 20.0;
         final gridSpacing = isMobile ? 12.0 : 18.0;
 
-        return SingleChildScrollView(
-          padding: EdgeInsets.symmetric(vertical: vPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Weekly Events Strip (Full Width - 0 Horizontal Padding)
-              if (events.isNotEmpty) ...[
+        return RefreshIndicator(
+          color: primaryColor,
+          onRefresh: () async {
+            HapticFeedback.lightImpact();
+            ref.invalidate(eventsStreamProvider);
+            ref.invalidate(ordersStreamProvider);
+            ref.invalidate(notificationsStreamProvider);
+            ref.invalidate(dashboardStripNotifierProvider);
+            await ref.read(orderNotifierProvider.notifier).loadOrders();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: EdgeInsets.symmetric(vertical: vPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Weekly Events Strip (Full Width - 0 Horizontal Padding)
                 ThisWeekEventsStrip(events: events),
                 SizedBox(height: isMobile ? 16 : 24),
+
+                // Workspace Modules & Actions Section (With Horizontal Padding)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: hPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Section Title
+                      Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: primaryColor,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Workspace Modules & Actions',
+                            style: TextStyle(
+                              fontSize: isMobile ? 15 : 17,
+                              fontWeight: FontWeight.w800,
+                              fontFamily: 'Manrope',
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      SizedBox(height: isMobile ? 12 : 16),
+
+                      // Responsive Action Modules Grid
+                      GridView.count(
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: gridSpacing,
+                        mainAxisSpacing: gridSpacing,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        childAspectRatio: childAspectRatio,
+                        children: [
+                          // Create New Order
+                          _buildModuleCard(
+                            title: 'Create Order',
+                            subtitle: 'Register new event order',
+                            icon: Icons.add_shopping_cart_rounded,
+                            accentColor: const Color(0xFF0075db),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isProminent: true,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const CreateOrderScreen()),
+                            ),
+                          ),
+
+                          // HR & Employees
+                          _buildModuleCard(
+                            title: 'HR & Employees',
+                            subtitle: 'Manage team staff & leaves',
+                            icon: Icons.badge_rounded,
+                            accentColor: const Color(0xFF3b82f6),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const HrManagementScreen()),
+                            ),
+                          ),
+
+                          // Assign Tasks
+                          _buildModuleCard(
+                            title: 'Assign Tasks',
+                            subtitle: 'Give staff manual instructions',
+                            icon: Icons.assignment_ind_rounded,
+                            accentColor: const Color(0xFFf97316),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                  page: const ManualTasksScreen()),
+                            ),
+                          ),
+
+                          // Attendance & Logs
+                          _buildModuleCard(
+                            title: 'Attendance & Logs',
+                            subtitle: 'Staff check-ins & logs',
+                            icon: Icons.access_time_filled_rounded,
+                            accentColor: const Color(0xFF0d9488),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: const AdminAttendanceDashboard(),
+                              ),
+                            ),
+                          ),
+
+                          // Vendors
+                          _buildModuleCard(
+                            title: 'Vendors',
+                            subtitle: 'Vendor directory & contacts',
+                            icon: Icons.business_center_rounded,
+                            accentColor: const Color(0xFFf59e0b),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const VendorScreen()),
+                            ),
+                          ),
+
+                          // Clients
+                          _buildModuleCard(
+                            title: 'Clients',
+                            subtitle: 'Client directory & details',
+                            icon: Icons.people_alt_rounded,
+                            accentColor: const Color(0xFF8b5cf6),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const ClientScreen()),
+                            ),
+                          ),
+
+                          // Purchase Orders
+                          _buildModuleCard(
+                            title: 'Purchase Orders',
+                            subtitle: 'PO records & supply tracking',
+                            icon: Icons.receipt_long_rounded,
+                            accentColor: const Color(0xFF0284c7),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: const PurchaseOrderListScreen(),
+                              ),
+                            ),
+                          ),
+
+                          // Financial Ledger
+                          _buildModuleCard(
+                            title: 'Financial Ledger',
+                            subtitle: 'Transactions & ledger book',
+                            icon: Icons.account_balance_wallet_rounded,
+                            accentColor: const Color(0xFF10b981),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: const FinancialLedgerScreen(),
+                              ),
+                            ),
+                          ),
+
+                          // Event Reports
+                          _buildModuleCard(
+                            title: 'Event Reports',
+                            subtitle: 'Event revenue & P&L reports',
+                            icon: Icons.summarize_rounded,
+                            accentColor: const Color(0xFFec4899),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: const EventFinancialReportScreen(),
+                              ),
+                            ),
+                          ),
+
+                          // Calendar & Schedule
+                          _buildModuleCard(
+                            title: 'Calendar & Schedule',
+                            subtitle: 'Event timelines & bookings',
+                            icon: Icons.calendar_month_rounded,
+                            accentColor: const Color(0xFF6366f1),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const CalendarScreen()),
+                            ),
+                          ),
+
+                          // Company Profile
+                          _buildModuleCard(
+                            title: 'Company Profile',
+                            subtitle: 'Synology files & company doc',
+                            icon: Icons.picture_as_pdf_rounded,
+                            accentColor: const Color(0xFFe11d48),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: const SynologyCompanyPdfScreen(),
+                              ),
+                            ),
+                          ),
+
+                          // Archived Orders
+                          _buildModuleCard(
+                            title: 'Archived Orders',
+                            subtitle: 'View & restore archived events',
+                            icon: Icons.inventory_2_rounded,
+                            accentColor: const Color(0xFF64748b),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: const ArchivedOrdersScreen(),
+                              ),
+                            ),
+                          ),
+
+                          // Bulk Delete Orders
+                          _buildModuleCard(
+                            title: 'Bulk Delete',
+                            subtitle: 'Purge orders till date or #',
+                            icon: Icons.delete_sweep_rounded,
+                            accentColor: const Color(0xFFef4444),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: const BulkDeleteOrdersScreen(),
+                              ),
+                            ),
+                          ),
+
+                          // System Settings
+                          _buildModuleCard(
+                            title: 'System Settings',
+                            subtitle: 'Preferences & configurations',
+                            icon: Icons.settings_rounded,
+                            accentColor: const Color(0xFF475569),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const SettingsScreen()),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
-
-              // Workspace Modules & Actions Section (With Horizontal Padding)
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: hPadding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Section Title
-                    Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 18,
-                          decoration: BoxDecoration(
-                            color: primaryColor,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Workspace Modules & Actions',
-                          style: TextStyle(
-                            fontSize: isMobile ? 15 : 17,
-                            fontWeight: FontWeight.w800,
-                            fontFamily: 'Manrope',
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-
-              SizedBox(height: isMobile ? 12 : 16),
-
-              // Responsive Action Modules Grid
-              GridView.count(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: gridSpacing,
-                mainAxisSpacing: gridSpacing,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: childAspectRatio,
-                children: [
-                  // Create New Order
-                  _buildModuleCard(
-                    title: 'Create Order',
-                    subtitle: 'Register new event order',
-                    icon: Icons.add_shopping_cart_rounded,
-                    accentColor: const Color(0xFF0075db),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isProminent: true,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const CreateOrderScreen()),
-                    ),
-                  ),
-
-                  // HR & Employees
-                  _buildModuleCard(
-                    title: 'HR & Employees',
-                    subtitle: 'Manage team staff & leaves',
-                    icon: Icons.badge_rounded,
-                    accentColor: const Color(0xFF3b82f6),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const HrManagementScreen()),
-                    ),
-                  ),
-
-                  // Attendance & Logs
-                  _buildModuleCard(
-                    title: 'Attendance & Logs',
-                    subtitle: 'Staff check-ins & logs',
-                    icon: Icons.access_time_filled_rounded,
-                    accentColor: const Color(0xFF0d9488),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const AdminAttendanceDashboard()),
-                    ),
-                  ),
-
-                  // Vendors
-                  _buildModuleCard(
-                    title: 'Vendors',
-                    subtitle: 'Vendor directory & contacts',
-                    icon: Icons.business_center_rounded,
-                    accentColor: const Color(0xFFf59e0b),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const VendorScreen()),
-                    ),
-                  ),
-
-                  // Clients
-                  _buildModuleCard(
-                    title: 'Clients',
-                    subtitle: 'Client directory & details',
-                    icon: Icons.people_alt_rounded,
-                    accentColor: const Color(0xFF8b5cf6),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const ClientScreen()),
-                    ),
-                  ),
-
-                  // Purchase Orders
-                  _buildModuleCard(
-                    title: 'Purchase Orders',
-                    subtitle: 'PO records & supply tracking',
-                    icon: Icons.receipt_long_rounded,
-                    accentColor: const Color(0xFF0284c7),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const PurchaseOrderListScreen()),
-                    ),
-                  ),
-
-                  // Financial Ledger
-                  _buildModuleCard(
-                    title: 'Financial Ledger',
-                    subtitle: 'Transactions & ledger book',
-                    icon: Icons.account_balance_wallet_rounded,
-                    accentColor: const Color(0xFF10b981),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const FinancialLedgerScreen()),
-                    ),
-                  ),
-
-                  // Event Reports
-                  _buildModuleCard(
-                    title: 'Event Reports',
-                    subtitle: 'Event revenue & P&L reports',
-                    icon: Icons.summarize_rounded,
-                    accentColor: const Color(0xFFec4899),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const EventFinancialReportScreen()),
-                    ),
-                  ),
-
-                  // Calendar & Schedule
-                  _buildModuleCard(
-                    title: 'Calendar & Schedule',
-                    subtitle: 'Event timelines & bookings',
-                    icon: Icons.calendar_month_rounded,
-                    accentColor: const Color(0xFF6366f1),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const CalendarScreen()),
-                    ),
-                  ),
-
-                  // Company Profile
-                  _buildModuleCard(
-                    title: 'Company Profile',
-                    subtitle: 'Synology files & company doc',
-                    icon: Icons.picture_as_pdf_rounded,
-                    accentColor: const Color(0xFFe11d48),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const SynologyCompanyPdfScreen()),
-                    ),
-                  ),
-
-                  // Archived Orders
-                  _buildModuleCard(
-                    title: 'Archived Orders',
-                    subtitle: 'View & restore archived events',
-                    icon: Icons.inventory_2_rounded,
-                    accentColor: const Color(0xFF64748b),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const ArchivedOrdersScreen()),
-                    ),
-                  ),
-
-                  // System Settings
-                  _buildModuleCard(
-                    title: 'System Settings',
-                    subtitle: 'Preferences & configurations',
-                    icon: Icons.settings_rounded,
-                    accentColor: const Color(0xFF475569),
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isMobile: isMobile,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const SettingsScreen()),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        );
       },
     );
   }

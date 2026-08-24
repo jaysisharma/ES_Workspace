@@ -15,6 +15,8 @@ import 'package:order_app/presentation/screens/common/finance/event_financial_re
 import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/vendor_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/client_screen.dart';
+import 'package:flutter/services.dart';
+import 'package:order_app/presentation/providers/dashboard_strip_notifier.dart';
 import 'package:order_app/presentation/screens/common/utility/notifications_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/settings_screen.dart';
 
@@ -134,170 +136,361 @@ class _FounderDashboardState extends ConsumerState<FounderDashboard> {
       body: SafeArea(
         child: Column(
           children: [
-            // Top Header: Branding, Greeting, Short Search Bar & Notifications
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(
-                color: cardBgColor,
-                border: Border(bottom: BorderSide(color: borderColor)),
-              ),
-              child: Row(
-                children: [
-                  // Optional Hamburger Drawer Button
-                  Builder(
-                    builder: (ctx) {
-                      if (Scaffold.of(ctx).hasDrawer) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 12),
-                          child: IconButton(
-                            icon: const Icon(Icons.menu_rounded, size: 22),
-                            tooltip: 'Open Navigation Drawer',
-                            style: IconButton.styleFrom(
-                              backgroundColor: isDarkMode
-                                  ? const Color(0xFF1e2d3d)
-                                  : const Color(0xFFf1f5f9),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            onPressed: () => Scaffold.of(ctx).openDrawer(),
-                          ),
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
-                  ),
+            // Top Header: Branding, Greeting, Search & Notifications
+            LayoutBuilder(
+              builder: (context, headerConstraints) {
+                final isMobile = headerConstraints.maxWidth < 650;
+                final isMobileSearching =
+                    isMobile && (_isSearchExpanded || _searchQuery.isNotEmpty);
 
-                  // Greeting & Title
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              'ES Workspace',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'Manrope',
-                                letterSpacing: -0.5,
-                                color: colorScheme.onSurface,
+                return Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 16 : 24,
+                    vertical: isMobile ? 12 : 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cardBgColor,
+                    border: Border(bottom: BorderSide(color: borderColor)),
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: isMobileSearching
+                        ? Row(
+                            key: const ValueKey('founder_mobile_search_header'),
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.arrow_back_rounded,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                    _isSearchExpanded = false;
+                                  });
+                                  _searchFocusNode.unfocus();
+                                },
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                'FOUNDER',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: primaryColor,
-                                  letterSpacing: 0.5,
+                              Expanded(
+                                child: Container(
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode
+                                        ? const Color(0xFF192532)
+                                        : const Color(0xFFf1f5f9),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: primaryColor,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    controller: _searchController,
+                                    focusNode: _searchFocusNode,
+                                    autofocus: true,
+                                    onChanged: (val) =>
+                                        setState(() => _searchQuery = val),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'Search order name, ID...',
+                                      hintStyle: TextStyle(
+                                        fontSize: 12,
+                                        color: textMuted,
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.search_rounded,
+                                        size: 18,
+                                        color: textMuted,
+                                      ),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(
+                                                Icons.close_rounded,
+                                                size: 16,
+                                              ),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(
+                                                  () => _searchQuery = '',
+                                                );
+                                              },
+                                            )
+                                          : null,
+                                      border: InputBorder.none,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            vertical: 10,
+                                          ),
+                                      isDense: true,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Welcome, ${user?.email.split('@').first ?? 'Founder'} • ${formatNepaliDate(DateTime.now(), 'MMMM dd, yyyy')}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: textMuted,
-                            fontWeight: FontWeight.w500,
+                            ],
+                          )
+                        : Row(
+                            key: const ValueKey('founder_standard_header'),
+                            children: [
+                              // Greeting & Title
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            'ES Workspace',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: isMobile ? 17 : 20,
+                                              fontWeight: FontWeight.w800,
+                                              fontFamily: 'Manrope',
+                                              letterSpacing: -0.5,
+                                              color: colorScheme.onSurface,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: primaryColor.withValues(
+                                              alpha: 0.12,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'FOUNDER',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                              color: primaryColor,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Welcome, ${user?.email.split('@').first ?? 'Founder'} • ${formatNepaliDate(DateTime.now(), 'MMM dd')}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: isMobile ? 11 : 12,
+                                        color: textMuted,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(width: 8),
+
+                              // Search Widget (Icon on mobile, Expandable bar on Desktop)
+                              if (isMobile)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.search_rounded,
+                                    size: 22,
+                                  ),
+                                  tooltip: 'Search',
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: isDarkMode
+                                        ? const Color(0xFF1e2d3d)
+                                        : const Color(0xFFf1f5f9),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    setState(() => _isSearchExpanded = true);
+                                  },
+                                )
+                              else
+                                _buildSearchWidget(
+                                  isDarkMode,
+                                  primaryColor,
+                                  cardBgColor,
+                                  borderColor,
+                                  textMuted,
+                                ),
+
+                              const SizedBox(width: 8),
+
+                              // Notifications Button
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      unreadCount > 0
+                                          ? Icons.notifications_active_rounded
+                                          : Icons.notifications_none_rounded,
+                                      size: 22,
+                                      color: unreadCount > 0
+                                          ? primaryColor
+                                          : colorScheme.onSurface.withValues(
+                                              alpha: 0.85,
+                                            ),
+                                    ),
+                                    tooltip: 'Notifications',
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: isDarkMode
+                                          ? const Color(0xFF1e2d3d)
+                                          : const Color(0xFFf1f5f9),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        SlidePageRoute(
+                                          page: const NotificationsScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  if (unreadCount > 0)
+                                    Positioned(
+                                      top: -1,
+                                      right: -1,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 5,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFef4444),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          border: Border.all(
+                                            color: cardBgColor,
+                                            width: 2,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(
+                                                0xFFef4444,
+                                              ).withValues(alpha: 0.4),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 18,
+                                          minHeight: 18,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            unreadCount > 99
+                                                ? '99+'
+                                                : '$unreadCount',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w900,
+                                              height: 1.0,
+                                              letterSpacing: -0.2,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+
+                              // Desktop Refresh Button
+                              if (!isMobile) ...[
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 22,
+                                  ),
+                                  tooltip: 'Refresh Dashboard',
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: isDarkMode
+                                        ? const Color(0xFF1e2d3d)
+                                        : const Color(0xFFf1f5f9),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    HapticFeedback.lightImpact();
+                                    ref.invalidate(eventsStreamProvider);
+                                    ref.invalidate(ordersStreamProvider);
+                                    ref.invalidate(notificationsStreamProvider);
+                                    ref.invalidate(
+                                      dashboardStripNotifierProvider,
+                                    );
+                                    await ref
+                                        .read(orderNotifierProvider.notifier)
+                                        .loadOrders();
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Dashboard refreshed'),
+                                          duration: Duration(seconds: 1),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
+
+                              const SizedBox(width: 8),
+
+                              // Settings Button
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.settings_outlined,
+                                  size: 22,
+                                ),
+                                tooltip: 'Settings',
+                                style: IconButton.styleFrom(
+                                  backgroundColor: isDarkMode
+                                      ? const Color(0xFF1e2d3d)
+                                      : const Color(0xFFf1f5f9),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    SlidePageRoute(
+                                      page: const SettingsScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
-
-                  // Short Search Button / Bar in the Right Corner
-                  _buildSearchWidget(
-                    isDarkMode,
-                    primaryColor,
-                    cardBgColor,
-                    borderColor,
-                    textMuted,
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  // Notifications Button
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.notifications_none_rounded,
-                          size: 22,
-                        ),
-                        tooltip: 'Notifications',
-                        style: IconButton.styleFrom(
-                          backgroundColor: isDarkMode
-                              ? const Color(0xFF1e2d3d)
-                              : const Color(0xFFf1f5f9),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            SlidePageRoute(page: const NotificationsScreen()),
-                          );
-                        },
-                      ),
-                      if (unreadCount > 0)
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.redAccent,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 8,
-                              minHeight: 8,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  // Settings Button
-                  IconButton(
-                    icon: const Icon(Icons.settings_outlined, size: 22),
-                    tooltip: 'Settings',
-                    style: IconButton.styleFrom(
-                      backgroundColor: isDarkMode
-                          ? const Color(0xFF1e2d3d)
-                          : const Color(0xFFf1f5f9),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        SlidePageRoute(page: const SettingsScreen()),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                );
+              },
             ),
 
             // Main Content Area: Search Results or Actions Grid
@@ -508,168 +701,180 @@ class _FounderDashboardState extends ConsumerState<FounderDashboard> {
           childAspectRatio = 1.05;
         } else {
           crossAxisCount = 2;
-          childAspectRatio = 0.95;
+          childAspectRatio = 0.98;
         }
 
         final hPadding = isMobile ? 16.0 : 24.0;
         final vPadding = isMobile ? 14.0 : 20.0;
         final gridSpacing = isMobile ? 12.0 : 18.0;
 
-        return SingleChildScrollView(
-          padding: EdgeInsets.symmetric(vertical: vPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Weekly Events Strip
-              if (events.isNotEmpty) ...[
+        return RefreshIndicator(
+          color: primaryColor,
+          onRefresh: () async {
+            HapticFeedback.lightImpact();
+            ref.invalidate(eventsStreamProvider);
+            ref.invalidate(ordersStreamProvider);
+            ref.invalidate(notificationsStreamProvider);
+            ref.invalidate(dashboardStripNotifierProvider);
+            await ref.read(orderNotifierProvider.notifier).loadOrders();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: EdgeInsets.symmetric(vertical: vPadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Weekly Events Strip
                 ThisWeekEventsStrip(events: events),
                 SizedBox(height: isMobile ? 16 : 24),
-              ],
 
-              // Workspace Modules & Actions Section
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: hPadding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Section Title
-                    Row(
-                      children: [
-                        Container(
-                          width: 4,
-                          height: 18,
-                          decoration: BoxDecoration(
-                            color: primaryColor,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Workspace Modules & Actions',
-                          style: TextStyle(
-                            fontSize: isMobile ? 15 : 17,
-                            fontWeight: FontWeight.w800,
-                            fontFamily: 'Manrope',
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    SizedBox(height: isMobile ? 12 : 16),
-
-                    // Responsive Action Modules Grid (Exactly 5 Modules requested: Calendar, Event Reports, HR & Employees, Vendors, Clients)
-                    GridView.count(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: gridSpacing,
-                      mainAxisSpacing: gridSpacing,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      childAspectRatio: childAspectRatio,
-                      children: [
-                        // 1. Calendar & Schedule
-                        _buildModuleCard(
-                          title: 'Calendar & Schedule',
-                          subtitle: 'Event timelines & bookings',
-                          icon: Icons.calendar_month_rounded,
-                          accentColor: const Color(0xFF6366f1), // Indigo
-                          cardBgColor: cardBgColor,
-                          borderColor: borderColor,
-                          textMuted: textMuted,
-                          isMobile: isMobile,
-                          onTap: () => Navigator.push(
-                            context,
-                            SlidePageRoute(page: const CalendarScreen()),
-                          ),
-                        ),
-
-                        // 2. Event Reports
-                        _buildModuleCard(
-                          title: 'Event Reports',
-                          subtitle: 'Event revenue & P&L reports',
-                          icon: Icons.summarize_rounded,
-                          accentColor: const Color(0xFFec4899), // Pink
-                          cardBgColor: cardBgColor,
-                          borderColor: borderColor,
-                          textMuted: textMuted,
-                          isMobile: isMobile,
-                          onTap: () => Navigator.push(
-                            context,
-                            SlidePageRoute(
-                              page: const EventFinancialReportScreen(),
+                // Workspace Modules & Actions Section
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: hPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Section Title
+                      Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: primaryColor,
+                              borderRadius: BorderRadius.circular(2),
                             ),
                           ),
-                        ),
-
-                        // 3. HR & Employees
-                        _buildModuleCard(
-                          title: 'HR & Employees',
-                          subtitle: 'Manage team staff & leaves',
-                          icon: Icons.badge_rounded,
-                          accentColor: const Color(0xFF3b82f6), // Blue
-                          cardBgColor: cardBgColor,
-                          borderColor: borderColor,
-                          textMuted: textMuted,
-                          isMobile: isMobile,
-                          onTap: () => Navigator.push(
-                            context,
-                            SlidePageRoute(page: const HrManagementScreen()),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Workspace Modules & Actions',
+                            style: TextStyle(
+                              fontSize: isMobile ? 15 : 17,
+                              fontWeight: FontWeight.w800,
+                              fontFamily: 'Manrope',
+                              letterSpacing: -0.3,
+                            ),
                           ),
-                        ),
+                        ],
+                      ),
 
-                        // 4. Vendors
-                        _buildModuleCard(
-                          title: 'Vendors',
-                          subtitle: 'Vendor directory & contacts',
-                          icon: Icons.business_center_rounded,
-                          accentColor: const Color(0xFFf59e0b), // Amber
-                          cardBgColor: cardBgColor,
-                          borderColor: borderColor,
-                          textMuted: textMuted,
-                          isMobile: isMobile,
-                          onTap: () => Navigator.push(
-                            context,
-                            SlidePageRoute(page: const VendorScreen()),
-                          ),
-                        ),
+                      SizedBox(height: isMobile ? 12 : 16),
 
-                        // 5. Clients
-                        _buildModuleCard(
-                          title: 'Clients',
-                          subtitle: 'Client directory & details',
-                          icon: Icons.people_alt_rounded,
-                          accentColor: const Color(0xFF8b5cf6), // Purple
-                          cardBgColor: cardBgColor,
-                          borderColor: borderColor,
-                          textMuted: textMuted,
-                          isMobile: isMobile,
-                          onTap: () => Navigator.push(
-                            context,
-                            SlidePageRoute(page: const ClientScreen()),
+                      // Responsive Action Modules Grid (Exactly 5 Modules requested: Calendar, Event Reports, HR & Employees, Vendors, Clients)
+                      GridView.count(
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: gridSpacing,
+                        mainAxisSpacing: gridSpacing,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        childAspectRatio: childAspectRatio,
+                        children: [
+                          // 1. Calendar & Schedule
+                          _buildModuleCard(
+                            title: 'Calendar & Schedule',
+                            subtitle: 'Event timelines & bookings',
+                            icon: Icons.calendar_month_rounded,
+                            accentColor: const Color(0xFF6366f1), // Indigo
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const CalendarScreen()),
+                            ),
                           ),
-                        ),
 
-                        // 6. System Settings
-                        _buildModuleCard(
-                          title: 'System Settings',
-                          subtitle: 'Preferences & configurations',
-                          icon: Icons.settings_rounded,
-                          accentColor: const Color(0xFF64748b), // Slate
-                          cardBgColor: cardBgColor,
-                          borderColor: borderColor,
-                          textMuted: textMuted,
-                          isMobile: isMobile,
-                          onTap: () => Navigator.push(
-                            context,
-                            SlidePageRoute(page: const SettingsScreen()),
+                          // 2. Event Reports
+                          _buildModuleCard(
+                            title: 'Event Reports',
+                            subtitle: 'Event revenue & P&L reports',
+                            icon: Icons.summarize_rounded,
+                            accentColor: const Color(0xFFec4899), // Pink
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: const EventFinancialReportScreen(),
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+
+                          // 3. HR & Employees
+                          _buildModuleCard(
+                            title: 'HR & Employees',
+                            subtitle: 'Manage team staff & leaves',
+                            icon: Icons.badge_rounded,
+                            accentColor: const Color(0xFF3b82f6), // Blue
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const HrManagementScreen()),
+                            ),
+                          ),
+
+                          // 4. Vendors
+                          _buildModuleCard(
+                            title: 'Vendors',
+                            subtitle: 'Vendor directory & contacts',
+                            icon: Icons.business_center_rounded,
+                            accentColor: const Color(0xFFf59e0b), // Amber
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const VendorScreen()),
+                            ),
+                          ),
+
+                          // 5. Clients
+                          _buildModuleCard(
+                            title: 'Clients',
+                            subtitle: 'Client directory & details',
+                            icon: Icons.people_alt_rounded,
+                            accentColor: const Color(0xFF8b5cf6), // Purple
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const ClientScreen()),
+                            ),
+                          ),
+
+                          // 6. System Settings
+                          _buildModuleCard(
+                            title: 'System Settings',
+                            subtitle: 'Preferences & configurations',
+                            icon: Icons.settings_rounded,
+                            accentColor: const Color(0xFF64748b), // Slate
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const SettingsScreen()),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

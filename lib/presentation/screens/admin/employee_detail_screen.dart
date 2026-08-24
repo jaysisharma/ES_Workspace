@@ -36,14 +36,18 @@ class EmployeeDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
-  Future<void> _printEmployeePdf(EmployeeProfileEntity profile, {bool share = false}) async {
+  Future<void> _printEmployeePdf(
+    EmployeeProfileEntity profile, {
+    bool share = false,
+  }) async {
     try {
       final pdfData = await EmployeePdfService.generateEmployeeDetailPdf(
         profile: profile,
         user: widget.user,
       );
 
-      final fileName = 'Employee_Profile_${profile.name.replaceAll(RegExp(r'[ ,]+'), '_')}.pdf';
+      final fileName =
+          'Employee_Profile_${profile.name.replaceAll(RegExp(r'[ ,]+'), '_')}.pdf';
 
       if (!mounted) return;
 
@@ -77,14 +81,19 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     }
   }
 
-  Future<void> _confirmDeleteEmployee(BuildContext context, EmployeeProfileEntity profile) async {
+  Future<void> _confirmDeleteEmployee(
+    BuildContext context,
+    EmployeeProfileEntity profile,
+  ) async {
     bool deleteUserAccount = true;
 
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           title: Row(
             children: [
               Container(
@@ -93,7 +102,11 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   color: Colors.red.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.delete_forever_rounded, color: Colors.red, size: 24),
+                child: const Icon(
+                  Icons.delete_forever_rounded,
+                  color: Colors.red,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 10),
               const Expanded(
@@ -133,7 +146,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 activeColor: Colors.red,
                 title: Text(
                   'Also remove user login (${widget.user.email})',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 onChanged: (val) {
                   setDialogState(() {
@@ -154,7 +170,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () => Navigator.pop(dialogCtx, true),
-              child: const Text('Delete Permanently', style: TextStyle(fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Delete Permanently',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
@@ -212,13 +231,17 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           title: const Row(
             children: [
               Icon(Icons.lock_reset, color: Color(0xFF0075db)),
               SizedBox(width: 8),
-              Text('Account & Access Role',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+              Text(
+                'Account & Access Role',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           content: SizedBox(
@@ -252,11 +275,14 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     prefixIcon: const Icon(Icons.lock_outline, size: 20),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                         size: 20,
                       ),
-                      onPressed: () =>
-                          setDialogState(() => obscurePassword = !obscurePassword),
+                      onPressed: () => setDialogState(
+                        () => obscurePassword = !obscurePassword,
+                      ),
                     ),
                     border: const OutlineInputBorder(),
                     isDense: true,
@@ -267,7 +293,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   decoration: const InputDecoration(
                     labelText: 'System Access Role',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
                     isDense: true,
                   ),
                   child: DropdownButtonHideUnderline(
@@ -332,8 +361,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       if (newPassword.isNotEmpty && newPassword.length < 6) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                              content:
-                                  Text('Password must be at least 6 characters.')),
+                            content: Text(
+                              'Password must be at least 6 characters.',
+                            ),
+                          ),
                         );
                         return;
                       }
@@ -344,7 +375,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                           userId: currentUser.id,
                           oldEmail: currentUser.email,
                           newEmail: newEmail,
-                          newPassword: newPassword.isNotEmpty ? newPassword : null,
+                          newPassword: newPassword.isNotEmpty
+                              ? newPassword
+                              : null,
                           role: selectedRole,
                           name: profile.name,
                           profileId: profile.id,
@@ -358,7 +391,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                  'Account details and role updated successfully!'),
+                                'Account details and role updated successfully!',
+                              ),
                               backgroundColor: Colors.green,
                             ),
                           );
@@ -368,8 +402,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                                content: Text('Error updating account: $e'),
-                                backgroundColor: Colors.red),
+                              content: Text('Error updating account: $e'),
+                              backgroundColor: Colors.red,
+                            ),
                           );
                         }
                       }
@@ -379,7 +414,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Text('Save Changes'),
             ),
           ],
@@ -394,10 +432,14 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     UserEntity currentUser,
   ) async {
     final basicController = TextEditingController(
-      text: profile.basicSalary > 0 ? profile.basicSalary.toStringAsFixed(0) : '',
+      text: profile.basicSalary > 0
+          ? profile.basicSalary.toStringAsFixed(0)
+          : '',
     );
     final fuelController = TextEditingController(
-      text: profile.fuelAllowance > 0 ? profile.fuelAllowance.toStringAsFixed(0) : '',
+      text: profile.fuelAllowance > 0
+          ? profile.fuelAllowance.toStringAsFixed(0)
+          : '',
     );
     final commController = TextEditingController(
       text: profile.communicationAllowance > 0
@@ -466,7 +508,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   isDense: true,
                   focusedBorder: accentColor != null
                       ? OutlineInputBorder(
-                          borderSide: BorderSide(color: accentColor, width: 1.5),
+                          borderSide: BorderSide(
+                            color: accentColor,
+                            width: 1.5,
+                          ),
                         )
                       : null,
                 ),
@@ -475,8 +520,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           }
 
           return AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             title: Row(
               children: [
                 Container(
@@ -485,8 +531,11 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Icon(Icons.payments_outlined,
-                      color: Colors.green, size: 22),
+                  child: const Icon(
+                    Icons.payments_outlined,
+                    color: Colors.green,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -496,7 +545,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       const Text(
                         'Edit Monthly Payroll',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Text(
                         profile.name,
@@ -528,8 +579,11 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    buildField('Basic Salary', basicController,
-                        accentColor: Colors.green),
+                    buildField(
+                      'Basic Salary',
+                      basicController,
+                      accentColor: Colors.green,
+                    ),
                     buildField('Fuel Allowance', fuelController),
                     buildField('Communication Allowance', commController),
                     buildField('Dearness Allowance', dearController),
@@ -548,8 +602,11 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    buildField('TDS / Tax Deduction', tdsController,
-                        accentColor: Colors.redAccent),
+                    buildField(
+                      'TDS / Tax Deduction',
+                      tdsController,
+                      accentColor: Colors.redAccent,
+                    ),
                     buildField('Social Security Fund (SSF)', ssfController),
                     buildField('Citizen Investment Trust (CIT)', citController),
                     buildField('Health / Medical Insurance', insController),
@@ -566,10 +623,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                             .withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .outline
-                              .withValues(alpha: 0.2),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Column(
@@ -577,12 +633,16 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Gross Monthly:',
-                                  style: TextStyle(fontSize: 12)),
+                              const Text(
+                                'Gross Monthly:',
+                                style: TextStyle(fontSize: 12),
+                              ),
                               Text(
                                 'Rs. ${gross.toStringAsFixed(0)}',
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 12),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
                               ),
                             ],
                           ),
@@ -590,15 +650,20 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Total Deductions:',
-                                  style: TextStyle(
-                                      fontSize: 12, color: Colors.redAccent)),
+                              const Text(
+                                'Total Deductions:',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.redAccent,
+                                ),
+                              ),
                               Text(
                                 '- Rs. ${deductions.toStringAsFixed(0)}',
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    color: Colors.redAccent),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: Colors.redAccent,
+                                ),
                               ),
                             ],
                           ),
@@ -606,10 +671,13 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Net In-Hand Salary:',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13)),
+                              const Text(
+                                'Net In-Hand Salary:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
                               Text(
                                 'Rs. ${net.toStringAsFixed(0)}',
                                 style: TextStyle(
@@ -666,7 +734,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                    'Payroll updated for ${profile.name}'),
+                                  'Payroll updated for ${profile.name}',
+                                ),
                                 backgroundColor: const Color(0xFF10b981),
                               ),
                             );
@@ -675,8 +744,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                           if (dialogCtx.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content:
-                                    Text('Failed to update payroll: $e'),
+                                content: Text('Failed to update payroll: $e'),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -691,8 +759,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child:
-                            CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Text('Save Payroll'),
               ),
@@ -734,7 +804,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
 
     final profile = profilesStream.maybeWhen(
       data: (list) => list.cast<EmployeeProfileEntity>().firstWhere(
-        (p) => p.userId == widget.user.id || (currentUser.id.isNotEmpty && p.userId == currentUser.id),
+        (p) =>
+            p.userId == widget.user.id ||
+            (currentUser.id.isNotEmpty && p.userId == currentUser.id),
         orElse: () => widget.initialProfile ?? _createDefaultProfile(),
       ),
       orElse: () => widget.initialProfile ?? _createDefaultProfile(),
@@ -749,40 +821,131 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.picture_as_pdf_outlined, color: colorScheme.primary),
-            tooltip: 'Print / Preview PDF',
+            icon: Icon(
+              Icons.picture_as_pdf_outlined,
+              color: colorScheme.primary,
+              size: 20,
+            ),
+            tooltip: 'Preview PDF',
             onPressed: () => _printEmployeePdf(profile, share: false),
           ),
-          IconButton(
-            icon: const Icon(Icons.share_outlined),
-            tooltip: 'Share Employee PDF',
-            onPressed: () => _printEmployeePdf(profile, share: true),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, size: 22),
+            tooltip: 'More actions',
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            onSelected: (value) {
+              switch (value) {
+                case 'edit_profile':
+                  context.pushPage(
+                    AddEmployeeScreen(
+                      userId: currentUser.id,
+                      userName: currentUser.name,
+                      userEmail: currentUser.email,
+                      userRole: currentUser.role,
+                      initialProfile: profile,
+                    ),
+                  );
+                  break;
+                case 'change_password':
+                  _showChangeCredentialsDialog(context, profile, currentUser);
+                  break;
+                case 'preview_pdf':
+                  _printEmployeePdf(profile, share: false);
+                  break;
+                case 'share_pdf':
+                  _printEmployeePdf(profile, share: true);
+                  break;
+                case 'delete_employee':
+                  _confirmDeleteEmployee(context, profile);
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              if (isAdmin) ...[
+                const PopupMenuItem(
+                  value: 'edit_profile',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_note_rounded, size: 18),
+                      SizedBox(width: 12),
+                      Text('Edit HR Profile', style: TextStyle(fontSize: 13.5)),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'change_password',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.lock_reset_rounded,
+                        size: 18,
+                        color: Color(0xFF0075db),
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Change Password & Role',
+                        style: TextStyle(fontSize: 13.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+              ],
+              const PopupMenuItem(
+                value: 'preview_pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf_outlined, size: 18),
+                    SizedBox(width: 12),
+                    Text(
+                      'Preview / Print PDF',
+                      style: TextStyle(fontSize: 13.5),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'share_pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.share_outlined, size: 18),
+                    SizedBox(width: 12),
+                    Text(
+                      'Share Employee PDF',
+                      style: TextStyle(fontSize: 13.5),
+                    ),
+                  ],
+                ),
+              ),
+              if (isAdmin) ...[
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'delete_employee',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_outline_rounded,
+                        size: 18,
+                        color: Colors.redAccent,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Delete Employee Record',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
-          if (isAdmin) ...[
-            IconButton(
-              icon: const Icon(Icons.lock_reset, color: Color(0xFF0075db)),
-              tooltip: 'Change Password & Role',
-              onPressed: () => _showChangeCredentialsDialog(context, profile, currentUser),
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit_note),
-              tooltip: 'Edit HR Profile',
-              onPressed: () {
-                context.pushPage(AddEmployeeScreen(
-                    userId: currentUser.id,
-                    userName: currentUser.name,
-                    userEmail: currentUser.email,
-                    userRole: currentUser.role,
-                    initialProfile: profile));
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
-              tooltip: 'Delete Employee Record',
-              onPressed: () => _confirmDeleteEmployee(context, profile),
-            ),
-          ],
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
       ),
       body: SingleChildScrollView(
@@ -794,19 +957,45 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             const SizedBox(height: 16),
 
             // 2. Office & Salary Breakdown Card
-            _buildPayrollTab(context, profile, currentUser, borderColor, labelColor, textColor),
+            _buildPayrollTab(
+              context,
+              profile,
+              currentUser,
+              borderColor,
+              labelColor,
+              textColor,
+            ),
             const SizedBox(height: 16),
 
             // 3. Personal & Family Information Card
-            _buildPersonalTab(context, profile, currentUser, borderColor, labelColor, textColor),
+            _buildPersonalTab(
+              context,
+              profile,
+              currentUser,
+              borderColor,
+              labelColor,
+              textColor,
+            ),
             const SizedBox(height: 16),
 
             // 4. Leave Allocations Card
-            _buildLeaveAllocationsTab(context, profile, borderColor, labelColor, textColor),
+            _buildLeaveAllocationsTab(
+              context,
+              profile,
+              borderColor,
+              labelColor,
+              textColor,
+            ),
             const SizedBox(height: 16),
 
             // 5. Credentials & Identification Documents Grid
-            _buildDocumentsTab(context, profile, borderColor, labelColor, textColor),
+            _buildDocumentsTab(
+              context,
+              profile,
+              borderColor,
+              labelColor,
+              textColor,
+            ),
             const SizedBox(height: 20),
 
             // 6. Action Bar for PDF Generation
@@ -815,11 +1004,18 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.print_outlined, size: 18),
-                    label: const Text('PREVIEW / PRINT PDF',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    label: const Text(
+                      'PREVIEW / PRINT PDF',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     onPressed: () => _printEmployeePdf(profile, share: false),
                   ),
@@ -828,13 +1024,20 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     icon: const Icon(Icons.share_outlined, size: 18),
-                    label: const Text('SHARE DOSSIER PDF',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    label: const Text(
+                      'SHARE DOSSIER PDF',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green.shade700,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     onPressed: () => _printEmployeePdf(profile, share: true),
                   ),
@@ -861,7 +1064,11 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   }
 
   Widget _buildProfileHeaderCard(
-      BuildContext context, EmployeeProfileEntity profile, UserEntity currentUser, bool isDarkMode) {
+    BuildContext context,
+    EmployeeProfileEntity profile,
+    UserEntity currentUser,
+    bool isDarkMode,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
@@ -880,7 +1087,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 width: 80,
                 height: 80,
                 color: colorScheme.primaryContainer,
-                child: (profile.photoUrl != null && profile.photoUrl!.isNotEmpty)
+                child:
+                    (profile.photoUrl != null && profile.photoUrl!.isNotEmpty)
                     ? _renderDocumentImage(profile.photoUrl!, colorScheme)
                     : Center(
                         child: Text(
@@ -915,8 +1123,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -932,8 +1142,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       ),
                       const SizedBox(width: 6),
                       Container(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -967,8 +1179,11 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.email_outlined,
-                                size: 14, color: colorScheme.onSurfaceVariant),
+                            Icon(
+                              Icons.email_outlined,
+                              size: 14,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               currentUser.email,
@@ -982,8 +1197,11 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.calendar_today,
-                              size: 14, color: colorScheme.onSurfaceVariant),
+                          Icon(
+                            Icons.calendar_today,
+                            size: 14,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             'Joined: ${formatNepaliDate(profile.officeJoinDate, 'dd MMM yyyy')}',
@@ -1026,51 +1244,70 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Personal & Account Details',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                'Personal & Account Details',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const Divider(height: 20),
               _buildDetailRow('Full Name', profile.name, labelColor, textColor),
               _buildDetailRow(
-                  'Login Email Address',
-                  currentUser.email.isNotEmpty ? currentUser.email : 'N/A',
-                  labelColor,
-                  textColor),
-              _buildDetailRow('System Access Role', currentUser.role.displayName,
-                  labelColor, textColor),
+                'Login Email Address',
+                currentUser.email.isNotEmpty ? currentUser.email : 'N/A',
+                labelColor,
+                textColor,
+              ),
               _buildDetailRow(
-                  'Date of Birth',
-                  profile.dob != null
-                      ? formatNepaliDate(profile.dob!, 'dd MMM yyyy')
-                      : 'N/A',
-                  labelColor,
-                  textColor),
-              _buildDetailRow('Blood Group', profile.bloodGroup, labelColor, textColor),
+                'System Access Role',
+                currentUser.role.displayName,
+                labelColor,
+                textColor,
+              ),
               _buildDetailRow(
-                  'Permanent Address',
-                  profile.address.isNotEmpty ? profile.address : 'N/A',
-                  labelColor,
-                  textColor),
+                'Date of Birth',
+                profile.dob != null
+                    ? formatNepaliDate(profile.dob!, 'dd MMM yyyy')
+                    : 'N/A',
+                labelColor,
+                textColor,
+              ),
+              _buildDetailRow(
+                'Blood Group',
+                profile.bloodGroup,
+                labelColor,
+                textColor,
+              ),
+              _buildDetailRow(
+                'Permanent Address',
+                profile.address.isNotEmpty ? profile.address : 'N/A',
+                labelColor,
+                textColor,
+              ),
               const SizedBox(height: 20),
-              const Text('Family Background Details',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                'Family Background Details',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const Divider(height: 20),
               _buildDetailRow(
-                  'Father\'s Name',
-                  profile.fatherName.isNotEmpty ? profile.fatherName : 'N/A',
-                  labelColor,
-                  textColor),
+                'Father\'s Name',
+                profile.fatherName.isNotEmpty ? profile.fatherName : 'N/A',
+                labelColor,
+                textColor,
+              ),
               _buildDetailRow(
-                  'Mother\'s Name',
-                  profile.motherName.isNotEmpty ? profile.motherName : 'N/A',
-                  labelColor,
-                  textColor),
+                'Mother\'s Name',
+                profile.motherName.isNotEmpty ? profile.motherName : 'N/A',
+                labelColor,
+                textColor,
+              ),
               _buildDetailRow(
-                  'Grandfather\'s Name',
-                  profile.grandfatherName.isNotEmpty
-                      ? profile.grandfatherName
-                      : 'N/A',
-                  labelColor,
-                  textColor),
+                'Grandfather\'s Name',
+                profile.grandfatherName.isNotEmpty
+                    ? profile.grandfatherName
+                    : 'N/A',
+                labelColor,
+                textColor,
+              ),
             ],
           ),
         ),
@@ -1099,40 +1336,62 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Employment & Status',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text(
+                'Employment & Status',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
               const Divider(height: 20),
-              _buildDetailRow('Designation', profile.designation, labelColor, textColor),
               _buildDetailRow(
-                  'Office Join Date',
-                  formatNepaliDate(profile.officeJoinDate, 'dd MMM yyyy'),
-                  labelColor,
-                  textColor),
+                'Designation',
+                profile.designation,
+                labelColor,
+                textColor,
+              ),
               _buildDetailRow(
-                  'Office Leaving Date',
-                  profile.officeLeavingDate != null
-                      ? formatNepaliDate(profile.officeLeavingDate!, 'dd MMM yyyy')
-                      : 'Active Employee',
-                  labelColor,
-                  textColor),
+                'Office Join Date',
+                formatNepaliDate(profile.officeJoinDate, 'dd MMM yyyy'),
+                labelColor,
+                textColor,
+              ),
+              _buildDetailRow(
+                'Office Leaving Date',
+                profile.officeLeavingDate != null
+                    ? formatNepaliDate(
+                        profile.officeLeavingDate!,
+                        'dd MMM yyyy',
+                      )
+                    : 'Active Employee',
+                labelColor,
+                textColor,
+              ),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Monthly Compensation & Salary Structure',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  const Expanded(
+                    child: Text(
+                      'Monthly Compensation & Salary Structure',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.edit_outlined, size: 14),
-                    label: const Text('Edit Payroll', style: TextStyle(fontSize: 12)),
+                    label: const Text(
+                      'Edit Payroll',
+                      style: TextStyle(fontSize: 11),
+                    ),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
+                        horizontal: 8,
                         vertical: 4,
                       ),
                     ),
-                    onPressed: () => _showEditPayrollDialog(context, profile, currentUser),
+                    onPressed: () =>
+                        _showEditPayrollDialog(context, profile, currentUser),
                   ),
                 ],
               ),
@@ -1144,48 +1403,75 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 return Column(
                   children: [
                     _buildDetailRow(
-                        'Basic Salary',
-                        CurrencyFormatter.formatWithLabel(profile.basicSalary, 'NPR'),
-                        labelColor,
-                        textColor),
+                      'Basic Salary',
+                      CurrencyFormatter.formatWithLabel(
+                        profile.basicSalary,
+                        'NPR',
+                      ),
+                      labelColor,
+                      textColor,
+                    ),
                     if (profile.fuelAllowance > 0)
                       _buildDetailRow(
-                          'Fuel Allowance',
-                          CurrencyFormatter.formatWithLabel(profile.fuelAllowance, 'NPR'),
-                          labelColor,
-                          textColor),
+                        'Fuel Allowance',
+                        CurrencyFormatter.formatWithLabel(
+                          profile.fuelAllowance,
+                          'NPR',
+                        ),
+                        labelColor,
+                        textColor,
+                      ),
                     if (profile.communicationAllowance > 0)
                       _buildDetailRow(
-                          'Communication Allowance',
-                          CurrencyFormatter.formatWithLabel(profile.communicationAllowance, 'NPR'),
-                          labelColor,
-                          textColor),
+                        'Communication Allowance',
+                        CurrencyFormatter.formatWithLabel(
+                          profile.communicationAllowance,
+                          'NPR',
+                        ),
+                        labelColor,
+                        textColor,
+                      ),
                     if (profile.dearnessAllowance > 0)
                       _buildDetailRow(
-                          'Dearness Allowance (DA)',
-                          CurrencyFormatter.formatWithLabel(profile.dearnessAllowance, 'NPR'),
-                          labelColor,
-                          textColor),
+                        'Dearness Allowance (DA)',
+                        CurrencyFormatter.formatWithLabel(
+                          profile.dearnessAllowance,
+                          'NPR',
+                        ),
+                        labelColor,
+                        textColor,
+                      ),
                     if (profile.bonus > 0)
                       _buildDetailRow(
-                          'Bonus / Allowances',
-                          CurrencyFormatter.formatWithLabel(profile.bonus, 'NPR'),
-                          labelColor,
-                          textColor),
+                        'Bonus / Allowances',
+                        CurrencyFormatter.formatWithLabel(profile.bonus, 'NPR'),
+                        labelColor,
+                        textColor,
+                      ),
                     Container(
                       margin: const EdgeInsets.symmetric(vertical: 6),
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.15),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Gross Salary',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          const Text(
+                            'Gross Salary',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
                           Text(
-                            CurrencyFormatter.formatWithLabel(profile.grossSalary, 'NPR'),
+                            CurrencyFormatter.formatWithLabel(
+                              profile.grossSalary,
+                              'NPR',
+                            ),
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -1197,33 +1483,44 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     ),
                     const SizedBox(height: 6),
                     _buildDetailRow(
-                        'SSF Contribution',
-                        CurrencyFormatter.formatWithLabel(profile.ssf, 'NPR'),
-                        labelColor,
-                        textColor),
+                      'SSF Contribution',
+                      CurrencyFormatter.formatWithLabel(profile.ssf, 'NPR'),
+                      labelColor,
+                      textColor,
+                    ),
                     if (profile.effectiveLifeInsurance > 0)
                       _buildDetailRow(
-                          'Life Insurance',
-                          CurrencyFormatter.formatWithLabel(profile.effectiveLifeInsurance, 'NPR'),
-                          labelColor,
-                          textColor),
+                        'Life Insurance',
+                        CurrencyFormatter.formatWithLabel(
+                          profile.effectiveLifeInsurance,
+                          'NPR',
+                        ),
+                        labelColor,
+                        textColor,
+                      ),
                     if (profile.effectiveHealthInsurance > 0)
                       _buildDetailRow(
-                          'Health Insurance',
-                          CurrencyFormatter.formatWithLabel(profile.effectiveHealthInsurance, 'NPR'),
-                          labelColor,
-                          textColor),
+                        'Health Insurance',
+                        CurrencyFormatter.formatWithLabel(
+                          profile.effectiveHealthInsurance,
+                          'NPR',
+                        ),
+                        labelColor,
+                        textColor,
+                      ),
                     if (profile.cit > 0)
                       _buildDetailRow(
-                          'CIT Contribution',
-                          CurrencyFormatter.formatWithLabel(profile.cit, 'NPR'),
-                          labelColor,
-                          textColor),
-                    _buildDetailRow(
-                        'TDS (Tax Deducted at Source)',
-                        '${CurrencyFormatter.formatWithLabel(profile.tds, 'NPR')}${tdsPct > 0 ? ' (${tdsPct.toStringAsFixed(1)}%)' : ''}',
+                        'CIT Contribution',
+                        CurrencyFormatter.formatWithLabel(profile.cit, 'NPR'),
                         labelColor,
-                        textColor),
+                        textColor,
+                      ),
+                    _buildDetailRow(
+                      'TDS (Tax Deducted at Source)',
+                      '${CurrencyFormatter.formatWithLabel(profile.tds, 'NPR')}${tdsPct > 0 ? ' (${tdsPct.toStringAsFixed(1)}%)' : ''}',
+                      labelColor,
+                      textColor,
+                    ),
                   ],
                 );
               }(),
@@ -1234,7 +1531,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   const Expanded(
                     child: Text(
                       'Net Payable Monthly Salary (In Hand)',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -1335,7 +1635,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -1352,20 +1655,27 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 ),
               ],
             ),
-            if (photoUrl1 != null || photoUrl2 != null) const SizedBox(height: 12),
+            if (photoUrl1 != null || photoUrl2 != null)
+              const SizedBox(height: 12),
             Row(
               children: [
                 if (photoUrl1 != null && photoUrl1.isNotEmpty)
                   Expanded(
                     child: _buildPhotoPreview(
-                        context, photoUrl1, photoUrl1Title ?? 'Front'),
+                      context,
+                      photoUrl1,
+                      photoUrl1Title ?? 'Front',
+                    ),
                   ),
                 if (photoUrl1 != null && photoUrl2 != null)
                   const SizedBox(width: 12),
                 if (photoUrl2 != null && photoUrl2.isNotEmpty)
                   Expanded(
                     child: _buildPhotoPreview(
-                        context, photoUrl2, photoUrl2Title ?? 'Back'),
+                      context,
+                      photoUrl2,
+                      photoUrl2Title ?? 'Back',
+                    ),
                   ),
               ],
             ),
@@ -1376,15 +1686,19 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   }
 
   Widget _buildPhotoPreview(
-      BuildContext context, String photoUrl, String title) {
+    BuildContext context,
+    String photoUrl,
+    String title,
+  ) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style:
-                TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
+        Text(
+          title,
+          style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+        ),
         const SizedBox(height: 4),
         GestureDetector(
           onTap: () => _showFullScreenImage(context, photoUrl, title),
@@ -1393,7 +1707,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             decoration: BoxDecoration(
               color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: colorScheme.outline.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: colorScheme.outline.withValues(alpha: 0.2),
+              ),
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
@@ -1410,14 +1726,30 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       try {
         final base64Data = photoUrl.split(',').last;
         final bytes = base64Decode(base64Data);
-        return Image.memory(bytes, fit: BoxFit.contain, width: double.infinity, height: double.infinity);
+        return Image.memory(
+          bytes,
+          fit: BoxFit.contain,
+          width: double.infinity,
+          height: double.infinity,
+        );
       } catch (_) {}
-    } else if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
-      return Image.network(photoUrl, fit: BoxFit.contain, width: double.infinity, height: double.infinity);
+    } else if (photoUrl.startsWith('http://') ||
+        photoUrl.startsWith('https://')) {
+      return Image.network(
+        photoUrl,
+        fit: BoxFit.contain,
+        width: double.infinity,
+        height: double.infinity,
+      );
     } else {
       final file = File(photoUrl);
       if (file.existsSync()) {
-        return Image.file(file, fit: BoxFit.contain, width: double.infinity, height: double.infinity);
+        return Image.file(
+          file,
+          fit: BoxFit.contain,
+          width: double.infinity,
+          height: double.infinity,
+        );
       }
     }
 
@@ -1427,15 +1759,21 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
         children: [
           Icon(Icons.image_outlined, color: colorScheme.onSurfaceVariant),
           const SizedBox(height: 4),
-          Text(photoUrl,
-              style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
-              overflow: TextOverflow.ellipsis),
+          Text(
+            photoUrl,
+            style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
       ),
     );
   }
 
-  void _showFullScreenImage(BuildContext context, String photoUrl, String title) {
+  void _showFullScreenImage(
+    BuildContext context,
+    String photoUrl,
+    String title,
+  ) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -1457,7 +1795,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               constraints: const BoxConstraints(maxHeight: 500, maxWidth: 600),
               padding: const EdgeInsets.all(12),
               child: InteractiveViewer(
-                child: _renderDocumentImage(photoUrl, Theme.of(context).colorScheme),
+                child: _renderDocumentImage(
+                  photoUrl,
+                  Theme.of(context).colorScheme,
+                ),
               ),
             ),
           ],
@@ -1467,7 +1808,11 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
   }
 
   Widget _buildDetailRow(
-      String title, String value, Color labelColor, Color textColor) {
+    String title,
+    String value,
+    Color labelColor,
+    Color textColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
@@ -1512,14 +1857,16 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     final leaveRequestsAsync = ref.watch(leaveRequestsStreamProvider);
     final leaveRequests = leaveRequestsAsync.maybeWhen(
       data: (list) => list
-          .where((l) =>
-              l.staffId == widget.user.id &&
-              l.status == LeaveStatus.approved &&
-              NepaliCalendarEngine.isWithinActiveLeaveCycle(
-                l.startDate,
-                cycleType: settings.leaveResetCycle,
-                manualStartDate: settings.customLeaveCycleStartDate,
-              ))
+          .where(
+            (l) =>
+                l.staffId == widget.user.id &&
+                l.status == LeaveStatus.approved &&
+                NepaliCalendarEngine.isWithinActiveLeaveCycle(
+                  l.startDate,
+                  cycleType: settings.leaveResetCycle,
+                  manualStartDate: settings.customLeaveCycleStartDate,
+                ),
+          )
           .toList(),
       orElse: () => <LeaveRequestEntity>[],
     );
@@ -1541,15 +1888,23 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.15),
+              color: Theme.of(
+                context,
+              ).colorScheme.primaryContainer.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
               children: [
-                Icon(Icons.event_repeat, size: 18, color: Theme.of(context).colorScheme.primary),
+                Icon(
+                  Icons.event_repeat,
+                  size: 18,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -1583,7 +1938,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                   final allowed = effectiveAllocations[leaveType] ?? 0;
                   final taken = takenDays(leaveType);
                   final remaining = (allowed - taken).clamp(0, allowed);
-                  final percent = allowed > 0 ? (taken / allowed).clamp(0.0, 1.0) : 0.0;
+                  final percent = allowed > 0
+                      ? (taken / allowed).clamp(0.0, 1.0)
+                      : 0.0;
 
                   return Container(
                     padding: const EdgeInsets.all(16),
@@ -1613,7 +1970,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: percent > 0.8 ? Colors.red : Theme.of(context).colorScheme.primary,
+                                color: percent > 0.8
+                                    ? Colors.red
+                                    : Theme.of(context).colorScheme.primary,
                               ),
                             ),
                           ],
@@ -1626,7 +1985,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                             minHeight: 6,
                             backgroundColor: borderColor,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              percent > 0.8 ? Colors.red : Theme.of(context).colorScheme.primary,
+                              percent > 0.8
+                                  ? Colors.red
+                                  : Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ),

@@ -75,7 +75,7 @@ class PdfTablesBuilder {
           item.unit,
           item.billingType == 'daily' ? 'Daily' : 'Event',
           item.days.toString(),
-          item.rate.toStringAsFixed(0),
+          item.rate > 0 ? item.rate.toStringAsFixed(0) : '-',
           item.amount.toStringAsFixed(0),
         ]);
       } else {
@@ -103,7 +103,7 @@ class PdfTablesBuilder {
           rev.unit,
           rev.billingType == 'daily' ? 'Daily' : 'Event',
           rev.days.toString(),
-          rev.rate.toStringAsFixed(0),
+          rev.rate > 0 ? rev.rate.toStringAsFixed(0) : '-',
           rev.amount.toStringAsFixed(0),
         ]);
       }
@@ -295,7 +295,7 @@ class PdfTablesBuilder {
         item.unit,
         item.billingType == 'daily' ? 'Daily' : 'Event',
         item.days.toString(),
-        item.vendorRate.toStringAsFixed(0),
+        item.vendorRate > 0 ? item.vendorRate.toStringAsFixed(0) : '-',
         amt.toStringAsFixed(0),
       ]);
     }
@@ -313,7 +313,7 @@ class PdfTablesBuilder {
         expense.unit,
         expense.billingType == 'daily' ? 'Daily' : 'Event',
         expense.days.toString(),
-        expense.rate.toStringAsFixed(0),
+        expense.rate > 0 ? expense.rate.toStringAsFixed(0) : '-',
         expense.amount.toStringAsFixed(0),
       ]);
     }
@@ -457,60 +457,57 @@ class PdfTablesBuilder {
       'Order ID',
       'Event Name',
       'Revenue',
-      'Advance',
-      'Due',
       'Expenses',
       'Profit',
+      'Advance',
+      'Due',
     ];
     final headerWidths = [1.8, 3.8, 1.8, 1.8, 1.8, 1.8, 1.8];
 
-    return PdfThemeAndStyles.card(
-      title: 'ORDER-WISE BREAKDOWN',
-      child: pw.Table(
-        columnWidths: {
-          for (int i = 0; i < headerWidths.length; i++)
-            i: pw.FlexColumnWidth(headerWidths[i]),
-        },
-        border: pw.TableBorder.all(color: PdfThemeAndStyles.borderColor, width: 0.5),
-        children: [
-          pw.TableRow(
-            decoration: const pw.BoxDecoration(color: PdfThemeAndStyles.lightBg),
-            children: headers
-                .map(
-                  (h) => pw.Padding(
-                    padding: const pw.EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 6,
-                    ),
-                    child: pw.Text(
-                      h.toUpperCase(),
-                      style: pw.TextStyle(
-                        fontSize: 7.5,
-                        fontWeight: pw.FontWeight.bold,
-                        color: PdfThemeAndStyles.darkColor,
-                      ),
-                    ),
-                  ),
-                )
-                .toList(),
-          ),
-          ...orders.map((order) {
-            final profit = order.totalAmount - order.totalExpenses;
-            final due = (order.totalAmount - order.advanceReceived).clamp(0.0, double.infinity);
-            return pw.TableRow(
-              children: [
-                PdfThemeAndStyles.tableCell(order.id, bold: true),
-                PdfThemeAndStyles.tableCell(order.eventName),
-                PdfThemeAndStyles.tableCell(order.totalAmount.toStringAsFixed(0)),
-                PdfThemeAndStyles.tableCell(order.advanceReceived.toStringAsFixed(0)),
-                PdfThemeAndStyles.tableCell(due.toStringAsFixed(0)),
-                PdfThemeAndStyles.tableCell(order.totalExpenses.toStringAsFixed(0)),
-                PdfThemeAndStyles.tableCell(profit.toStringAsFixed(0)),
-              ],
-            );
-          }),
-        ],
+    final data = orders.map((order) {
+      final profit = order.totalAmount - order.totalExpenses;
+      final due = (order.totalAmount - order.advanceReceived)
+          .clamp(0.0, double.infinity);
+      return [
+        order.id,
+        order.eventName,
+        order.totalAmount.toStringAsFixed(0),
+        order.totalExpenses.toStringAsFixed(0),
+        profit.toStringAsFixed(0),
+        order.advanceReceived.toStringAsFixed(0),
+        due.toStringAsFixed(0),
+      ];
+    }).toList();
+
+    return pw.TableHelper.fromTextArray(
+      headers: headers,
+      data: data,
+      columnWidths: Map.fromIterables(
+        List.generate(headers.length, (i) => i),
+        headerWidths.map((w) => pw.FlexColumnWidth(w)),
       ),
+      border: pw.TableBorder.all(
+        color: PdfThemeAndStyles.borderColor,
+        width: 0.5,
+      ),
+      headerStyle: pw.TextStyle(
+        fontSize: 7.5,
+        fontWeight: pw.FontWeight.bold,
+        color: PdfThemeAndStyles.darkColor,
+      ),
+      headerDecoration:
+          const pw.BoxDecoration(color: PdfThemeAndStyles.lightBg),
+      cellStyle: const pw.TextStyle(fontSize: 7.5),
+      cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+      cellAlignments: {
+        0: pw.Alignment.centerLeft,
+        1: pw.Alignment.centerLeft,
+        2: pw.Alignment.centerRight,
+        3: pw.Alignment.centerRight,
+        4: pw.Alignment.centerRight,
+        5: pw.Alignment.centerRight,
+        6: pw.Alignment.centerRight,
+      },
     );
   }
 
@@ -538,7 +535,7 @@ class PdfTablesBuilder {
         item.unit,
         item.billingType == 'daily' ? 'Daily' : 'Event',
         item.days.toString(),
-        item.rate.toStringAsFixed(0),
+        item.rate > 0 ? item.rate.toStringAsFixed(0) : '-',
         item.amount.toStringAsFixed(0),
       ];
     }).toList();

@@ -40,7 +40,8 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
     _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 35), (
       timer,
     ) {
-      if (!_scrollController.hasClients || _isUserInteracting) return;
+      if (!mounted || !_scrollController.hasClients || _isUserInteracting) return;
+      if (_scrollController.positions.isEmpty) return;
 
       final maxScroll = _scrollController.position.maxScrollExtent;
       final currentScroll = _scrollController.offset;
@@ -87,10 +88,23 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
     final isAdminOrFounder = authState.user?.role == UserRole.admin ||
         authState.user?.role == UserRole.founder;
 
-    // Fallback: Combine active orders if EventEntity records are not explicitly created
     final ordersAsync = ref.watch(ordersStreamProvider);
-    final orders = (ordersAsync.value ?? []).where((o) => !o.isArchived).toList();
-    final activeWidgetEvents = widget.events.where((e) => !e.isArchived).toList();
+    final ordersState = ref.watch(orderNotifierProvider);
+    final orders = (ordersAsync.value ?? ordersState.orders).where((o) => !o.isArchived).toList();
+    final orderMap = {for (final o in orders) o.id: o};
+
+    final activeWidgetEvents = widget.events.where((e) => !e.isArchived).map((e) {
+      final linkedOrder = orderMap[e.orderId];
+      if (linkedOrder != null) {
+        return e.copyWith(
+          date: linkedOrder.eventDate,
+          title: linkedOrder.eventName.isNotEmpty ? linkedOrder.eventName : e.title,
+          location: linkedOrder.venue.isNotEmpty ? linkedOrder.venue : e.location,
+          isArchived: linkedOrder.isArchived,
+        );
+      }
+      return e;
+    }).toList();
 
     final existingOrderIds = activeWidgetEvents.map((e) => e.orderId).toSet();
     final orderEvents = orders
@@ -111,46 +125,27 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
 
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
-    // End of the current week (Sunday end of day)
-    final daysUntilEndOfWeek = (7 - now.weekday) % 7;
-    final endOfWeek = todayStart.add(
-      Duration(days: daysUntilEndOfWeek, hours: 23, minutes: 59, seconds: 59),
-    );
 
-    // Filter events based on active mode with timezone safety
-    List<EventEntity> filteredEvents;
-    switch (stripState.mode) {
-      case DashboardStripMode.thisWeek:
-        filteredEvents = allEvents.where((e) {
-          final localDate = e.date.toLocal();
-          final eventDay = DateTime(localDate.year, localDate.month, localDate.day);
-          // Never show past days before today (e.g. if today is 7, don't show before 7)
-          final isTodayOrFuture = !eventDay.isBefore(todayStart);
-          final isWithinThisWeek = !eventDay.isAfter(endOfWeek);
-          return isTodayOrFuture && isWithinThisWeek;
-        }).toList();
-        break;
-      case DashboardStripMode.upcoming:
-        filteredEvents = allEvents.where((e) {
-          final localDate = e.date.toLocal();
-          final eventDay = DateTime(localDate.year, localDate.month, localDate.day);
-          // Today and future upcoming events
-          return !eventDay.isBefore(todayStart);
-        }).toList();
-        break;
-      case DashboardStripMode.custom:
-        filteredEvents = allEvents.where((e) {
-          return stripState.selectedEventIds.contains(e.id) ||
-                 stripState.selectedEventIds.contains(e.orderId);
-        }).toList();
-        break;
-      case DashboardStripMode.all:
-        filteredEvents = allEvents.where((e) {
-          final localDate = e.date.toLocal();
-          final eventDay = DateTime(localDate.year, localDate.month, localDate.day);
-          return !eventDay.isBefore(todayStart);
-        }).toList();
-        break;
+    // Filter events: strictly today or future dates (never before today)
+    final upcomingEvents = allEvents.where((e) {
+      final localDate = e.date.toLocal();
+      final eventDay = DateTime(localDate.year, localDate.month, localDate.day);
+      return !eventDay.isBefore(todayStart);
+    }).toList();
+
+    // Filter events based strictly on admin selection
+    final List<EventEntity> filteredEvents;
+    if (stripState.selectedEventIds.isNotEmpty) {
+      final explicitSelected = upcomingEvents.where((e) {
+        return stripState.selectedEventIds.contains(e.id) ||
+               stripState.selectedEventIds.contains(e.orderId) ||
+               stripState.selectedEventIds.contains('ord_evt_${e.orderId}');
+      }).toList();
+      // If admin selected specific upcoming events, display them.
+      // If all previously selected events expired in the past, fallback to all upcoming events!
+      filteredEvents = explicitSelected.isNotEmpty ? explicitSelected : upcomingEvents;
+    } else {
+      filteredEvents = upcomingEvents;
     }
 
     // Sort chronologically
@@ -161,11 +156,7 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
         ? [...filteredEvents, ...filteredEvents, ...filteredEvents]
         : filteredEvents;
 
-    final emptyMessage = stripState.mode == DashboardStripMode.custom
-        ? 'No custom events selected'
-        : stripState.mode == DashboardStripMode.upcoming
-            ? 'No upcoming events scheduled'
-            : 'No events scheduled for this week';
+    const emptyMessage = 'No events selected for strip';
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -220,18 +211,18 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
                     ),
                   ],
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.campaign_rounded,
                       size: 14,
                       color: Colors.white,
                     ),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Text(
-                      stripState.mode.badgeText,
-                      style: const TextStyle(
+                      'EVENTS',
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
@@ -374,7 +365,6 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
                   tooltip: 'Configure Strip Events',
                   onPressed: () => DashboardEventSelectionDialog.show(
                     context,
-                    widget.events,
                   ),
                 ),
 

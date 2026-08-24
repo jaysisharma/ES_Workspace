@@ -52,24 +52,25 @@ class _AdminManualAttendanceDialogState
       backgroundColor: colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       title: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Icon(Icons.edit_calendar, color: colorScheme.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Manual Attendance Entry',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: textColor,
-                ),
+          Icon(Icons.edit_calendar, color: colorScheme.primary, size: 22),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Manual Attendance Entry',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: textColor,
               ),
-            ],
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           IconButton(
             icon: Icon(Icons.close, color: labelColor),
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
             onPressed: () => Navigator.pop(context),
           ),
         ],
@@ -133,7 +134,7 @@ class _AdminManualAttendanceDialogState
                       ),
                       ...orders.map((o) => DropdownMenuItem<OrderEntity?>(
                             value: o,
-                            child: Text('${o.eventName} (ID: ${o.id.substring(0, 8)})'),
+                            child: Text('${o.eventName} (ID: ${o.id})'),
                           )),
                     ],
                     onChanged: (val) => setState(() => _selectedEvent = val),
@@ -231,10 +232,18 @@ class _AdminManualAttendanceDialogState
                       children: [
                         Row(
                           children: [
-                            Text('Check-out Time',
-                                style: TextStyle(fontSize: 12, color: labelColor)),
+                            Expanded(
+                              child: Text(
+                                'Check-out Time',
+                                style: TextStyle(fontSize: 12, color: labelColor),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                             Checkbox(
                               value: _includeCheckOut,
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
                               onChanged: (val) =>
                                   setState(() => _includeCheckOut = val ?? true),
                             ),

@@ -17,10 +17,13 @@ import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/vendor_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/client_screen.dart';
 import 'package:order_app/presentation/screens/common/events/calendar_screen.dart';
-import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
+import 'package:flutter/services.dart';
+import 'package:order_app/presentation/providers/dashboard_strip_notifier.dart';
 import 'package:order_app/presentation/screens/common/utility/settings_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/notifications_screen.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
+
+import '../../admin/synology_company_pdf_screen.dart';
 
 class FinanceDashboard extends ConsumerStatefulWidget {
   const FinanceDashboard({super.key});
@@ -130,9 +133,7 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
 
     final isSearching = _searchQuery.trim().isNotEmpty;
     final searchResults = isSearching
-        ? allOrders
-            .where((o) => _matchesOrderQuery(o, _searchQuery))
-            .toList()
+        ? allOrders.where((o) => _matchesOrderQuery(o, _searchQuery)).toList()
         : <OrderEntity>[];
 
     return Scaffold(
@@ -140,157 +141,361 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
       body: SafeArea(
         child: Column(
           children: [
-            // Top Header: Branding, Greeting, Short Search Bar & Notifications
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              decoration: BoxDecoration(
-                color: cardBgColor,
-                border: Border(bottom: BorderSide(color: borderColor)),
-              ),
-              child: Row(
-                children: [
-                  // Greeting & Title
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              'ES Workspace',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'Manrope',
-                                letterSpacing: -0.5,
-                                color: colorScheme.onSurface,
+            // Top Header: Branding, Greeting, Search & Notifications
+            LayoutBuilder(
+              builder: (context, headerConstraints) {
+                final isMobile = headerConstraints.maxWidth < 650;
+                final isMobileSearching =
+                    isMobile && (_isSearchExpanded || _searchQuery.isNotEmpty);
+
+                return Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 16 : 24,
+                    vertical: isMobile ? 12 : 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cardBgColor,
+                    border: Border(bottom: BorderSide(color: borderColor)),
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: isMobileSearching
+                        ? Row(
+                            key: const ValueKey('finance_mobile_search_header'),
+                            children: [
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.arrow_back_rounded,
+                                  size: 20,
+                                ),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                    _isSearchExpanded = false;
+                                  });
+                                  _searchFocusNode.unfocus();
+                                },
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: primaryColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                'FINANCE',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: primaryColor,
-                                  letterSpacing: 0.5,
+                              Expanded(
+                                child: Container(
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode
+                                        ? const Color(0xFF192532)
+                                        : const Color(0xFFf1f5f9),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: primaryColor,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: TextField(
+                                    controller: _searchController,
+                                    focusNode: _searchFocusNode,
+                                    autofocus: true,
+                                    onChanged: (val) =>
+                                        setState(() => _searchQuery = val),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    decoration: InputDecoration(
+                                      hintText: 'Search order name, ID...',
+                                      hintStyle: TextStyle(
+                                        fontSize: 12,
+                                        color: textMuted,
+                                      ),
+                                      prefixIcon: Icon(
+                                        Icons.search_rounded,
+                                        size: 18,
+                                        color: textMuted,
+                                      ),
+                                      suffixIcon: _searchQuery.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(
+                                                Icons.close_rounded,
+                                                size: 16,
+                                              ),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(
+                                                  () => _searchQuery = '',
+                                                );
+                                              },
+                                            )
+                                          : null,
+                                      border: InputBorder.none,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            vertical: 10,
+                                          ),
+                                      isDense: true,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Welcome, ${user?.email.split('@').first ?? 'Finance'} • ${formatNepaliDate(DateTime.now(), 'MMMM dd, yyyy')}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: textMuted,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Short Search Button / Bar in the Right Corner
-                  _buildSearchWidget(
-                    isDarkMode,
-                    primaryColor,
-                    cardBgColor,
-                    borderColor,
-                    textMuted,
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  // Notifications Button
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.notifications_none_rounded,
-                          size: 22,
-                        ),
-                        tooltip: 'Notifications',
-                        style: IconButton.styleFrom(
-                          backgroundColor: isDarkMode
-                              ? const Color(0xFF1e2d3d)
-                              : const Color(0xFFf1f5f9),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            SlidePageRoute(page: const NotificationsScreen()),
-                          );
-                        },
-                      ),
-                      if (unreadCount > 0)
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: Colors.redAccent,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
-                            child: Text(
-                              '$unreadCount',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
+                            ],
+                          )
+                        : Row(
+                            key: const ValueKey('finance_standard_header'),
+                            children: [
+                              // Greeting & Title
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            'ES Workspace',
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: isMobile ? 17 : 20,
+                                              fontWeight: FontWeight.w800,
+                                              fontFamily: 'Manrope',
+                                              letterSpacing: -0.5,
+                                              color: colorScheme.onSurface,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: primaryColor.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'FINANCE',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                              color: primaryColor,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Welcome, ${user?.email.split('@').first ?? 'Finance'} • ${formatNepaliDate(DateTime.now(), 'MMM dd')}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: isMobile ? 11 : 12,
+                                        color: textMuted,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              textAlign: TextAlign.center,
-                            ),
+
+                              const SizedBox(width: 8),
+
+                              // Search Widget (Icon on mobile, Expandable bar on Desktop)
+                              if (isMobile)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.search_rounded,
+                                    size: 22,
+                                  ),
+                                  tooltip: 'Search',
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: isDarkMode
+                                        ? const Color(0xFF1e2d3d)
+                                        : const Color(0xFFf1f5f9),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    setState(() => _isSearchExpanded = true);
+                                  },
+                                )
+                              else
+                                _buildSearchWidget(
+                                  isDarkMode,
+                                  primaryColor,
+                                  cardBgColor,
+                                  borderColor,
+                                  textMuted,
+                                ),
+
+                              const SizedBox(width: 8),
+
+                              // Notifications Button
+                              Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(
+                                      unreadCount > 0
+                                          ? Icons.notifications_active_rounded
+                                          : Icons.notifications_none_rounded,
+                                      size: 22,
+                                      color: unreadCount > 0
+                                          ? primaryColor
+                                          : colorScheme.onSurface.withValues(
+                                              alpha: 0.85,
+                                            ),
+                                    ),
+                                    tooltip: 'Notifications',
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: isDarkMode
+                                          ? const Color(0xFF1e2d3d)
+                                          : const Color(0xFFf1f5f9),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        SlidePageRoute(
+                                          page: const NotificationsScreen(),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  if (unreadCount > 0)
+                                    Positioned(
+                                      top: -1,
+                                      right: -1,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 5,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFef4444),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          border: Border.all(
+                                            color: cardBgColor,
+                                            width: 2,
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(
+                                                0xFFef4444,
+                                              ).withValues(alpha: 0.4),
+                                              blurRadius: 4,
+                                              offset: const Offset(0, 1),
+                                            ),
+                                          ],
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 18,
+                                          minHeight: 18,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            unreadCount > 99
+                                                ? '99+'
+                                                : '$unreadCount',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w900,
+                                              height: 1.0,
+                                              letterSpacing: -0.2,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+
+                              // Desktop Refresh Button
+                              if (!isMobile) ...[
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 22,
+                                  ),
+                                  tooltip: 'Refresh Dashboard',
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: isDarkMode
+                                        ? const Color(0xFF1e2d3d)
+                                        : const Color(0xFFf1f5f9),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    HapticFeedback.lightImpact();
+                                    ref.invalidate(eventsStreamProvider);
+                                    ref.invalidate(ordersStreamProvider);
+                                    ref.invalidate(notificationsStreamProvider);
+                                    ref.invalidate(
+                                      dashboardStripNotifierProvider,
+                                    );
+                                    await ref
+                                        .read(orderNotifierProvider.notifier)
+                                        .loadOrders();
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Dashboard refreshed'),
+                                          duration: Duration(seconds: 1),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ],
+
+                              const SizedBox(width: 8),
+
+                              // Settings Button
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.settings_outlined,
+                                  size: 22,
+                                ),
+                                tooltip: 'Settings',
+                                style: IconButton.styleFrom(
+                                  backgroundColor: isDarkMode
+                                      ? const Color(0xFF1e2d3d)
+                                      : const Color(0xFFf1f5f9),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    SlidePageRoute(
+                                      page: const SettingsScreen(),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                        ),
-                    ],
                   ),
-
-                  const SizedBox(width: 8),
-
-                  // Settings Button
-                  IconButton(
-                    icon: const Icon(
-                      Icons.settings_outlined,
-                      size: 22,
-                    ),
-                    tooltip: 'Settings',
-                    style: IconButton.styleFrom(
-                      backgroundColor: isDarkMode
-                          ? const Color(0xFF1e2d3d)
-                          : const Color(0xFFf1f5f9),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        SlidePageRoute(page: const SettingsScreen()),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                );
+              },
             ),
 
             // Main Content: Filtered Search Results OR Finance Dashboard Grid
@@ -395,9 +600,7 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
         backgroundColor: isDarkMode
             ? const Color(0xFF1e2d3d)
             : const Color(0xFFf1f5f9),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       onPressed: () {
         setState(() => _isSearchExpanded = true);
@@ -505,194 +708,241 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 900;
-        final gridCrossAxisCount = isWide
-            ? 4
-            : (constraints.maxWidth >= 600 ? 3 : 2);
+        final width = constraints.maxWidth;
+        final isMobile = width < 600;
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Weekly Events Strip at the Top
-              ThisWeekEventsStrip(events: events),
-              const SizedBox(height: 20),
+        int gridCrossAxisCount;
+        double childAspectRatio;
 
-              // Section Title
-              Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: primaryColor,
-                      borderRadius: BorderRadius.circular(2),
+        if (width >= 1200) {
+          gridCrossAxisCount = 5;
+          childAspectRatio = 1.15;
+        } else if (width >= 900) {
+          gridCrossAxisCount = 4;
+          childAspectRatio = 1.1;
+        } else if (width >= 600) {
+          gridCrossAxisCount = 3;
+          childAspectRatio = 1.05;
+        } else {
+          gridCrossAxisCount = 2;
+          childAspectRatio = 0.98;
+        }
+
+        final hPadding = isMobile ? 16.0 : 24.0;
+        final vPadding = isMobile ? 14.0 : 20.0;
+        final gridSpacing = isMobile ? 12.0 : 18.0;
+
+        return RefreshIndicator(
+          color: primaryColor,
+          onRefresh: () async {
+            HapticFeedback.lightImpact();
+            ref.invalidate(eventsStreamProvider);
+            ref.invalidate(ordersStreamProvider);
+            ref.invalidate(notificationsStreamProvider);
+            ref.invalidate(dashboardStripNotifierProvider);
+            await ref.read(orderNotifierProvider.notifier).loadOrders();
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: EdgeInsets.symmetric(
+              horizontal: hPadding,
+              vertical: vPadding,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Weekly Events Strip at the Top
+                ThisWeekEventsStrip(events: events),
+                const SizedBox(height: 20),
+
+                // Section Title
+                Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: primaryColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Finance Workspace Modules',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'Manrope',
-                      letterSpacing: -0.3,
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Finance Workspace Modules',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'Manrope',
+                        letterSpacing: -0.3,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // Grid of Finance Action Buttons
-              GridView.count(
-                crossAxisCount: gridCrossAxisCount,
-                crossAxisSpacing: 18,
-                mainAxisSpacing: 18,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: isWide ? 1.15 : 1.05,
-                children: [
-                  // 1. Invoices & Billing
-                  _buildModuleCard(
-                    title: 'Invoices & Billing',
-                    subtitle: 'Proforma invoices & billing',
-                    icon: Icons.receipt_long_rounded,
-                    accentColor: const Color(0xFF0075db), // Primary Blue
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isProminent: true,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const EventInvoicesScreen()),
+                // Grid of Finance Action Buttons
+                GridView.count(
+                  crossAxisCount: gridCrossAxisCount,
+                  crossAxisSpacing: gridSpacing,
+                  mainAxisSpacing: gridSpacing,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  childAspectRatio: childAspectRatio,
+                  children: [
+                    // 1. Invoices & Billing
+                    _buildModuleCard(
+                      title: 'Invoices & Billing',
+                      subtitle: 'Proforma invoices & billing',
+                      icon: Icons.receipt_long_rounded,
+                      accentColor: const Color(0xFF0075db), // Primary Blue
+                      cardBgColor: cardBgColor,
+                      borderColor: borderColor,
+                      textMuted: textMuted,
+                      isProminent: true,
+                      isMobile: isMobile,
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const EventInvoicesScreen()),
+                      ),
                     ),
-                  ),
 
-                  // 2. Financial Ledger
-                  _buildModuleCard(
-                    title: 'Financial Ledger',
-                    subtitle: 'Transactions & ledger book',
-                    icon: Icons.account_balance_wallet_rounded,
-                    accentColor: const Color(0xFF10b981), // Emerald Green
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    isProminent: true,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const FinancialLedgerScreen()),
+                    // 2. Financial Ledger
+                    _buildModuleCard(
+                      title: 'Financial Ledger',
+                      subtitle: 'Transactions & ledger book',
+                      icon: Icons.account_balance_wallet_rounded,
+                      accentColor: const Color(0xFF10b981), // Emerald Green
+                      cardBgColor: cardBgColor,
+                      borderColor: borderColor,
+                      textMuted: textMuted,
+                      isProminent: true,
+                      isMobile: isMobile,
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const FinancialLedgerScreen()),
+                      ),
                     ),
-                  ),
 
-                  // 3. Event Reports
-                  _buildModuleCard(
-                    title: 'Event Reports',
-                    subtitle: 'Event revenue & P&L reports',
-                    icon: Icons.summarize_rounded,
-                    accentColor: const Color(0xFFec4899), // Pink
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const EventFinancialReportScreen()),
+                    // 3. Event Reports
+                    _buildModuleCard(
+                      title: 'Event Reports',
+                      subtitle: 'Event revenue & P&L reports',
+                      icon: Icons.summarize_rounded,
+                      accentColor: const Color(0xFFec4899), // Pink
+                      cardBgColor: cardBgColor,
+                      borderColor: borderColor,
+                      textMuted: textMuted,
+                      isMobile: isMobile,
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(
+                          page: const EventFinancialReportScreen(),
+                        ),
+                      ),
                     ),
-                  ),
 
-                  // 4. HR & Employees
-                  _buildModuleCard(
-                    title: 'HR & Employees',
-                    subtitle: 'Manage team staff & leaves',
-                    icon: Icons.badge_rounded,
-                    accentColor: const Color(0xFF3b82f6), // Blue
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const HrManagementScreen()),
+                    // 4. HR & Employees
+                    _buildModuleCard(
+                      title: 'HR & Employees',
+                      subtitle: 'Manage team staff & leaves',
+                      icon: Icons.badge_rounded,
+                      accentColor: const Color(0xFF3b82f6), // Blue
+                      cardBgColor: cardBgColor,
+                      borderColor: borderColor,
+                      textMuted: textMuted,
+                      isMobile: isMobile,
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const HrManagementScreen()),
+                      ),
                     ),
-                  ),
 
-                  // 5. Vendors
-                  _buildModuleCard(
-                    title: 'Vendors',
-                    subtitle: 'Vendor directory & contacts',
-                    icon: Icons.business_center_rounded,
-                    accentColor: const Color(0xFFf59e0b), // Amber
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const VendorScreen()),
+                    // 5. Vendors
+                    _buildModuleCard(
+                      title: 'Vendors',
+                      subtitle: 'Vendor directory & contacts',
+                      icon: Icons.business_center_rounded,
+                      accentColor: const Color(0xFFf59e0b), // Amber
+                      cardBgColor: cardBgColor,
+                      borderColor: borderColor,
+                      textMuted: textMuted,
+                      isMobile: isMobile,
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const VendorScreen()),
+                      ),
                     ),
-                  ),
 
-                  // 6. Clients
-                  _buildModuleCard(
-                    title: 'Clients',
-                    subtitle: 'Client directory & details',
-                    icon: Icons.people_alt_rounded,
-                    accentColor: const Color(0xFF8b5cf6), // Purple
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const ClientScreen()),
+                    // 6. Clients
+                    _buildModuleCard(
+                      title: 'Clients',
+                      subtitle: 'Client directory & details',
+                      icon: Icons.people_alt_rounded,
+                      accentColor: const Color(0xFF8b5cf6), // Purple
+                      cardBgColor: cardBgColor,
+                      borderColor: borderColor,
+                      textMuted: textMuted,
+                      isMobile: isMobile,
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const ClientScreen()),
+                      ),
                     ),
-                  ),
 
-                  // 7. Calendar & Schedule
-                  _buildModuleCard(
-                    title: 'Calendar & Schedule',
-                    subtitle: 'Event timelines & bookings',
-                    icon: Icons.calendar_month_rounded,
-                    accentColor: const Color(0xFF6366f1), // Indigo
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const CalendarScreen()),
+                    // 7. Calendar & Schedule
+                    _buildModuleCard(
+                      title: 'Calendar & Schedule',
+                      subtitle: 'Event timelines & bookings',
+                      icon: Icons.calendar_month_rounded,
+                      accentColor: const Color(0xFF6366f1), // Indigo
+                      cardBgColor: cardBgColor,
+                      borderColor: borderColor,
+                      textMuted: textMuted,
+                      isMobile: isMobile,
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const CalendarScreen()),
+                      ),
                     ),
-                  ),
 
-                  // 8. Company Profile
-                  _buildModuleCard(
-                    title: 'Company Profile',
-                    subtitle: 'Synology files & company doc',
-                    icon: Icons.picture_as_pdf_rounded,
-                    accentColor: const Color(0xFFe11d48), // Rose
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const SynologyCompanyPdfScreen()),
+                    // 8. Company Profile
+                    _buildModuleCard(
+                      title: 'Company Profile',
+                      subtitle: 'Synology files & company doc',
+                      icon: Icons.picture_as_pdf_rounded,
+                      accentColor: const Color(0xFFe11d48), // Rose
+                      cardBgColor: cardBgColor,
+                      borderColor: borderColor,
+                      textMuted: textMuted,
+                      isMobile: isMobile,
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const SynologyCompanyPdfScreen()),
+                      ),
                     ),
-                  ),
 
-                  // 9. System Settings
-                  _buildModuleCard(
-                    title: 'System Settings',
-                    subtitle: 'Preferences & configurations',
-                    icon: Icons.settings_rounded,
-                    accentColor: const Color(0xFF64748b), // Slate
-                    cardBgColor: cardBgColor,
-                    borderColor: borderColor,
-                    textMuted: textMuted,
-                    onTap: () => Navigator.push(
-                      context,
-                      SlidePageRoute(page: const SettingsScreen()),
+                    // 9. System Settings
+                    _buildModuleCard(
+                      title: 'System Settings',
+                      subtitle: 'Preferences & configurations',
+                      icon: Icons.settings_rounded,
+                      accentColor: const Color(0xFF64748b), // Slate
+                      cardBgColor: cardBgColor,
+                      borderColor: borderColor,
+                      textMuted: textMuted,
+                      isMobile: isMobile,
+                      onTap: () => Navigator.push(
+                        context,
+                        SlidePageRoute(page: const SettingsScreen()),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -710,7 +960,16 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
     required Color textMuted,
     required VoidCallback onTap,
     bool isProminent = false,
+    bool isMobile = false,
   }) {
+    final cardPaddingHorizontal = isMobile ? 10.0 : 16.0;
+    final cardPaddingVertical = isMobile ? 12.0 : 20.0;
+    final iconPadding = isMobile ? 10.0 : 16.0;
+    final iconSize = isMobile ? 28.0 : 40.0;
+    final spacingHeight = isMobile ? 8.0 : 14.0;
+    final titleFontSize = isMobile ? 13.5 : 17.0;
+    final subtitleFontSize = isMobile ? 10.5 : 12.0;
+
     return Material(
       color: isProminent ? accentColor.withValues(alpha: 0.05) : cardBgColor,
       borderRadius: BorderRadius.circular(18),
@@ -719,7 +978,10 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
         borderRadius: BorderRadius.circular(18),
         hoverColor: accentColor.withValues(alpha: 0.08),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          padding: EdgeInsets.symmetric(
+            horizontal: cardPaddingHorizontal,
+            vertical: cardPaddingVertical,
+          ),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
@@ -732,9 +994,10 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(iconPadding),
                 decoration: BoxDecoration(
                   color: accentColor.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
@@ -743,32 +1006,36 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
                     width: 1.5,
                   ),
                 ),
-                child: Icon(icon, color: accentColor, size: 40),
+                child: Icon(icon, color: accentColor, size: iconSize),
               ),
-              const SizedBox(height: 14),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                  fontFamily: 'Manrope',
-                  letterSpacing: -0.3,
+              SizedBox(height: spacingHeight),
+              Flexible(
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: titleFontSize,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'Manrope',
+                    letterSpacing: -0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: textMuted,
-                  fontWeight: FontWeight.w500,
+              const SizedBox(height: 2),
+              Flexible(
+                child: Text(
+                  subtitle,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: subtitleFontSize,
+                    color: textMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

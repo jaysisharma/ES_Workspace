@@ -4,6 +4,8 @@ import 'package:order_app/domain/repositories/notification_repository.dart';
 import 'package:order_app/data/repositories/notification_repository_impl.dart';
 import 'package:order_app/data/datasources/remote/firestore_notification_remote_datasource.dart';
 
+import 'package:order_app/presentation/providers/auth_provider.dart';
+
 final notificationRemoteDataSourceProvider =
     Provider<NotificationRemoteDataSource>((ref) {
       return FirestoreNotificationRemoteDataSource();
@@ -17,8 +19,12 @@ final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
 final notificationsStreamProvider = StreamProvider<List<NotificationEntity>>((
   ref,
 ) {
+  final authUser = ref.watch(authNotifierProvider).user;
   final repository = ref.watch(notificationRepositoryProvider);
-  return repository.getNotificationsStream();
+  return repository.getNotificationsStream(
+    userId: authUser?.uid,
+    role: authUser?.role,
+  );
 });
 
 class NotificationNotifier extends Notifier<void> {

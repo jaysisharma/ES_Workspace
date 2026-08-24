@@ -440,9 +440,15 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _showLogoutConfirmation(BuildContext context, WidgetRef ref) {
+    // Capture the root navigator BEFORE entering the dialog builder.
+    // Inside the dialog builder, `context` is shadowed by the dialog's own
+    // context, which is already popped when we try to navigate — causing the
+    // redirect to land on the wrong screen.
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         title: const Row(
           children: [
@@ -454,19 +460,18 @@ class SettingsScreen extends ConsumerWidget {
         content: const Text('Are you sure you want to log out of your session?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogContext); // dismiss dialog
               await ref.read(authNotifierProvider.notifier).logout();
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const RoleBasedRouter()),
-                  (route) => false,
-                );
-              }
+              // Use the pre-captured root navigator — always valid.
+              rootNavigator.pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const RoleBasedRouter()),
+                (route) => false,
+              );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFf43f5e),

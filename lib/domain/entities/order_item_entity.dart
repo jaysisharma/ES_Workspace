@@ -18,6 +18,10 @@ class OrderItemEntity {
   final String? vendorBillUrl;
   final String? vendorBillPath;
   final String? vendorBillName;
+  /// Set when admin gives this task a deadline.
+  final DateTime? dueDate;
+  /// UID of the admin who created this manual task.
+  final String? createdBy;
 
   const OrderItemEntity({
     required this.id,
@@ -39,7 +43,12 @@ class OrderItemEntity {
     this.vendorBillUrl,
     this.vendorBillPath,
     this.vendorBillName,
+    this.dueDate,
+    this.createdBy,
   });
+
+  /// True when this item is a standalone admin-created task (not tied to any order).
+  bool get isManualTask => orderId == 'manual';
 
   bool get hasVendorBill => vendorBillUrl != null && vendorBillUrl!.isNotEmpty;
 
@@ -65,6 +74,9 @@ class OrderItemEntity {
     String? vendorBillPath,
     String? vendorBillName,
     bool clearVendorBill = false,
+    DateTime? dueDate,
+    bool clearDueDate = false,
+    String? createdBy,
   }) {
     return OrderItemEntity(
       id: id ?? this.id,
@@ -81,18 +93,25 @@ class OrderItemEntity {
       vendorRate: vendorRate ?? this.vendorRate,
       vendorAmount: vendorAmount ?? this.vendorAmount,
       isCompleted: isCompleted ?? this.isCompleted,
-      assignedStaffId: clearAssignedStaff ? null : (assignedStaffId ?? this.assignedStaffId),
-      assignedStaffName: clearAssignedStaff ? null : (assignedStaffName ?? this.assignedStaffName),
-      vendorBillUrl: clearVendorBill ? null : (vendorBillUrl ?? this.vendorBillUrl),
-      vendorBillPath: clearVendorBill ? null : (vendorBillPath ?? this.vendorBillPath),
-      vendorBillName: clearVendorBill ? null : (vendorBillName ?? this.vendorBillName),
+      assignedStaffId:
+          clearAssignedStaff ? null : (assignedStaffId ?? this.assignedStaffId),
+      assignedStaffName: clearAssignedStaff
+          ? null
+          : (assignedStaffName ?? this.assignedStaffName),
+      vendorBillUrl:
+          clearVendorBill ? null : (vendorBillUrl ?? this.vendorBillUrl),
+      vendorBillPath:
+          clearVendorBill ? null : (vendorBillPath ?? this.vendorBillPath),
+      vendorBillName:
+          clearVendorBill ? null : (vendorBillName ?? this.vendorBillName),
+      dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
+      createdBy: createdBy ?? this.createdBy,
     );
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-
     return other is OrderItemEntity &&
         other.id == id &&
         other.orderId == orderId &&
@@ -112,7 +131,9 @@ class OrderItemEntity {
         other.assignedStaffName == assignedStaffName &&
         other.vendorBillUrl == vendorBillUrl &&
         other.vendorBillPath == vendorBillPath &&
-        other.vendorBillName == vendorBillName;
+        other.vendorBillName == vendorBillName &&
+        other.dueDate == dueDate &&
+        other.createdBy == createdBy;
   }
 
   @override
@@ -135,6 +156,8 @@ class OrderItemEntity {
         assignedStaffName.hashCode ^
         vendorBillUrl.hashCode ^
         vendorBillPath.hashCode ^
-        vendorBillName.hashCode;
+        vendorBillName.hashCode ^
+        dueDate.hashCode ^
+        createdBy.hashCode;
   }
 }

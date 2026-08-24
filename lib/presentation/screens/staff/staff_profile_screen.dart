@@ -7,15 +7,17 @@ import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:order_app/domain/entities/employee_profile_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/domain/entities/event_entity.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/employee_profile_providers.dart';
 import 'package:order_app/presentation/providers/settings_provider.dart';
 import 'package:order_app/presentation/providers/event_providers.dart';
-import 'package:order_app/domain/entities/event_entity.dart';
 import 'package:order_app/presentation/widgets/hr_management/leave_request_sheet.dart';
+import 'package:order_app/presentation/widgets/hr_management/staff_leave_balance_card.dart';
 import 'package:order_app/presentation/screens/admin/add_employee_screen.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
+import 'package:order_app/presentation/screens/staff/staff_attendance_screen.dart';
 import 'package:order_app/presentation/widgets/common/role_based_router.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
@@ -113,10 +115,13 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
           backgroundColor: isDarkMode ? const Color(0xFF1b2631) : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-          title: const Text(
-            'Sign Out',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          title: const Row(
+            children: [
+              Icon(Icons.logout_rounded, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
           ),
           content: const Text(
             'Are you sure you want to sign out of your account?',
@@ -130,14 +135,12 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text(
-                'Sign Out',
-                style: TextStyle(color: Colors.white),
-              ),
+              child: const Text('Sign Out', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -149,7 +152,7 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
       await ref.read(authNotifierProvider.notifier).logout();
       if (mounted) {
         setState(() => _isLoggingOut = false);
-        Navigator.of(context).pushAndRemoveUntil(
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const RoleBasedRouter()),
           (route) => false,
         );
@@ -239,11 +242,10 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final authState = ref.watch(authNotifierProvider);
-    final settings = ref.watch(settingsProvider);
     final eventsAsync = ref.watch(eventsStreamProvider);
 
     // Design tokens
-    final primaryColor = const Color(0xFF0075db);
+    const primaryColor = Color(0xFF0075db);
     final bgColor = isDarkMode
         ? const Color(0xFF0f1a23)
         : const Color(0xFFf5f7f8);
@@ -255,7 +257,7 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
     final labelColor = isDarkMode
         ? const Color(0xFF94a3b8)
         : const Color(0xFF64748b);
-    final successColor = const Color(0xFF10b981);
+    const successColor = Color(0xFF10b981);
 
     // Derive user info
     final user = authState.user;
@@ -328,7 +330,7 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                         ),
                       ],
                     ),
-                    ElevatedButton.icon(
+                    OutlinedButton.icon(
                       onPressed: () => _openEditProfile(
                         context,
                         myProfile,
@@ -338,14 +340,14 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                       ),
                       icon: const Icon(Icons.edit_note, size: 18),
                       label: const Text('Edit Details'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: Colors.white,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: primaryColor,
+                        side: BorderSide(color: primaryColor.withValues(alpha: 0.5)),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
+                          horizontal: 12,
                           vertical: 8,
                         ),
                       ),
@@ -354,18 +356,25 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                 ),
               ),
 
-              // ── Profile Card ────────────────────────────────────────
+              // ── Profile Hero Card ───────────────────────────────────
               Container(
                 margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: cardColor,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: borderColor),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
-                    // Avatar + Edit Button
+                    // Avatar + Edit badge
                     GestureDetector(
                       onTap: () => _openEditProfile(
                         context,
@@ -408,9 +417,11 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                       userEmail,
                       style: TextStyle(fontSize: 13, color: labelColor),
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -428,19 +439,18 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                             myProfile?.designation.isNotEmpty == true
                                 ? myProfile!.designation.toUpperCase()
                                 : 'STAFF MEMBER',
-                            style: TextStyle(
-                              fontSize: 10,
+                            style: const TextStyle(
+                              fontSize: 10.5,
                               fontWeight: FontWeight.bold,
                               color: primaryColor,
-                              letterSpacing: 1.2,
+                              letterSpacing: 1.1,
                             ),
                           ),
                         ),
-                        if (myProfile?.bloodGroup.isNotEmpty == true && myProfile!.bloodGroup != 'N/A') ...[
-                          const SizedBox(width: 8),
+                        if (myProfile?.bloodGroup.isNotEmpty == true && myProfile!.bloodGroup != 'N/A')
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
+                              horizontal: 10,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
@@ -451,22 +461,21 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                               ),
                             ),
                             child: Text(
-                              '🩸 ${myProfile.bloodGroup}',
+                              '🩸 ${myProfile!.bloodGroup}',
                               style: const TextStyle(
-                                fontSize: 10,
+                                fontSize: 10.5,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.red,
                               ),
                             ),
                           ),
-                        ],
                       ],
                     ),
                   ],
                 ),
               ),
 
-              // ── Stats Row ────────────────────────────────────────────
+              // ── Key Metrics ──────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Row(
@@ -513,116 +522,99 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                 ),
               ),
 
-              // ── Personal & KYC Details Section ────────────────────────
-              _SectionHeader(label: 'Personal Information & KYC', labelColor: labelColor),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: borderColor),
-                ),
-                child: Column(
-                  children: [
-                    _buildInfoRow('Full Name', displayName, textColor, labelColor),
-                    Divider(height: 20, color: borderColor),
-                    _buildInfoRow('Designation', myProfile?.designation ?? 'Staff Member', textColor, labelColor),
-                    Divider(height: 20, color: borderColor),
-                    _buildInfoRow(
-                      'Date of Birth',
-                      myProfile?.dob != null
-                          ? formatNepaliDate(myProfile!.dob!, 'dd MMM yyyy (BS)')
-                          : 'Not provided',
-                      textColor,
-                      labelColor,
-                    ),
-                    Divider(height: 20, color: borderColor),
-                    _buildInfoRow('Blood Group', myProfile?.bloodGroup ?? 'N/A', textColor, labelColor),
-                    Divider(height: 20, color: borderColor),
-                    _buildInfoRow('Address', myProfile?.address.isNotEmpty == true ? myProfile!.address : 'Not provided', textColor, labelColor),
-                    Divider(height: 20, color: borderColor),
-                    _buildInfoRow('Father\'s Name', myProfile?.fatherName.isNotEmpty == true ? myProfile!.fatherName : 'Not provided', textColor, labelColor),
-                    Divider(height: 20, color: borderColor),
-                    _buildInfoRow('Mother\'s Name', myProfile?.motherName.isNotEmpty == true ? myProfile!.motherName : 'Not provided', textColor, labelColor),
-                    Divider(height: 20, color: borderColor),
-                    _buildInfoRow('Citizenship Number', myProfile?.citizenshipNumber.isNotEmpty == true ? myProfile!.citizenshipNumber : 'Not provided', textColor, labelColor),
-                    Divider(height: 20, color: borderColor),
-                    _buildInfoRow('PAN Number', myProfile?.panNumber.isNotEmpty == true ? myProfile!.panNumber : 'Not provided', textColor, labelColor),
-                    Divider(height: 20, color: borderColor),
-                    _buildInfoRow('National ID (NIN)', myProfile?.ninNumber.isNotEmpty == true ? myProfile!.ninNumber : 'Not provided', textColor, labelColor),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.edit_note, size: 16),
-                        label: const Text('Update Personal & KYC Info'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: primaryColor,
-                          side: BorderSide(color: primaryColor.withValues(alpha: 0.5)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onPressed: () => _openEditProfile(
-                          context,
-                          myProfile,
-                          userId,
-                          displayName,
-                          userEmail,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // ── Sub-Pages Navigation Hub ─────────────────────────────
+              _SectionHeader(label: 'Account & Services', labelColor: labelColor),
 
-              // ── Work & Leave Section ─────────────────────────────────────
-              _SectionHeader(label: 'Work & Leave', labelColor: labelColor),
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
                   color: cardColor,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: borderColor),
                 ),
                 child: Column(
                   children: [
                     _SettingsTile(
-                      icon: Icons.time_to_leave_rounded,
+                      icon: Icons.badge_outlined,
+                      iconColor: const Color(0xFF0075db),
+                      title: 'Personal & KYC Details',
+                      subtitle: 'Full name, DoB, citizenship, PAN, address, family',
+                      borderColor: borderColor,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(
+                            page: StaffPersonalKycScreen(
+                              profile: myProfile,
+                              userId: userId,
+                              displayName: displayName,
+                              userEmail: userEmail,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    _SettingsTile(
+                      icon: Icons.calendar_month_outlined,
                       iconColor: const Color(0xFF10b981),
-                      title: 'Apply for Leave / Off-Duty',
+                      title: 'Leave & Attendance Portal',
+                      subtitle: 'Leave balances, submit off-duty, shift records',
                       borderColor: borderColor,
-                      trailing: Icon(
-                        Icons.chevron_right,
-                        color: labelColor.withValues(alpha: 0.5),
-                        size: 18,
-                      ),
-                      onTap: () => showStaffLeaveRequestSheet(context, ref),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(
+                            page: const StaffLeaveAttendanceScreen(),
+                          ),
+                        );
+                      },
                     ),
                     _SettingsTile(
-                      icon: Icons.picture_as_pdf_outlined,
-                      iconColor: primaryColor,
-                      title: 'Print / Download My Profile PDF',
-                      borderColor: borderColor,
-                      trailing: Icon(
-                        Icons.chevron_right,
-                        color: labelColor.withValues(alpha: 0.5),
-                        size: 18,
-                      ),
-                      onTap: () => _printMyEmployeePdf(context, user),
-                    ),
-                    _SettingsTile(
-                      icon: Icons.business_outlined,
+                      icon: Icons.folder_shared_outlined,
                       iconColor: const Color(0xFF8b5cf6),
-                      title: 'Company Profile & Share (Synology)',
-                      subtitle: 'Generate, preview & share company profile PDF',
+                      title: 'Documents & PDF Center',
+                      subtitle: 'Employee profile PDF & Synology company profile',
+                      borderColor: borderColor,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(
+                            page: StaffDocumentsScreen(user: user),
+                          ),
+                        );
+                      },
+                    ),
+                    _SettingsTile(
+                      icon: Icons.tune_rounded,
+                      iconColor: const Color(0xFFf59e0b),
+                      title: 'Preferences & Notifications',
+                      subtitle: 'Theme customization, alerts, vibration',
+                      borderColor: borderColor,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          SlidePageRoute(
+                            page: const StaffPreferencesScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _SettingsTile(
+                      icon: Icons.shield_outlined,
+                      iconColor: const Color(0xFF6366f1),
+                      title: 'Account & Security',
+                      subtitle: 'Login credentials, access role, app details',
                       borderColor: borderColor,
                       isLast: true,
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => const SynologyCompanyPdfScreen(),
+                          SlidePageRoute(
+                            page: StaffAccountSecurityScreen(
+                              userEmail: userEmail,
+                              userId: userId,
+                              designation: myProfile?.designation,
+                            ),
                           ),
                         );
                       },
@@ -631,134 +623,18 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                 ),
               ),
 
-              // ── Appearance & Notifications ───────────────────────────
-              _SectionHeader(label: 'Preferences', labelColor: labelColor),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: borderColor),
-                ),
-                child: Column(
-                  children: [
-                    _SettingsTile(
-                      icon: Icons.dark_mode_outlined,
-                      iconColor: const Color(0xFF818cf8),
-                      title: 'Dark Mode',
-                      borderColor: borderColor,
-                      trailing: Switch.adaptive(
-                        value: settings.themeMode == ThemeMode.dark,
-                        activeTrackColor: primaryColor,
-                        onChanged: (val) {
-                          ref
-                              .read(settingsProvider.notifier)
-                              .setThemeMode(
-                                val ? ThemeMode.dark : ThemeMode.light,
-                              );
-                        },
-                      ),
-                    ),
-                    _SettingsTile(
-                      icon: Icons.notifications_active_outlined,
-                      iconColor: const Color(0xFFf59e0b),
-                      title: 'Push Notifications',
-                      subtitle: 'Alerts for tasks, assignments and announcements',
-                      borderColor: borderColor,
-                      isLast: true,
-                      trailing: Switch.adaptive(
-                        value: settings.notificationsEnabled,
-                        activeTrackColor: primaryColor,
-                        onChanged: (val) {
-                          ref
-                              .read(settingsProvider.notifier)
-                              .toggleNotifications(val);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ── Account & Credentials Section ───────────────────────
-              _SectionHeader(label: 'Account & Security', labelColor: labelColor),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: borderColor),
-                ),
-                child: Column(
-                  children: [
-                    _SettingsTile(
-                      icon: Icons.email_outlined,
-                      iconColor: primaryColor,
-                      title: 'Login Email Address',
-                      subtitle: userEmail,
-                      borderColor: borderColor,
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.lock_outline, size: 12, color: Colors.grey),
-                            SizedBox(width: 4),
-                            Text('Locked', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    _SettingsTile(
-                      icon: Icons.security_rounded,
-                      iconColor: const Color(0xFF10b981),
-                      title: 'Account Password',
-                      subtitle: 'Managed securely by Company Administration',
-                      borderColor: borderColor,
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.lock_outline, size: 12, color: Colors.grey),
-                            SizedBox(width: 4),
-                            Text('Locked', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    _SettingsTile(
-                      icon: Icons.info_outline_rounded,
-                      iconColor: primaryColor,
-                      title: 'App Version',
-                      subtitle: 'EventFlow Pro v1.0.0',
-                      borderColor: borderColor,
-                      isLast: true,
-                    ),
-                  ],
-                ),
-              ),
-
               // ── Sign Out Button ─────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
                 child: SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     onPressed: _isLoggingOut ? null : _confirmLogout,
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                       side: const BorderSide(color: Colors.red),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     icon: _isLoggingOut
@@ -787,7 +663,7 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                 ),
               ),
 
-              // ── User ID Info ────────────────────────────────────────
+              // ── User ID Footer ──────────────────────────────────────
               if (userId.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -797,7 +673,7 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                       Icon(Icons.fingerprint, size: 13, color: labelColor),
                       const SizedBox(width: 4),
                       Text(
-                        'ID: ${userId.substring(0, userId.length > 8 ? 8 : userId.length)}…',
+                        'User ID: ${userId.substring(0, userId.length > 8 ? 8 : userId.length)}…',
                         style: TextStyle(fontSize: 11, color: labelColor),
                       ),
                     ],
@@ -809,8 +685,237 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
       ),
     );
   }
+}
 
-  Widget _buildInfoRow(String label, String value, Color textColor, Color labelColor) {
+// ═════════════════════════════════════════════════════════════════════════════
+// 📋 SUB-PAGE 1: Personal & KYC Details Screen
+// ═════════════════════════════════════════════════════════════════════════════
+
+class StaffPersonalKycScreen extends ConsumerWidget {
+  final EmployeeProfileEntity? profile;
+  final String userId;
+  final String displayName;
+  final String userEmail;
+
+  const StaffPersonalKycScreen({
+    super.key,
+    required this.profile,
+    required this.userId,
+    required this.displayName,
+    required this.userEmail,
+  });
+
+  void _openEdit(BuildContext context) {
+    Navigator.push(
+      context,
+      SlidePageRoute(
+        page: AddEmployeeScreen(
+          userId: userId,
+          userName: profile?.name.isNotEmpty == true ? profile!.name : displayName,
+          userEmail: userEmail,
+          userRole: UserRole.staff,
+          isStaffSelfEdit: true,
+          initialProfile: profile,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    const primaryColor = Color(0xFF0075db);
+    final bgColor = isDarkMode ? const Color(0xFF0f1a23) : const Color(0xFFf5f7f8);
+    final cardColor = isDarkMode ? const Color(0xFF1b2631) : Colors.white;
+    final borderColor = isDarkMode ? const Color(0xFF1e293b) : const Color(0xFFe2e8f0);
+    final textColor = isDarkMode ? Colors.white : const Color(0xFF0f172a);
+    final labelColor = isDarkMode ? const Color(0xFF94a3b8) : const Color(0xFF64748b);
+
+    // Watch live profile if updated
+    final liveProfile = ref.watch(currentEmployeeProfileProvider) ?? profile;
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: cardColor,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Personal & KYC Details',
+          style: TextStyle(
+            color: textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_note, color: primaryColor),
+            tooltip: 'Edit Details',
+            onPressed: () => _openEdit(context),
+          ),
+        ],
+      ),
+      floatingActionButton: const BottomRightBackButton(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Section 1: Basic Information
+            _buildGroupCard(
+              cardColor: cardColor,
+              borderColor: borderColor,
+              title: 'Basic Information',
+              icon: Icons.person_outline_rounded,
+              iconColor: primaryColor,
+              textColor: textColor,
+              children: [
+                _buildRow('Full Name', liveProfile?.name.isNotEmpty == true ? liveProfile!.name : displayName, textColor, labelColor),
+                Divider(height: 20, color: borderColor),
+                _buildRow('Designation', liveProfile?.designation ?? 'Staff Member', textColor, labelColor),
+                Divider(height: 20, color: borderColor),
+                _buildRow(
+                  'Date of Birth',
+                  liveProfile?.dob != null ? formatNepaliDate(liveProfile!.dob!, 'dd MMM yyyy (BS)') : 'Not provided',
+                  textColor,
+                  labelColor,
+                ),
+                Divider(height: 20, color: borderColor),
+                _buildRow('Blood Group', liveProfile?.bloodGroup ?? 'N/A', textColor, labelColor),
+                Divider(height: 20, color: borderColor),
+                _buildRow(
+                  'Office Join Date',
+                  liveProfile?.officeJoinDate != null ? formatNepaliDate(liveProfile!.officeJoinDate, 'dd MMM yyyy (BS)') : 'Not provided',
+                  textColor,
+                  labelColor,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Section 2: Contact & Address
+            _buildGroupCard(
+              cardColor: cardColor,
+              borderColor: borderColor,
+              title: 'Contact & Residence',
+              icon: Icons.home_outlined,
+              iconColor: const Color(0xFF10b981),
+              textColor: textColor,
+              children: [
+                _buildRow('Email Address', userEmail, textColor, labelColor),
+                Divider(height: 20, color: borderColor),
+                _buildRow('Residential Address', liveProfile?.address.isNotEmpty == true ? liveProfile!.address : 'Not provided', textColor, labelColor),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Section 3: Identification & Government KYC
+            _buildGroupCard(
+              cardColor: cardColor,
+              borderColor: borderColor,
+              title: 'Government Identification (KYC)',
+              icon: Icons.assignment_ind_outlined,
+              iconColor: const Color(0xFF8b5cf6),
+              textColor: textColor,
+              children: [
+                _buildRow('Citizenship Number', liveProfile?.citizenshipNumber.isNotEmpty == true ? liveProfile!.citizenshipNumber : 'Not provided', textColor, labelColor),
+                Divider(height: 20, color: borderColor),
+                _buildRow('PAN Number', liveProfile?.panNumber.isNotEmpty == true ? liveProfile!.panNumber : 'Not provided', textColor, labelColor),
+                Divider(height: 20, color: borderColor),
+                _buildRow('National ID (NIN)', liveProfile?.ninNumber.isNotEmpty == true ? liveProfile!.ninNumber : 'Not provided', textColor, labelColor),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Section 4: Family Details
+            _buildGroupCard(
+              cardColor: cardColor,
+              borderColor: borderColor,
+              title: 'Family Details',
+              icon: Icons.family_restroom_outlined,
+              iconColor: const Color(0xFFf59e0b),
+              textColor: textColor,
+              children: [
+                _buildRow('Father\'s Name', liveProfile?.fatherName.isNotEmpty == true ? liveProfile!.fatherName : 'Not provided', textColor, labelColor),
+                Divider(height: 20, color: borderColor),
+                _buildRow('Mother\'s Name', liveProfile?.motherName.isNotEmpty == true ? liveProfile!.motherName : 'Not provided', textColor, labelColor),
+                Divider(height: 20, color: borderColor),
+                _buildRow('Grandfather\'s Name', liveProfile?.grandfatherName.isNotEmpty == true ? liveProfile!.grandfatherName : 'Not provided', textColor, labelColor),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Edit CTA
+            ElevatedButton.icon(
+              onPressed: () => _openEdit(context),
+              icon: const Icon(Icons.edit_note, size: 20),
+              label: const Text('Update Profile & KYC Information', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGroupCard({
+    required Color cardColor,
+    required Color borderColor,
+    required String title,
+    required IconData icon,
+    required Color iconColor,
+    required Color textColor,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(icon, color: iconColor, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRow(String label, String value, Color textColor, Color labelColor) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -840,7 +945,482 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
   }
 }
 
+// ═════════════════════════════════════════════════════════════════════════════
+// 🌴 SUB-PAGE 2: Leave & Attendance Portal
+// ═════════════════════════════════════════════════════════════════════════════
+
+class StaffLeaveAttendanceScreen extends ConsumerWidget {
+  const StaffLeaveAttendanceScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    const primaryColor = Color(0xFF0075db);
+    final bgColor = isDarkMode ? const Color(0xFF0f1a23) : const Color(0xFFf5f7f8);
+    final cardColor = isDarkMode ? const Color(0xFF1b2631) : Colors.white;
+    final borderColor = isDarkMode ? const Color(0xFF1e293b) : const Color(0xFFe2e8f0);
+    final textColor = isDarkMode ? Colors.white : const Color(0xFF0f172a);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: cardColor,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Leave & Attendance Portal',
+          style: TextStyle(
+            color: textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      floatingActionButton: const BottomRightBackButton(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Leave Balances Overview
+            const StaffLeaveBalanceCard(),
+            const SizedBox(height: 16),
+
+            // 2. Action Cards
+            Container(
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                children: [
+                  _SettingsTile(
+                    icon: Icons.time_to_leave_rounded,
+                    iconColor: const Color(0xFF10b981),
+                    title: 'Apply for Leave / Off-Duty',
+                    subtitle: 'Submit a new leave request to Administration',
+                    borderColor: borderColor,
+                    onTap: () => showStaffLeaveRequestSheet(context, ref),
+                  ),
+                  _SettingsTile(
+                    icon: Icons.co_present_outlined,
+                    iconColor: primaryColor,
+                    title: 'My Shift Attendance Records',
+                    subtitle: 'View check-in history, clock times, and shift logs',
+                    borderColor: borderColor,
+                    isLast: true,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        SlidePageRoute(
+                          page: const StaffAttendanceScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 3. Info Notice Card
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline, color: primaryColor, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Leave requests must be submitted at least 24 hours in advance. Once reviewed by Management, status updates will be delivered instantly via Notifications.',
+                      style: TextStyle(fontSize: 12.5, color: textColor, height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 📄 SUB-PAGE 3: Documents & PDF Center
+// ═════════════════════════════════════════════════════════════════════════════
+
+class StaffDocumentsScreen extends ConsumerWidget {
+  final dynamic user;
+
+  const StaffDocumentsScreen({super.key, required this.user});
+
+  Future<void> _generateProfilePdf(BuildContext context, WidgetRef ref) async {
+    try {
+      final myProfile = ref.read(currentEmployeeProfileProvider);
+      final email = user?.email ?? (myProfile?.email.isNotEmpty == true ? myProfile!.email : '');
+      final name = myProfile?.name.isNotEmpty == true ? myProfile!.name : (email.isNotEmpty ? email.split('@').first : 'Staff');
+      final uid = myProfile?.userId.isNotEmpty == true ? myProfile!.userId : (user?.uid ?? '');
+
+      final userEntity = UserEntity(
+        id: uid,
+        name: name,
+        email: email,
+        role: UserRole.staff,
+        isActive: true,
+      );
+
+      final profile = myProfile ?? EmployeeProfileEntity(
+        id: uid,
+        userId: uid,
+        name: name,
+        email: email,
+        officeJoinDate: DateTime.now(),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      final pdfData = await EmployeePdfService.generateEmployeeDetailPdf(
+        profile: profile,
+        user: userEntity,
+      );
+
+      final fileName = 'Employee_Profile_${name.replaceAll(RegExp(r'[ ,]+'), '_')}.pdf';
+
+      if (!context.mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PdfPreviewScreen(
+            pdfData: pdfData,
+            title: 'My Employee Profile',
+            fileName: fileName,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to generate profile PDF: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    const primaryColor = Color(0xFF0075db);
+    final bgColor = isDarkMode ? const Color(0xFF0f1a23) : const Color(0xFFf5f7f8);
+    final cardColor = isDarkMode ? const Color(0xFF1b2631) : Colors.white;
+    final borderColor = isDarkMode ? const Color(0xFF1e293b) : const Color(0xFFe2e8f0);
+    final textColor = isDarkMode ? Colors.white : const Color(0xFF0f172a);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: cardColor,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Documents & PDF Center',
+          style: TextStyle(
+            color: textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      floatingActionButton: const BottomRightBackButton(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        child: Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                children: [
+                  _SettingsTile(
+                    icon: Icons.picture_as_pdf_outlined,
+                    iconColor: primaryColor,
+                    title: 'My Employee Profile PDF',
+                    subtitle: 'Generate, preview & export your verified staff biodata',
+                    borderColor: borderColor,
+                    onTap: () => _generateProfilePdf(context, ref),
+                  ),
+                  _SettingsTile(
+                    icon: Icons.business_outlined,
+                    iconColor: const Color(0xFF8b5cf6),
+                    title: 'Company Profile & Share (Synology)',
+                    subtitle: 'Access and share official company brochures and decks',
+                    borderColor: borderColor,
+                    isLast: true,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SynologyCompanyPdfScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// ⚙️ SUB-PAGE 4: Preferences & Settings
+// ═════════════════════════════════════════════════════════════════════════════
+
+class StaffPreferencesScreen extends ConsumerWidget {
+  const StaffPreferencesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final settings = ref.watch(settingsProvider);
+    const primaryColor = Color(0xFF0075db);
+    final bgColor = isDarkMode ? const Color(0xFF0f1a23) : const Color(0xFFf5f7f8);
+    final cardColor = isDarkMode ? const Color(0xFF1b2631) : Colors.white;
+    final borderColor = isDarkMode ? const Color(0xFF1e293b) : const Color(0xFFe2e8f0);
+    final textColor = isDarkMode ? Colors.white : const Color(0xFF0f172a);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: cardColor,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Preferences & Settings',
+          style: TextStyle(
+            color: textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      floatingActionButton: const BottomRightBackButton(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        child: Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                children: [
+                  _SettingsTile(
+                    icon: Icons.dark_mode_outlined,
+                    iconColor: const Color(0xFF818cf8),
+                    title: 'Dark Theme',
+                    subtitle: 'Switch between dark and light appearance',
+                    borderColor: borderColor,
+                    trailing: Switch.adaptive(
+                      value: settings.themeMode == ThemeMode.dark,
+                      activeTrackColor: primaryColor,
+                      onChanged: (val) {
+                        ref.read(settingsProvider.notifier).setThemeMode(
+                              val ? ThemeMode.dark : ThemeMode.light,
+                            );
+                      },
+                    ),
+                  ),
+                  _SettingsTile(
+                    icon: Icons.notifications_active_outlined,
+                    iconColor: const Color(0xFFf59e0b),
+                    title: 'Push Notifications',
+                    subtitle: 'Receive real-time task alerts and event assignments',
+                    borderColor: borderColor,
+                    isLast: true,
+                    trailing: Switch.adaptive(
+                      value: settings.notificationsEnabled,
+                      activeTrackColor: primaryColor,
+                      onChanged: (val) {
+                        ref.read(settingsProvider.notifier).toggleNotifications(val);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 🔒 SUB-PAGE 5: Account & Security Screen
+// ═════════════════════════════════════════════════════════════════════════════
+
+class StaffAccountSecurityScreen extends StatelessWidget {
+  final String userEmail;
+  final String userId;
+  final String? designation;
+
+  const StaffAccountSecurityScreen({
+    super.key,
+    required this.userEmail,
+    required this.userId,
+    this.designation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    const primaryColor = Color(0xFF0075db);
+    final bgColor = isDarkMode ? const Color(0xFF0f1a23) : const Color(0xFFf5f7f8);
+    final cardColor = isDarkMode ? const Color(0xFF1b2631) : Colors.white;
+    final borderColor = isDarkMode ? const Color(0xFF1e293b) : const Color(0xFFe2e8f0);
+    final textColor = isDarkMode ? Colors.white : const Color(0xFF0f172a);
+    final labelColor = isDarkMode ? const Color(0xFF94a3b8) : const Color(0xFF64748b);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: cardColor,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Account & Security',
+          style: TextStyle(
+            color: textColor,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      floatingActionButton: const BottomRightBackButton(),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        child: Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: borderColor),
+              ),
+              child: Column(
+                children: [
+                  _SettingsTile(
+                    icon: Icons.email_outlined,
+                    iconColor: primaryColor,
+                    title: 'Login Email Address',
+                    subtitle: userEmail,
+                    borderColor: borderColor,
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.lock_outline, size: 12, color: Colors.grey),
+                          SizedBox(width: 4),
+                          Text('Locked', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _SettingsTile(
+                    icon: Icons.badge_outlined,
+                    iconColor: const Color(0xFF10b981),
+                    title: 'System Access Role',
+                    subtitle: 'Staff Member (${designation ?? 'Active'})',
+                    borderColor: borderColor,
+                  ),
+                  _SettingsTile(
+                    icon: Icons.security_rounded,
+                    iconColor: const Color(0xFFf59e0b),
+                    title: 'Account Password',
+                    subtitle: 'Managed securely by Company Administration',
+                    borderColor: borderColor,
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.lock_outline, size: 12, color: Colors.grey),
+                          SizedBox(width: 4),
+                          Text('Locked', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _SettingsTile(
+                    icon: Icons.info_outline_rounded,
+                    iconColor: primaryColor,
+                    title: 'App Version',
+                    subtitle: 'EventFlow Pro v1.2.0',
+                    borderColor: borderColor,
+                    isLast: true,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'To change email or password credentials, contact an administrator.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: labelColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 // ── Helper Widgets ────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _SectionHeader extends StatelessWidget {
   final String label;
@@ -892,7 +1472,7 @@ class _StatCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: borderColor),
       ),
       child: Column(
@@ -902,7 +1482,7 @@ class _StatCard extends StatelessWidget {
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Icon(icon, color: color, size: 18),
           ),
@@ -963,7 +1543,7 @@ class _SettingsTile extends StatelessWidget {
       children: [
         InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(12),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
@@ -972,7 +1552,7 @@ class _SettingsTile extends StatelessWidget {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: iconColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, color: iconColor, size: 20),
                 ),
@@ -1003,7 +1583,7 @@ class _SettingsTile extends StatelessWidget {
                     (onTap != null
                         ? Icon(
                             Icons.chevron_right_rounded,
-                            color: labelColor,
+                            color: labelColor.withValues(alpha: 0.6),
                             size: 20,
                           )
                         : const SizedBox.shrink()),
@@ -1017,3 +1597,4 @@ class _SettingsTile extends StatelessWidget {
     );
   }
 }
+

@@ -658,12 +658,19 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
       floatingActionButton: const BottomRightBackButton(),
       appBar: AppBar(
         leading: Navigator.canPop(context) ? const BackButton() : null,
-        title: const Text('My Attendance & Shift'),
+        title: const Text(
+          'My Attendance & Shift',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.time_to_leave_rounded),
             tooltip: 'Request Leave / Off-Duty',
+            visualDensity: VisualDensity.compact,
             onPressed: () => showStaffLeaveRequestSheet(context, ref),
           ),
         ],
@@ -692,217 +699,310 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
 
               final bool hasActiveShift = activeRecord.id.isNotEmpty;
 
-              final activeShiftCard = Container(
-                width: double.infinity,
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: hasActiveShift
-                        ? [const Color(0xFF0052d4), const Color(0xFF4364f7), const Color(0xFF6fb1fc)]
-                        : (isDarkMode
-                            ? [const Color(0xFF1e293b), const Color(0xFF0f172a)]
-                            : [const Color(0xFFf8fafc), const Color(0xFFf1f5f9)]),
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: hasActiveShift
-                        ? Colors.white.withValues(alpha: 0.2)
-                        : (isDarkMode ? const Color(0xFF334155) : const Color(0xFFe2e8f0)),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (hasActiveShift ? const Color(0xFF4364f7) : Colors.black).withValues(alpha: 0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+              final isMobile = MediaQuery.of(context).size.width < 600;
+              // ── Clock-In / Active Shift Card ──────────────────────────────
+              // Two-zone card: accent header with current time + date,
+              // and a surface body with the status / action button.
+              final now = DateTime.now();
+              final activeShiftCard = ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.all(isMobile ? 14 : 16),
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? const Color(0xFF1e293b)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDarkMode
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFe2e8f0),
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.07),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // ── Header: accent gradient with clock ──
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: hasActiveShift
+                                ? [
+                                    const Color(0xFF0052d4),
+                                    const Color(0xFF6fb1fc),
+                                  ]
+                                : [
+                                    primaryColor,
+                                    primaryColor.withValues(alpha: 0.75),
+                                  ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
+                            // Circle clock icon
                             Container(
-                              padding: const EdgeInsets.all(8),
+                              width: 56,
+                              height: 56,
                               decoration: BoxDecoration(
-                                color: (hasActiveShift ? Colors.white : primaryColor).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
+                                color: Colors.white.withValues(alpha: 0.18),
+                                shape: BoxShape.circle,
                               ),
                               child: Icon(
-                                hasActiveShift ? Icons.timer_outlined : Icons.wb_sunny_outlined,
-                                color: hasActiveShift ? Colors.white : primaryColor,
-                                size: 20,
+                                hasActiveShift
+                                    ? Icons.timer_rounded
+                                    : Icons.fingerprint_rounded,
+                                color: Colors.white,
+                                size: 28,
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Text(
-                              hasActiveShift ? 'ACTIVE SHIFT' : 'SHIFT STATUS',
-                              style: TextStyle(
-                                color: hasActiveShift ? Colors.white.withValues(alpha: 0.9) : (isDarkMode ? Colors.white70 : const Color(0xFF64748b)),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                                letterSpacing: 1.2,
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    DateFormat('hh:mm a').format(now),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    DateFormat('EEEE, d MMM yyyy').format(now),
+                                    style: TextStyle(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.82),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Status pill
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: hasActiveShift
+                                    ? const Color(0xFF10b981)
+                                    : Colors.white.withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    hasActiveShift ? 'On Duty' : 'Off Duty',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: hasActiveShift ? const Color(0xFF10b981) : (isDarkMode ? const Color(0xFF334155) : const Color(0xFFe2e8f0)),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: BoxDecoration(
-                                  color: hasActiveShift ? Colors.white : const Color(0xFF94a3b8),
-                                  shape: BoxShape.circle,
+                      ),
+                      // ── Body: details + action ──
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (hasActiveShift) ...[
+                              Text(
+                                activeRecord.eventTitle.isNotEmpty
+                                    ? activeRecord.eventTitle
+                                    : 'Daily Office Duty',
+                                style: TextStyle(
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : const Color(0xFF0f172a),
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time_filled,
+                                    size: 14,
+                                    color: isDarkMode
+                                        ? const Color(0xFF94a3b8)
+                                        : const Color(0xFF64748b),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'Checked in at ${DateFormat('hh:mm a').format(activeRecord.checkInTime)}',
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? const Color(0xFF94a3b8)
+                                          : const Color(0xFF64748b),
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (activeRecord.checkInAddress != null) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.location_on_outlined,
+                                      size: 14,
+                                      color: isDarkMode
+                                          ? const Color(0xFF94a3b8)
+                                          : const Color(0xFF64748b),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Expanded(
+                                      child: Text(
+                                        activeRecord.checkInAddress!,
+                                        style: TextStyle(
+                                          color: isDarkMode
+                                              ? const Color(0xFF94a3b8)
+                                              : const Color(0xFF64748b),
+                                          fontSize: 12,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 46,
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(
+                                    Icons.logout_rounded,
+                                    size: 18,
+                                  ),
+                                  label: const Text(
+                                    'Clock Out',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFef4444),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  onPressed: () =>
+                                      _showClockOutDialog(activeRecord),
+                                ),
+                              ),
+                            ] else ...[
                               Text(
-                                hasActiveShift ? 'On Duty' : 'Off Duty',
+                                'Ready to start work?',
                                 style: TextStyle(
-                                  color: hasActiveShift ? Colors.white : (isDarkMode ? Colors.white70 : const Color(0xFF475569)),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : const Color(0xFF0f172a),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Tap below to clock in with GPS verification.',
+                                style: TextStyle(
+                                  color: isDarkMode
+                                      ? const Color(0xFF94a3b8)
+                                      : const Color(0xFF64748b),
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 46,
+                                child: ElevatedButton.icon(
+                                  icon: const Icon(
+                                    Icons.login_rounded,
+                                    size: 18,
+                                  ),
+                                  label: const Text(
+                                    'Clock In Now',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primaryColor,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  onPressed: () => _showClockInDialog(
+                                    currentUser.uid,
+                                    staffDisplayName,
+                                  ),
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    if (hasActiveShift) ...[
-                      Text(
-                        activeRecord.eventTitle.isNotEmpty ? activeRecord.eventTitle : 'Daily Office Duty',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.access_time_filled, size: 16, color: Colors.white.withValues(alpha: 0.8)),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Checked in at ${DateFormat('hh:mm a').format(activeRecord.checkInTime)}',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (activeRecord.checkInAddress != null) ...[
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on, size: 16, color: Colors.white.withValues(alpha: 0.8)),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                activeRecord.checkInAddress!,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                  fontSize: 12,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
                           ],
-                        ),
-                      ],
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.logout_rounded, size: 20),
-                          label: const Text(
-                            'Clock Out Shift',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFef4444),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () => _showClockOutDialog(activeRecord),
-                        ),
-                      ),
-                    ] else ...[
-                      Text(
-                        'Ready to start work?',
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : const Color(0xFF0f172a),
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Clock in with verified GPS location to record today\'s attendance.',
-                        style: TextStyle(
-                          color: isDarkMode ? const Color(0xFF94a3b8) : const Color(0xFF64748b),
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 48,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.login_rounded, size: 20),
-                          label: const Text(
-                            'Clock In Now',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () => _showClockInDialog(
-                            currentUser.uid,
-                            staffDisplayName,
-                          ),
                         ),
                       ),
                     ],
-                  ],
+                  ),
                 ),
               );
 
               final historyHeader = Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.history_toggle_off, size: 20, color: Color(0xFF0075db)),
+                        const Icon(
+                          Icons.history_toggle_off,
+                          size: 20,
+                          color: Color(0xFF0075db),
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Attendance History',
@@ -914,7 +1014,10 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -932,230 +1035,167 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
                 ),
               );
 
-              final historyList = Expanded(
-                child: sortedRecords.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.event_available, size: 56, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
-                            const SizedBox(height: 12),
-                            Text(
-                              'No attendance logs recorded yet',
-                              style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      )
-                    : () {
-                        final hasMore = sortedRecords.length > _pageSize;
-                        final currentLength = hasMore
-                            ? _pageSize
-                            : sortedRecords.length;
-
-                        return ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 16).copyWith(bottom: 40),
-                          itemCount: hasMore ? currentLength + 1 : currentLength,
-                          itemBuilder: (context, index) {
-                            if (index == currentLength) {
-                              return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child: Center(child: CircularProgressIndicator()),
-                              );
-                            }
-                            final item = sortedRecords[index];
-                            final isPresent = item.status == AttendanceStatus.present;
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: colorScheme.surface,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: colorScheme.outline.withValues(alpha: 0.15),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.03),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: (item.isCheckedOut ? const Color(0xFF10b981) : primaryColor).withValues(alpha: 0.1),
-                                                borderRadius: BorderRadius.circular(10),
-                                              ),
-                                              child: Icon(
-                                                item.isCheckedOut ? Icons.check_circle : Icons.timer,
-                                                color: item.isCheckedOut ? const Color(0xFF10b981) : primaryColor,
-                                                size: 20,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    item.eventTitle.isNotEmpty ? item.eventTitle : 'Daily Duty',
-                                                    style: const TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 15,
-                                                    ),
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                  Text(
-                                                    DateFormat('EEEE, MMM dd, yyyy').format(item.checkInTime),
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: colorScheme.onSurfaceVariant,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: isPresent ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          item.status.displayName,
-                                          style: TextStyle(
-                                            color: isPresent ? Colors.green.shade700 : Colors.red.shade700,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Divider(height: 1, color: colorScheme.outline.withValues(alpha: 0.1)),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            const Icon(Icons.login, size: 14, color: Color(0xFF10b981)),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              'In: ${DateFormat('hh:mm a').format(item.checkInTime)}',
-                                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.logout, size: 14, color: item.checkOutTime != null ? const Color(0xFFef4444) : Colors.grey),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              item.checkOutTime != null
-                                                  ? 'Out: ${DateFormat('hh:mm a').format(item.checkOutTime!)}'
-                                                  : 'Out: Active',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: item.checkOutTime != null ? colorScheme.onSurface : Colors.orange.shade700,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  if (item.checkInAddress != null) ...[
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.location_on_outlined, size: 14, color: colorScheme.onSurfaceVariant),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            item.checkInAddress!,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: colorScheme.onSurfaceVariant,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                  const SizedBox(height: 10),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: item.isWithinGeofence
-                                          ? const Color(0xFF10b981).withValues(alpha: 0.1)
-                                          : Colors.amber.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          item.isWithinGeofence ? Icons.verified_user : Icons.warning_amber_rounded,
-                                          size: 13,
-                                          color: item.isWithinGeofence ? const Color(0xFF10b981) : Colors.amber.shade900,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          item.isWithinGeofence
-                                              ? 'Verified On-Site Location'
-                                              : 'Outside Office Geofence (${GeofenceService.formatDistance(item.distanceToVenueMeters)})',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: item.isWithinGeofence ? const Color(0xFF047857) : Colors.amber.shade900,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                        );
-                      }(),
-              );
+              Widget buildCard(AttendanceEntity item) {
+                return _buildAttendanceCard(
+                  context,
+                  item,
+                  colorScheme,
+                  primaryColor,
+                );
+              }
 
               return LayoutBuilder(
                 builder: (context, constraints) {
                   if (constraints.maxWidth > 800) {
+                    final hasMore = sortedRecords.length > _pageSize;
+                    final currentLength = hasMore
+                        ? _pageSize
+                        : sortedRecords.length;
+
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(flex: 1, child: SingleChildScrollView(child: activeShiftCard)),
-                        Expanded(flex: 2, child: Column(children: [historyHeader, historyList])),
+                        Expanded(
+                          flex: 1,
+                          child: SingleChildScrollView(
+                            child: Column(
+                               children: [
+                                activeShiftCard,
+                                const SizedBox(height: 8),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            children: [
+                              historyHeader,
+                              Expanded(
+                                child: sortedRecords.isEmpty
+                                    ? Center(
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.event_available,
+                                              size: 56,
+                                              color: colorScheme.onSurfaceVariant
+                                                  .withValues(alpha: 0.4),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              'No attendance logs recorded yet',
+                                              style: TextStyle(
+                                                color: colorScheme
+                                                    .onSurfaceVariant,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    : ListView.builder(
+                                        controller: _scrollController,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                        ).copyWith(bottom: 40),
+                                        itemCount: hasMore
+                                            ? currentLength + 1
+                                            : currentLength,
+                                        itemBuilder: (context, index) {
+                                          if (index == currentLength) {
+                                            return const Padding(
+                                              padding: EdgeInsets.symmetric(
+                                                vertical: 16,
+                                              ),
+                                              child: Center(
+                                                child:
+                                                    CircularProgressIndicator(),
+                                              ),
+                                            );
+                                          }
+                                          return buildCard(
+                                            sortedRecords[index],
+                                          );
+                                        },
+                                      ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     );
                   } else {
-                    return Column(
-                      children: [activeShiftCard, historyHeader, historyList],
+                    // Responsive Unified Phone View: Fluid full-screen scrolling
+                    final hasMore = sortedRecords.length > _pageSize;
+                    final currentLength = hasMore
+                        ? _pageSize
+                        : sortedRecords.length;
+
+                    return CustomScrollView(
+                      controller: _scrollController,
+                      physics: const AlwaysScrollableScrollPhysics(
+                        parent: BouncingScrollPhysics(),
+                      ),
+                      slivers: [
+                        SliverToBoxAdapter(child: activeShiftCard),
+                        SliverToBoxAdapter(child: historyHeader),
+                        if (sortedRecords.isEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 40),
+                              child: Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.event_available,
+                                      size: 56,
+                                      color: colorScheme.onSurfaceVariant
+                                          .withValues(alpha: 0.4),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'No attendance logs recorded yet',
+                                      style: TextStyle(
+                                        color: colorScheme.onSurfaceVariant,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                            ).copyWith(bottom: 80),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  if (index == currentLength) {
+                                    return const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 16,
+                                      ),
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  }
+                                  return buildCard(sortedRecords[index]);
+                                },
+                                childCount: hasMore
+                                    ? currentLength + 1
+                                    : currentLength,
+                              ),
+                            ),
+                          ),
+                      ],
                     );
                   }
                 },
@@ -1189,6 +1229,239 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAttendanceCard(
+    BuildContext context,
+    AttendanceEntity item,
+    ColorScheme colorScheme,
+    Color primaryColor,
+  ) {
+    final isPresent = item.status == AttendanceStatus.present;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.15),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (item.isCheckedOut
+                                ? const Color(0xFF10b981)
+                                : primaryColor)
+                            .withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        item.isCheckedOut
+                            ? Icons.check_circle
+                            : Icons.timer,
+                        color: item.isCheckedOut
+                            ? const Color(0xFF10b981)
+                            : primaryColor,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.eventTitle.isNotEmpty
+                                ? item.eventTitle
+                                : 'Daily Duty',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            DateFormat(
+                              'EEEE, MMM dd, yyyy',
+                            ).format(item.checkInTime),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: isPresent
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  item.status.displayName,
+                  style: TextStyle(
+                    color: isPresent
+                        ? Colors.green.shade700
+                        : Colors.red.shade700,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Divider(
+            height: 1,
+            color: colorScheme.outline.withValues(alpha: 0.1),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.login,
+                      size: 14,
+                      color: Color(0xFF10b981),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'In: ${DateFormat('hh:mm a').format(item.checkInTime)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.logout,
+                      size: 14,
+                      color: item.checkOutTime != null
+                          ? const Color(0xFFef4444)
+                          : Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      item.checkOutTime != null
+                          ? 'Out: ${DateFormat('hh:mm a').format(item.checkOutTime!)}'
+                          : 'Out: Active',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: item.checkOutTime != null
+                            ? colorScheme.onSurface
+                            : Colors.orange.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (item.checkInAddress != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 14,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    item.checkInAddress!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 4,
+            ),
+            decoration: BoxDecoration(
+              color: item.isWithinGeofence
+                  ? const Color(0xFF10b981).withValues(alpha: 0.1)
+                  : Colors.amber.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  item.isWithinGeofence
+                      ? Icons.verified_user
+                      : Icons.warning_amber_rounded,
+                  size: 13,
+                  color: item.isWithinGeofence
+                      ? const Color(0xFF10b981)
+                      : Colors.amber.shade900,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    item.isWithinGeofence
+                        ? 'Verified On-Site Location'
+                        : 'Outside Office Geofence (${GeofenceService.formatDistance(item.distanceToVenueMeters)})',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: item.isWithinGeofence
+                          ? const Color(0xFF047857)
+                          : Colors.amber.shade900,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

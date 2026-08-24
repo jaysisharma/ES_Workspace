@@ -105,20 +105,33 @@ class AuthNotifier extends Notifier<AuthState> {
 
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
+    final currentUser = state.user;
+
+    // 1. Safely stop notification listeners & unsubscribe topics in background without blocking
     try {
-      final currentUser = state.user;
-      await Future.wait([
-        PushNotificationService.stopListening(),
-        if (currentUser != null)
-          PushNotificationService.unsubscribeFromTopics(
-            userId: currentUser.uid,
-            role: currentUser.role.name,
-          ),
-      ]);
-      await ref.read(logoutUseCaseProvider)();
-      state = const AuthState();
+      await PushNotificationService.stopListening()
+          .catchError((e) => debugPrint('Error stopping push listeners: $e'));
+      if (currentUser != null) {
+        await PushNotificationService.unsubscribeFromTopics(
+          userId: currentUser.uid,
+          role: currentUser.role.name,
+        ).timeout(
+          const Duration(seconds: 1),
+          onTimeout: () => debugPrint('Push topic unsubscription timed out'),
+        ).catchError((e) => debugPrint('Error unsubscribing push topics: $e'));
+      }
     } catch (e) {
-      state = state.copyWith(isLoading: false, errorMessage: e.toString());
+      debugPrint('Push notification cleanup error on logout: $e');
+    }
+
+    // 2. Clear Firebase Auth session and persistent local storage
+    try {
+      await ref.read(logoutUseCaseProvider)();
+    } catch (e) {
+      debugPrint('Logout usecase error: $e');
+    } finally {
+      // 3. ALWAYS unconditionally reset AuthState to empty unauthenticated state
+      state = const AuthState();
     }
   }
 

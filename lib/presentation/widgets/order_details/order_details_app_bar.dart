@@ -9,6 +9,7 @@ import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/providers/event_notifier.dart';
 import 'package:order_app/presentation/screens/common/orders/create_order_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/revenue_breakdown_screen.dart';
+import 'package:order_app/presentation/widgets/order_details/edit_order_id_dialog.dart';
 
 class OrderDetailsAppBarWidget extends ConsumerWidget {
   final OrderEntity order;
@@ -48,6 +49,68 @@ class OrderDetailsAppBarWidget extends ConsumerWidget {
     final isAdminOrFounder = userRole == UserRole.admin || userRole == UserRole.founder;
     final canManageFinances = isAdminOrFounder || userRole == UserRole.finance;
 
+    Future<void> handleToggleArchive() async {
+      final isCurrentlyArchived = order.isArchived;
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            isCurrentlyArchived ? 'Restore Order?' : 'Archive Order?',
+          ),
+          content: Text(
+            isCurrentlyArchived
+                ? 'Move "${order.eventName}" back to active orders and calendar?'
+                : 'Archive "${order.eventName}"? It will be hidden from active calendar and orders, but saved in Archived Orders.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: isCurrentlyArchived
+                    ? const Color(0xFF10b981)
+                    : const Color(0xFF64748b),
+              ),
+              child: Text(
+                isCurrentlyArchived ? 'Restore' : 'Archive',
+              ),
+            ),
+          ],
+        ),
+      );
+      if (confirm == true) {
+        await ref
+            .read(orderNotifierProvider.notifier)
+            .toggleArchiveOrder(order.id, !isCurrentlyArchived);
+        if (eventId != null) {
+          await ref
+              .read(eventNotifierProvider.notifier)
+              .toggleArchiveEvent(eventId!, !isCurrentlyArchived);
+        }
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isCurrentlyArchived
+                    ? 'Order restored to active list'
+                    : 'Order archived successfully',
+              ),
+              backgroundColor: isCurrentlyArchived
+                  ? const Color(0xFF10b981)
+                  : const Color(0xFF64748b),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -81,35 +144,6 @@ class OrderDetailsAppBarWidget extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (canManageFinances)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                icon: Icon(
-                  Icons.payments_outlined,
-                  color: successColor,
-                  size: 20,
-                ),
-                tooltip: 'Update Revenue',
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    SlidePageRoute(
-                      page: RevenueBreakdownScreen(
-                        order: order,
-                        items: items,
-                      ),
-                    ),
-                  );
-                },
-                style: IconButton.styleFrom(
-                  backgroundColor: successColor.withValues(alpha: 0.1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-              ),
-            ),
           IconButton(
             icon: Icon(
               Icons.share_outlined,
@@ -126,130 +160,162 @@ class OrderDetailsAppBarWidget extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 4),
-          if (isAdminOrFounder)
-            IconButton(
-              icon: Icon(
-                Icons.edit_outlined,
-                color: primaryColor,
-                size: 20,
-              ),
-              tooltip: 'Edit Order',
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  SlidePageRoute(
-                    page: CreateOrderScreen(existingOrder: order),
-                  ),
-                );
-              },
-              style: IconButton.styleFrom(
-                backgroundColor: primaryColor.withValues(alpha: 0.1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
+          PopupMenuButton<String>(
+            icon: Icon(
+              Icons.more_vert_rounded,
+              color: textColor,
+              size: 20,
+            ),
+            tooltip: 'More actions',
+            style: IconButton.styleFrom(
+              backgroundColor: surfaceColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+                side: BorderSide(color: borderColor, width: 0.5),
               ),
             ),
-          if (isAdminOrFounder)
-            IconButton(
-              icon: Icon(
-                order.isArchived
-                    ? Icons.unarchive_outlined
-                    : Icons.archive_outlined,
-                color: order.isArchived
-                    ? const Color(0xFF10b981)
-                    : const Color(0xFF64748b),
-                size: 20,
-              ),
-              tooltip: order.isArchived
-                  ? 'Restore (Unarchive) Order'
-                  : 'Archive Order',
-              onPressed: () async {
-                final isCurrentlyArchived = order.isArchived;
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: borderColor, width: 0.5),
+            ),
+            color: surfaceColor,
+            elevation: 4,
+            onSelected: (value) async {
+              switch (value) {
+                case 'edit_order':
+                  await Navigator.push(
+                    context,
+                    SlidePageRoute(
+                      page: CreateOrderScreen(existingOrder: order),
                     ),
-                    title: Text(
-                      isCurrentlyArchived ? 'Restore Order?' : 'Archive Order?',
-                    ),
-                    content: Text(
-                      isCurrentlyArchived
-                          ? 'Move "${order.eventName}" back to active orders and calendar?'
-                          : 'Archive "${order.eventName}"? It will be hidden from active calendar and orders, but saved in Archived Orders.',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Cancel'),
+                  );
+                  break;
+                case 'change_order_id':
+                  EditOrderIdDialog.show(context, order);
+                  break;
+                case 'update_revenue':
+                  Navigator.push(
+                    context,
+                    SlidePageRoute(
+                      page: RevenueBreakdownScreen(
+                        order: order,
+                        items: items,
                       ),
-                      FilledButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: isCurrentlyArchived
+                    ),
+                  );
+                  break;
+                case 'share_pdf':
+                  onSharePdf();
+                  break;
+                case 'toggle_archive':
+                  await handleToggleArchive();
+                  break;
+                case 'delete_order':
+                  await onDeleteOrder(eventId, order.id);
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              if (isAdminOrFounder)
+                const PopupMenuItem(
+                  value: 'edit_order',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_outlined, size: 18),
+                      SizedBox(width: 12),
+                      Text('Edit Order', style: TextStyle(fontSize: 13.5)),
+                    ],
+                  ),
+                ),
+              if (isAdminOrFounder)
+                const PopupMenuItem(
+                  value: 'change_order_id',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_note_rounded, size: 18),
+                      SizedBox(width: 12),
+                      Text('Change Order ID', style: TextStyle(fontSize: 13.5)),
+                    ],
+                  ),
+                ),
+              if (canManageFinances)
+                const PopupMenuItem(
+                  value: 'update_revenue',
+                  child: Row(
+                    children: [
+                      Icon(Icons.payments_outlined, size: 18),
+                      SizedBox(width: 12),
+                      Text('Update Revenue', style: TextStyle(fontSize: 13.5)),
+                    ],
+                  ),
+                ),
+              const PopupMenuItem(
+                value: 'share_pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.share_outlined, size: 18),
+                    SizedBox(width: 12),
+                    Text('Share PDF', style: TextStyle(fontSize: 13.5)),
+                  ],
+                ),
+              ),
+              if (isAdminOrFounder) ...[
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: 'toggle_archive',
+                  child: Row(
+                    children: [
+                      Icon(
+                        order.isArchived
+                            ? Icons.unarchive_outlined
+                            : Icons.archive_outlined,
+                        size: 18,
+                        color: order.isArchived
+                            ? const Color(0xFF10b981)
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        order.isArchived
+                            ? 'Restore Order'
+                            : 'Archive Order',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          color: order.isArchived
                               ? const Color(0xFF10b981)
-                              : const Color(0xFF64748b),
-                        ),
-                        child: Text(
-                          isCurrentlyArchived ? 'Restore' : 'Archive',
+                              : null,
                         ),
                       ),
                     ],
                   ),
-                );
-                if (confirm == true) {
-                  await ref
-                      .read(orderNotifierProvider.notifier)
-                      .toggleArchiveOrder(order.id, !isCurrentlyArchived);
-                  if (eventId != null) {
-                    await ref
-                        .read(eventNotifierProvider.notifier)
-                        .toggleArchiveEvent(eventId!, !isCurrentlyArchived);
-                  }
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          isCurrentlyArchived
-                              ? 'Order restored to active list'
-                              : 'Order archived successfully',
-                        ),
-                        backgroundColor: isCurrentlyArchived
-                            ? const Color(0xFF10b981)
-                            : const Color(0xFF64748b),
-                        behavior: SnackBarBehavior.floating,
+                ),
+              ],
+              if (!fromCalendar && isAdminOrFounder) ...[
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'delete_order',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_outline_rounded,
+                        size: 18,
+                        color: Colors.red,
                       ),
-                    );
-                  }
-                }
-              },
-              style: IconButton.styleFrom(
-                backgroundColor: (order.isArchived
-                        ? const Color(0xFF10b981)
-                        : const Color(0xFF64748b))
-                    .withValues(alpha: 0.1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
+                      SizedBox(width: 12),
+                      Text(
+                        'Delete Order',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          if (!fromCalendar && isAdminOrFounder)
-            IconButton(
-              icon: const Icon(
-                Icons.delete_outline_rounded,
-                color: Colors.red,
-                size: 20,
-              ),
-              tooltip: 'Delete Order',
-              onPressed: () => onDeleteOrder(eventId, order.id),
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.red.withValues(alpha: 0.1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-            ),
+              ],
+            ],
+          ),
         ],
       ),
     );

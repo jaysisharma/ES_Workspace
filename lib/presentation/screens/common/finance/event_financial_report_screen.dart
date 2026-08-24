@@ -76,10 +76,10 @@ class _EventFinancialReportScreenState
       'Client Name',
       'Event / Rental',
       'Total Revenue (NPR)',
-      'Advance Received (NPR)',
-      'Due Amount (NPR)',
       'Total Expenses (NPR)',
       'Profit / Loss (NPR)',
+      'Advance Received (NPR)',
+      'Due Amount (NPR)',
     ];
 
     int extractOrderNum(String id) {
@@ -126,10 +126,10 @@ class _EventFinancialReportScreenState
         clientName,
         eventType,
         rev,
-        advance,
-        due,
         exp,
         profitLoss,
+        advance,
+        due,
       ]);
     }
 
@@ -143,10 +143,10 @@ class _EventFinancialReportScreenState
       '',
       '',
       totalRev,
-      totalAdvance,
-      totalDue,
       totalExp,
       netProfit,
+      totalAdvance,
+      totalDue,
     ]);
 
     final cleanLabel = _filterLabel.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
@@ -192,6 +192,8 @@ class _EventFinancialReportScreenState
         totalExpenses: totalExpenses,
         netProfit: netProfit,
         margin: margin,
+        periodText: _filterLabel,
+        reportTitle: 'EVENT FINANCIAL REPORT',
       );
 
       if (!context.mounted) return;
@@ -242,27 +244,14 @@ class _EventFinancialReportScreenState
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf_outlined,
-                color: Color(0xFFf43f5e)),
-            tooltip: 'Export Summary PDF',
-            onPressed: () {
-              final orders = ordersAsync.value ?? [];
-              final filtered = _getFilteredOrders(orders);
-              _exportEventsFinancialPdf(filtered);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.table_chart_outlined,
-                color: Colors.greenAccent),
-            tooltip: 'Export to Excel',
-            onPressed: () {
-              final orders = ordersAsync.value ?? [];
-              final filtered = _getFilteredOrders(orders);
-              _exportEventsFinancialExcel(filtered);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.date_range_outlined),
+            icon: Icon(
+              _selectedDateRange != null
+                  ? Icons.filter_alt_rounded
+                  : Icons.date_range_outlined,
+              color: _selectedDateRange != null
+                  ? colorScheme.primary
+                  : null,
+            ),
             tooltip: 'Filter Date Range',
             onPressed: () async {
               final picked = await NepaliDatePickerDialog.show(
@@ -283,15 +272,139 @@ class _EventFinancialReportScreenState
               }
             },
           ),
-          if (_selectedDateRange != null)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              tooltip: 'Clear Filter',
-              onPressed: () => setState(() {
-                _selectedDateRange = null;
-                _filterLabel = 'All Events';
-              }),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, size: 22),
+            tooltip: 'More options',
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
+            onSelected: (value) async {
+              final orders = ordersAsync.value ?? [];
+              final filtered = _getFilteredOrders(orders);
+              switch (value) {
+                case 'export_pdf':
+                  _exportEventsFinancialPdf(filtered);
+                  break;
+                case 'export_excel':
+                  _exportEventsFinancialExcel(filtered);
+                  break;
+                case 'filter_date':
+                  final picked = await NepaliDatePickerDialog.show(
+                    context: context,
+                    title: 'Filter Event Date Range',
+                    initialStart: _selectedDateRange?.start ?? DateTime.now(),
+                    initialEnd: _selectedDateRange?.end ?? DateTime.now(),
+                    allowRange: true,
+                  );
+                  if (picked != null && picked['start'] != null) {
+                    final start = picked['start']!;
+                    final end = picked['end'] ?? picked['start']!;
+                    setState(() {
+                      _selectedDateRange = DateTimeRange(start: start, end: end);
+                      _filterLabel =
+                          '${formatNepaliDate(start, 'yyyy-MM-dd')} to ${formatNepaliDate(end, 'yyyy-MM-dd')}';
+                    });
+                  }
+                  break;
+                case 'current_month':
+                  _selectCurrentMonth();
+                  break;
+                case 'clear_filter':
+                  setState(() {
+                    _selectedDateRange = null;
+                    _filterLabel = 'All Events';
+                  });
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'export_pdf',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.picture_as_pdf_outlined,
+                      size: 18,
+                      color: Color(0xFFf43f5e),
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'Export Summary PDF',
+                      style: TextStyle(fontSize: 13.5),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'export_excel',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.table_chart_outlined,
+                      size: 18,
+                      color: Colors.green,
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'Export to Excel (.xlsx)',
+                      style: TextStyle(fontSize: 13.5),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: 'filter_date',
+                child: Row(
+                  children: [
+                    Icon(Icons.date_range_outlined, size: 18),
+                    SizedBox(width: 12),
+                    Text(
+                      'Filter Date Range (BS)',
+                      style: TextStyle(fontSize: 13.5),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'current_month',
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_month_outlined, size: 18),
+                    SizedBox(width: 12),
+                    Text(
+                      'Reset to Current Month',
+                      style: TextStyle(fontSize: 13.5),
+                    ),
+                  ],
+                ),
+              ),
+              if (_selectedDateRange != null) ...[
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'clear_filter',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.filter_alt_off_outlined,
+                        size: 18,
+                        color: Colors.orange,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Clear Date Filter',
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          color: Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(width: 4),
         ],
       ),
       body: ordersAsync.when(
@@ -323,7 +436,7 @@ class _EventFinancialReportScreenState
                 currencyLabel,
               ),
 
-              // 2. BELOW: Date Chips (Left) + Small Search Bar & Excel Export (Right)
+              // 2. BELOW: Responsive Search & Date Filters
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -331,211 +444,206 @@ class _EventFinancialReportScreenState
                   builder: (context, constraints) {
                     final isWide = constraints.maxWidth > 700;
 
-                    final dateChips = SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          FilterChip(
-                            selected: _selectedDateRange != null &&
-                                _filterLabel.contains(
-                                    NepaliCalendarEngine.monthsEnglish[
-                                        NepaliCalendarEngine.adToBs(
-                                                    DateTime.now())
-                                                .month -
-                                            1]),
-                            avatar: const Icon(Icons.calendar_month_rounded,
-                                size: 16),
-                            label: Text(
-                                'This Month (${NepaliCalendarEngine.monthsEnglish[NepaliCalendarEngine.adToBs(DateTime.now()).month - 1]})'),
-                            onSelected: (_) => _selectCurrentMonth(),
+                    final datePickerButton = Material(
+                      color: _selectedDateRange != null
+                          ? colorScheme.primary.withValues(alpha: 0.12)
+                          : cardColor,
+                      borderRadius: BorderRadius.circular(10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () async {
+                          final picked = await NepaliDatePickerDialog.show(
+                            context: context,
+                            title: 'Filter Event Date Range',
+                            initialStart: _selectedDateRange?.start ??
+                                DateTime.now(),
+                            initialEnd:
+                                _selectedDateRange?.end ?? DateTime.now(),
+                            allowRange: true,
+                          );
+                          if (picked != null && picked['start'] != null) {
+                            final start = picked['start']!;
+                            final end = picked['end'] ?? picked['start']!;
+                            setState(() {
+                              _selectedDateRange =
+                                  DateTimeRange(start: start, end: end);
+                              _filterLabel =
+                                  '${formatNepaliDate(start, 'yyyy-MM-dd')} to ${formatNepaliDate(end, 'yyyy-MM-dd')}';
+                            });
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _selectedDateRange != null
+                                  ? colorScheme.primary.withValues(alpha: 0.6)
+                                  : colorScheme.outlineVariant
+                                      .withValues(alpha: 0.5),
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          FilterChip(
-                            selected: _selectedDateRange != null &&
-                                !_filterLabel.contains(
-                                    NepaliCalendarEngine.monthsEnglish[
-                                        NepaliCalendarEngine.adToBs(
-                                                    DateTime.now())
-                                                .month -
-                                            1]),
-                            avatar: const Icon(Icons.tune_rounded, size: 16),
-                            label: Text(_selectedDateRange != null &&
-                                    !_filterLabel.contains(
-                                        NepaliCalendarEngine.monthsEnglish[
-                                            NepaliCalendarEngine.adToBs(
-                                                        DateTime.now())
-                                                    .month -
-                                                1])
-                                ? _filterLabel
-                                : 'Pick Date Range'),
-                            onSelected: (_) async {
-                              final picked = await NepaliDatePickerDialog.show(
-                                context: context,
-                                title: 'Filter Event Date Range',
-                                initialStart: _selectedDateRange?.start ??
-                                    DateTime.now(),
-                                initialEnd:
-                                    _selectedDateRange?.end ?? DateTime.now(),
-                                allowRange: true,
-                              );
-                              if (picked != null && picked['start'] != null) {
-                                final start = picked['start']!;
-                                final end = picked['end'] ?? picked['start']!;
-                                setState(() {
-                                  _selectedDateRange =
-                                      DateTimeRange(start: start, end: end);
-                                  _filterLabel =
-                                      '${formatNepaliDate(start, 'yyyy-MM-dd')} to ${formatNepaliDate(end, 'yyyy-MM-dd')}';
-                                });
-                              }
-                            },
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.calendar_month_rounded,
+                                size: 16,
+                                color: _selectedDateRange != null
+                                    ? colorScheme.primary
+                                    : labelColor,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  _selectedDateRange != null
+                                      ? _filterLabel
+                                      : 'Select Date',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: _selectedDateRange != null
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
+                                    color: _selectedDateRange != null
+                                        ? colorScheme.primary
+                                        : null,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (_selectedDateRange != null) ...[
+                                const SizedBox(width: 6),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedDateRange = null;
+                                      _filterLabel = 'All Events';
+                                    });
+                                  },
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    size: 15,
+                                    color: colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          FilterChip(
-                            selected: _selectedDateRange == null,
-                            avatar: const Icon(Icons.all_inclusive_rounded,
-                                size: 16),
-                            label: const Text('All Time'),
-                            onSelected: (_) => setState(() {
-                              _selectedDateRange = null;
-                              _filterLabel = 'All Events';
-                            }),
-                          ),
-                        ],
+                        ),
                       ),
                     );
 
-                    final searchAndExport = Row(
-                      mainAxisSize:
-                          isWide ? MainAxisSize.min : MainAxisSize.max,
-                      children: [
-                        // Small Search Bar on the Right
-                        SizedBox(
-                          width: isWide ? 220 : 160,
-                          height: 38,
-                          child: TextField(
-                            controller: _searchController,
-                            style: const TextStyle(fontSize: 12.5),
-                            decoration: InputDecoration(
-                              hintText: 'Search event, #ID...',
-                              hintStyle: TextStyle(
-                                  fontSize: 12, color: labelColor),
-                              prefixIcon:
-                                  const Icon(Icons.search, size: 17),
-                              prefixIconConstraints:
-                                  const BoxConstraints(minWidth: 32),
-                              suffixIcon: _searchQuery.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear, size: 14),
-                                      padding: EdgeInsets.zero,
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        setState(() => _searchQuery = '');
-                                      },
-                                    )
-                                  : null,
-                              isDense: true,
-                              filled: true,
-                              fillColor: cardColor,
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 8),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide(
-                                    color: colorScheme.outlineVariant
-                                        .withValues(alpha: 0.5)),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide(
-                                    color: colorScheme.outlineVariant
-                                        .withValues(alpha: 0.5)),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide(
-                                    color: colorScheme.primary, width: 1.5),
-                              ),
-                            ),
-                            onChanged: (val) =>
-                                setState(() => _searchQuery = val),
-                          ),
+                    final searchField = TextField(
+                      controller: _searchController,
+                      style: const TextStyle(fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'Search...',
+                        hintStyle: TextStyle(
+                            fontSize: 12.5, color: labelColor),
+                        prefixIcon:
+                            const Icon(Icons.search_rounded, size: 17),
+                        prefixIconConstraints:
+                            const BoxConstraints(minWidth: 32),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 14),
+                                padding: EdgeInsets.zero,
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                        isDense: true,
+                        filled: true,
+                        fillColor: cardColor,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 9.5),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                              color: colorScheme.outlineVariant
+                                  .withValues(alpha: 0.5)),
                         ),
-                        const SizedBox(width: 8),
-                        // Excel Export Button
-                        ElevatedButton.icon(
-                          onPressed: () =>
-                              _exportEventsFinancialExcel(filteredOrders),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF10b981),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 9),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            elevation: 1,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          icon:
-                              const Icon(Icons.table_chart_rounded, size: 15),
-                          label: Text(
-                            isWide
-                                ? 'Excel (${filteredOrders.length})'
-                                : 'Excel',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                              color: colorScheme.outlineVariant
+                                  .withValues(alpha: 0.4)),
                         ),
-                        const SizedBox(width: 6),
-                        // PDF Export Button
-                        ElevatedButton.icon(
-                          onPressed: () =>
-                              _exportEventsFinancialPdf(filteredOrders),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFf43f5e),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 9),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            elevation: 1,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          icon:
-                              const Icon(Icons.picture_as_pdf_rounded, size: 15),
-                          label: Text(
-                            isWide
-                                ? 'PDF (${filteredOrders.length})'
-                                : 'PDF',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                              color: colorScheme.primary, width: 1.5),
                         ),
-                      ],
+                      ),
+                      onChanged: (val) =>
+                          setState(() => _searchQuery = val),
                     );
 
                     if (isWide) {
                       return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(child: dateChips),
-                          const SizedBox(width: 12),
-                          searchAndExport,
+                          datePickerButton,
+                          const SizedBox(width: 10),
+                          SizedBox(width: 220, child: searchField),
+                          const Spacer(),
+                          ElevatedButton.icon(
+                            onPressed: () =>
+                                _exportEventsFinancialExcel(filteredOrders),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF10b981),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 0,
+                            ),
+                            icon: const Icon(Icons.table_chart_rounded,
+                                size: 15),
+                            label: Text(
+                              'Excel (${filteredOrders.length})',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          ElevatedButton.icon(
+                            onPressed: () =>
+                                _exportEventsFinancialPdf(filteredOrders),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFf43f5e),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              elevation: 0,
+                            ),
+                            icon: const Icon(Icons.picture_as_pdf_rounded,
+                                size: 15),
+                            label: Text(
+                              'PDF (${filteredOrders.length})',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
                         ],
                       );
                     } else {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                      return Row(
                         children: [
-                          dateChips,
-                          const SizedBox(height: 8),
-                          searchAndExport,
+                          SizedBox(width: 135, child: searchField),
+                          const SizedBox(width: 8),
+                          Expanded(child: datePickerButton),
                         ],
                       );
                     }
@@ -1018,7 +1126,7 @@ class __EventFinancialCardWidgetState
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              '#${order.id}',
+                              'ID: ${order.id}',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.bold,
@@ -1173,12 +1281,10 @@ class __EventFinancialCardWidgetState
             ),
             const SizedBox(height: 12),
 
-            // ── 3. SINGLE ACTION ROW (View Breakdown, PDF Statement, Download, Share) ──
+            // ── 3. CLEAN 50/50 ACTION ROW (Breakdown, PDF Statement) ──
             Row(
               children: [
-                // View Breakdown Toggle Button
                 Expanded(
-                  flex: 4,
                   child: OutlinedButton.icon(
                     onPressed: () {
                       setState(() {
@@ -1186,41 +1292,42 @@ class __EventFinancialCardWidgetState
                       });
                     },
                     icon: Icon(
-                      _isExpanded ? Icons.unfold_less : Icons.unfold_more,
-                      size: 15,
+                      _isExpanded
+                          ? Icons.unfold_less_rounded
+                          : Icons.unfold_more_rounded,
+                      size: 16,
                     ),
                     label: Text(
-                      _isExpanded ? 'Hide' : 'Breakdown',
+                      _isExpanded ? 'Hide Items' : 'Breakdown',
                       style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
+                        horizontal: 10,
                         vertical: 10,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       side: BorderSide(
-                        color: colorScheme.primary.withValues(alpha: 0.4),
+                        color: colorScheme.primary.withValues(alpha: 0.35),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 6),
-                // PDF Statement Button
+                const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: handlePdfGeneration,
-                    icon: const Icon(Icons.picture_as_pdf, size: 15),
+                    icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
                     label: const Text(
                       'PDF Statement',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.bold,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -1229,43 +1336,14 @@ class __EventFinancialCardWidgetState
                       backgroundColor: colorScheme.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
+                        horizontal: 10,
                         vertical: 10,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       elevation: 0,
                     ),
-                  ),
-                ),
-                // Download Icon
-                IconButton(
-                  icon: const Icon(Icons.download, size: 18),
-                  tooltip: 'Download PDF',
-                  onPressed: handlePdfGeneration,
-                  style: IconButton.styleFrom(
-                    backgroundColor: colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    padding: const EdgeInsets.all(10),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                // Share Icon
-                IconButton(
-                  icon: const Icon(Icons.share, size: 18),
-                  tooltip: 'Share PDF',
-                  onPressed: handlePdfGeneration,
-                  style: IconButton.styleFrom(
-                    backgroundColor: colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    padding: const EdgeInsets.all(10),
                   ),
                 ),
               ],

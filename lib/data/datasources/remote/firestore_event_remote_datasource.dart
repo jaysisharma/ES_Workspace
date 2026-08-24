@@ -40,4 +40,62 @@ class FirestoreEventRemoteDataSource {
     }
     return null;
   }
+
+  Future<void> syncEventForOrder(dynamic order) async {
+    try {
+      final orderId = order.id.toString();
+      final query = await _firestore
+          .collection('events')
+          .where('orderId', isEqualTo: orderId)
+          .get();
+
+      final String status = order.status.toString().contains('completed')
+          ? 'Completed'
+          : (order.status.toString().contains('inProgress')
+              ? 'In Progress'
+              : 'Upcoming');
+      final double completion =
+          order.status.toString().contains('completed') ? 1.0 : 0.0;
+
+      if (query.docs.isNotEmpty) {
+        for (final doc in query.docs) {
+          await doc.reference.update({
+            'title': order.eventName,
+            'date': order.eventDate.toIso8601String(),
+            'location': order.venue,
+            'status': status,
+            'completion': completion,
+            'isArchived': order.isArchived,
+          });
+        }
+      } else if (!order.status.toString().contains('draft')) {
+        final newDoc = _firestore.collection('events').doc();
+        final event = EventModel(
+          id: newDoc.id,
+          orderId: orderId,
+          title: order.eventName,
+          date: order.eventDate,
+          location: order.venue,
+          role: 'Lead Tech',
+          status: status,
+          completion: completion,
+          isArchived: order.isArchived,
+          createdAt: order.createdAt ?? order.eventDate,
+        );
+        await newDoc.set(event.toJson());
+      }
+    } catch (_) {}
+  }
+
+  Future<void> deleteEventsForOrder(String orderId) async {
+    try {
+      final query = await _firestore
+          .collection('events')
+          .where('orderId', isEqualTo: orderId)
+          .get();
+      for (final doc in query.docs) {
+        await doc.reference.delete();
+      }
+    } catch (_) {}
+  }
 }

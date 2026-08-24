@@ -451,14 +451,17 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
   }) {
     final totalCells = ((startOffset + totalDaysInMonth) / 7).ceil() * 7;
 
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final childAspectRatio = isMobile ? 0.88 : 1.15;
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 7,
-        childAspectRatio: 1.15,
-        crossAxisSpacing: 3,
-        mainAxisSpacing: 3,
+        childAspectRatio: childAspectRatio,
+        crossAxisSpacing: isMobile ? 2.0 : 3.0,
+        mainAxisSpacing: isMobile ? 2.0 : 3.0,
       ),
       itemCount: totalCells,
       itemBuilder: (context, index) {
@@ -517,6 +520,10 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
             widget.eventCounts?[cleanAdMidnight] ?? (hasEvents ? 1 : 0);
         final orderCount = widget.orderCounts?[cleanAdMidnight] ?? 0;
 
+        final now = DateTime.now();
+        final todayMidnight = DateTime(now.year, now.month, now.day);
+        final isPast = cleanAdMidnight.isBefore(todayMidnight);
+
         return _buildDayCell(
           dayNumber: dayNumber,
           currentBsDate: currentBsDate,
@@ -528,6 +535,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
           isInRange: isInRange,
           isRangeStart: isRangeStart,
           isRangeEnd: isRangeEnd,
+          isPast: isPast,
           eventCount: eventCount,
           orderCount: orderCount,
           primaryColor: primaryColor,
@@ -551,6 +559,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
     required bool isInRange,
     required bool isRangeStart,
     required bool isRangeEnd,
+    required bool isPast,
     required int eventCount,
     required int orderCount,
     required Color primaryColor,
@@ -561,6 +570,9 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
   }) {
     final npDigit = NepaliCalendarEngine.toNepaliDigits(dayNumber);
     final adDay = currentAdDate.day;
+
+    // Only ongoing (today) and upcoming (future) events receive colored fills & borders
+    final activeEventCount = isPast ? 0 : eventCount;
 
     BoxDecoration cellDecoration;
     Color cellTextColor;
@@ -584,8 +596,8 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
         borderRadius: BorderRadius.circular(6),
       );
       cellTextColor = primaryColor;
-    } else if (eventCount == 1) {
-      // SINGLE EVENT DAY: Soft Emerald fill & Emerald border
+    } else if (activeEventCount == 1) {
+      // SINGLE EVENT DAY (Ongoing/Upcoming): Soft Emerald fill & Emerald border
       final singleEventBg = isDarkMode
           ? const Color(0xFF064e3b).withValues(alpha: 0.45)
           : const Color(0xFFecfdf5);
@@ -600,8 +612,8 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
       cellTextColor = isDarkMode
           ? const Color(0xFF6ee7b7)
           : const Color(0xFF047857);
-    } else if (eventCount > 1) {
-      // MULTIPLE EVENTS DAY: Distinct Vibrant Purple fill & Purple border
+    } else if (activeEventCount > 1) {
+      // MULTIPLE EVENTS DAY (Ongoing/Upcoming): Distinct Vibrant Purple fill & Purple border
       final multiEventBg = isDarkMode
           ? const Color(0xFF4c1d95).withValues(alpha: 0.55)
           : const Color(0xFFf3e8ff);
@@ -630,6 +642,8 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
           : (holiday != null ? const Color(0xFFea580c) : textColor);
     }
 
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Tooltip(
       message: holiday != null
           ? '${holiday.nameEnglish}\n(${holiday.nameNepali})'
@@ -643,7 +657,10 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
           hoverColor: primaryColor.withValues(alpha: 0.08),
           child: Container(
             decoration: cellDecoration,
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 3.0 : 4.0,
+              vertical: isMobile ? 1.5 : 2.0,
+            ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -655,7 +672,8 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                     Text(
                       '$dayNumber',
                       style: TextStyle(
-                        fontSize: 16.5,
+                        fontSize: isMobile ? 14.0 : 16.5,
+                        height: 1.0,
                         fontWeight:
                             (isSelected ||
                                 isRangeStart ||
@@ -672,15 +690,16 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                       Text(
                         '$adDay',
                         style: TextStyle(
-                          fontSize: 9.5,
+                          fontSize: isMobile ? 8.5 : 9.5,
+                          height: 1.0,
                           fontWeight: FontWeight.w600,
                           color: (isSelected || isRangeStart || isRangeEnd)
                               ? Colors.white.withValues(alpha: 0.75)
-                              : (eventCount == 1
+                              : (activeEventCount == 1
                                     ? (isDarkMode
                                           ? const Color(0xFFa7f3d0)
                                           : const Color(0xFF047857))
-                                    : (eventCount > 1
+                                    : (activeEventCount > 1
                                           ? (isDarkMode
                                                 ? const Color(0xFFd8b4fe)
                                                 : const Color(0xFF6b21a8))
@@ -694,15 +713,16 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                 Text(
                   npDigit,
                   style: TextStyle(
-                    fontSize: 9.5,
+                    fontSize: isMobile ? 8.5 : 9.5,
+                    height: 1.0,
                     fontWeight: FontWeight.w600,
                     color: (isSelected || isRangeStart || isRangeEnd)
                         ? Colors.white.withValues(alpha: 0.9)
-                        : (eventCount == 1
+                        : (activeEventCount == 1
                               ? (isDarkMode
                                     ? const Color(0xFFa7f3d0)
                                     : const Color(0xFF047857))
-                              : (eventCount > 1
+                              : (activeEventCount > 1
                                     ? (isDarkMode
                                           ? const Color(0xFFd8b4fe)
                                           : const Color(0xFF6b21a8))
@@ -727,7 +747,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                           shape: BoxShape.circle,
                         ),
                       ),
-                    if (eventCount == 1)
+                    if (activeEventCount == 1)
                       Container(
                         width: 4.5,
                         height: 4.5,
@@ -739,7 +759,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                           shape: BoxShape.circle,
                         ),
                       )
-                    else if (eventCount > 1)
+                    else if (activeEventCount > 1)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 2.5,

@@ -7,6 +7,7 @@ import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/providers/event_providers.dart';
 import 'package:order_app/presentation/providers/event_notifier.dart';
+import 'package:order_app/presentation/screens/admin/bulk_delete_orders_screen.dart';
 import 'package:order_app/presentation/screens/common/orders/order_details_screen.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
@@ -290,6 +291,21 @@ class _ArchivedOrdersScreenState extends ConsumerState<ArchivedOrdersScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.delete_sweep_rounded,
+              color: Colors.redAccent,
+              size: 22,
+            ),
+            tooltip: 'Bulk Purge Orders',
+            onPressed: () => Navigator.push(
+              context,
+              SlidePageRoute(page: const BulkDeleteOrdersScreen()),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(color: borderColor, height: 1),

@@ -47,33 +47,45 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     final selectedNepali = safeDateTimeToNepali(_selectedDate);
 
-    // Filtered unified events for the timeline — filter by Nepali month/year
-    final monthEvents = eventsAsync.maybeWhen(
-      data: (events) => events.where((e) {
-        if (e.isArchived) return false;
-        final np = safeDateTimeToNepali(e.date);
-        return np.year == selectedNepali.year &&
-            np.month == selectedNepali.month;
-      }),
-      orElse: () => <EventEntity>[],
-    );
+    final orderState = ref.watch(orderNotifierProvider);
+    final allOrders = (ordersAsync.value ?? orderState.orders);
+    final orderMap = {for (final o in allOrders) o.id: o};
 
-    final monthOrders = ordersAsync.maybeWhen(
-      data: (orders) => orders.where((o) {
-        if (o.isArchived) return false;
-        final np = safeDateTimeToNepali(o.eventDate);
-        return np.year == selectedNepali.year &&
-            np.month == selectedNepali.month &&
-            o.status != OrderStatus.draft;
-      }),
-      orElse: () => <OrderEntity>[],
-    );
+    // Dynamically resolve event details from parent order to ensure up-to-date dates & locations
+    final resolvedEvents = (eventsAsync.value ?? []).map((e) {
+      final linkedOrder = orderMap[e.orderId];
+      if (linkedOrder != null) {
+        return e.copyWith(
+          date: linkedOrder.eventDate,
+          title: linkedOrder.eventName.isNotEmpty ? linkedOrder.eventName : e.title,
+          location: linkedOrder.venue.isNotEmpty ? linkedOrder.venue : e.location,
+          isArchived: linkedOrder.isArchived,
+        );
+      }
+      return e;
+    }).toList();
+
+    // Filtered unified events for the timeline — filter by Nepali month/year
+    final monthEvents = resolvedEvents.where((e) {
+      if (e.isArchived) return false;
+      final np = safeDateTimeToNepali(e.date);
+      return np.year == selectedNepali.year &&
+          np.month == selectedNepali.month;
+    }).toList();
+
+    final monthOrders = allOrders.where((o) {
+      if (o.isArchived) return false;
+      final np = safeDateTimeToNepali(o.eventDate);
+      return np.year == selectedNepali.year &&
+          np.month == selectedNepali.month &&
+          o.status != OrderStatus.draft;
+    }).toList();
 
     // Orders that already have a linked event should not appear separately
     final eventOrderIds = monthEvents.map((e) => e.orderId).toSet();
     final ordersWithoutEvent = monthOrders.where(
       (o) => !eventOrderIds.contains(o.id),
-    );
+    ).toList();
 
     // Dots match exactly what appears in the unified list
     final eventDates = monthEvents
@@ -275,12 +287,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                               _isDayFiltered = true; // Focus on today
                             });
                             WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (_eventsListKey.currentContext != null) {
-                                Scrollable.ensureVisible(
-                                  _eventsListKey.currentContext!,
-                                  duration: const Duration(milliseconds: 400),
-                                  curve: Curves.easeInOut,
-                                );
+                              if (!mounted) return;
+                              final targetCtx = _eventsListKey.currentContext;
+                              if (targetCtx != null && targetCtx.mounted) {
+                                final ro = targetCtx.findRenderObject();
+                                if (ro != null && ro.attached) {
+                                  Scrollable.ensureVisible(
+                                    targetCtx,
+                                    duration: const Duration(milliseconds: 400),
+                                    curve: Curves.easeInOut,
+                                  );
+                                }
                               }
                             });
                           },
@@ -368,12 +385,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
                     if (hasEvents || hasOrders) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (_eventsListKey.currentContext != null) {
-                          Scrollable.ensureVisible(
-                            _eventsListKey.currentContext!,
-                            duration: const Duration(milliseconds: 400),
-                            curve: Curves.easeInOut,
-                          );
+                        if (!mounted) return;
+                        final targetCtx = _eventsListKey.currentContext;
+                        if (targetCtx != null && targetCtx.mounted) {
+                          final ro = targetCtx.findRenderObject();
+                          if (ro != null && ro.attached) {
+                            Scrollable.ensureVisible(
+                              targetCtx,
+                              duration: const Duration(milliseconds: 400),
+                              curve: Curves.easeInOut,
+                            );
+                          }
                         }
                       });
                     } else if (isAdminOrFounder) {

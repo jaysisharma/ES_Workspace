@@ -2,14 +2,19 @@ import 'package:order_app/domain/entities/notification_entity.dart';
 import 'package:order_app/domain/repositories/notification_repository.dart';
 import '../datasources/remote/firestore_notification_remote_datasource.dart';
 
+import 'package:order_app/domain/entities/user_entity.dart';
+
 class NotificationRepositoryImpl implements NotificationRepository {
   final NotificationRemoteDataSource remoteDataSource;
 
   NotificationRepositoryImpl({required this.remoteDataSource});
 
   @override
-  Stream<List<NotificationEntity>> getNotificationsStream() {
-    return remoteDataSource.getNotifications();
+  Stream<List<NotificationEntity>> getNotificationsStream({
+    String? userId,
+    UserRole? role,
+  }) {
+    return remoteDataSource.getNotifications(userId: userId, role: role);
   }
 
   @override

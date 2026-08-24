@@ -279,6 +279,7 @@ class _FinancialReportsScreenState
                             totalExpenses: totalExpenses,
                             netProfit: netProfit,
                             margin: margin,
+                            reportTitle: 'FINANCIAL SUMMARY REPORT',
                           );
 
                       if (!context.mounted) return;

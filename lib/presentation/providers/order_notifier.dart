@@ -1,11 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/order_item_entity.dart';
 import 'package:order_app/domain/entities/expense_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/core/services/fcm_sender.dart';
 import 'order_providers.dart';
+import 'event_providers.dart';
 import 'notification_notifier.dart';
 import 'auth_provider.dart';
 import 'package:order_app/domain/entities/notification_entity.dart';
@@ -103,30 +105,30 @@ class OrderNotifier extends Notifier<OrderState> {
         logs: [OrderLogEntity(timestamp: now, message: 'Order created')],
       );
       await ref.read(createOrderUseCaseProvider)(orderWithLog);
+      await ref.read(eventRepositoryProvider).syncEventForOrder(orderWithLog);
+      ref.invalidate(eventsStreamProvider);
 
       final currentRole = ref.read(authNotifierProvider).user?.role;
 
-      // Notify founder only (admin already knows — they just created it)
-      if (currentRole != UserRole.founder) {
-        await ref
-            .read(notificationNotifierProvider.notifier)
-            .addNotification(
-              NotificationEntity(
-                id: const Uuid().v4(),
-                title: 'New Order Created',
-                description: 'Order for "${order.eventName}" has been created.',
-                timestamp: DateTime.now(),
-                type: 'order',
-                relatedId: order.id,
-                targetRole: 'founder',
-              ),
-            );
-        FcmSender.sendToTopic(
-          topic: 'role_founder',
-          title: 'New Order Created',
-          body: 'Order for "${order.eventName}" has been created.',
-        );
-      }
+      // Notify admin + founder of new order
+      await ref
+          .read(notificationNotifierProvider.notifier)
+          .addNotification(
+            NotificationEntity(
+              id: const Uuid().v4(),
+              title: 'New Order Created',
+              description: 'Order for "${order.eventName}" has been created.',
+              timestamp: DateTime.now(),
+              type: 'order',
+              relatedId: order.id,
+              targetRole: 'admin_founder',
+            ),
+          );
+      FcmSender.sendToTopics(
+        topics: ['role_admin', 'role_founder'],
+        title: 'New Order Created',
+        body: 'Order for "${order.eventName}" has been created.',
+      );
 
       // Notify each assigned staff member individually
       for (final staffId in order.assignedStaffIds) {
@@ -174,7 +176,7 @@ class OrderNotifier extends Notifier<OrderState> {
           ),
         );
 
-        // Notify founder of status changes
+        // Notify admin + founder of status changes
         ref
             .read(notificationNotifierProvider.notifier)
             .addNotification(
@@ -186,11 +188,11 @@ class OrderNotifier extends Notifier<OrderState> {
                 timestamp: now,
                 type: 'system',
                 relatedId: order.id,
-                targetRole: 'founder',
+                targetRole: 'admin_founder',
               ),
             );
-        FcmSender.sendToTopic(
-          topic: 'role_founder',
+        FcmSender.sendToTopics(
+          topics: ['role_admin', 'role_founder'],
           title: 'Order Status Updated',
           body:
               'Order "${order.eventName}" is now ${_statusLabel(order.status)}.',
@@ -274,8 +276,10 @@ class OrderNotifier extends Notifier<OrderState> {
 
       final updatedOrder = order.copyWith(logs: newLogs, updatedAt: now);
       await ref.read(updateOrderUseCaseProvider)(updatedOrder);
+      await ref.read(eventRepositoryProvider).syncEventForOrder(updatedOrder);
       await loadOrders();
       ref.invalidate(ordersStreamProvider);
+      ref.invalidate(eventsStreamProvider);
       state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -318,6 +322,8 @@ class OrderNotifier extends Notifier<OrderState> {
           updatedAt: now,
         );
         await repository.updateOrder(updatedOrder);
+        await ref.read(eventRepositoryProvider).syncEventForOrder(updatedOrder);
+        ref.invalidate(eventsStreamProvider);
         final existingIndex = state.orders.indexWhere((o) => o.id == orderId);
         List<OrderEntity> updatedList;
         if (existingIndex >= 0) {
@@ -338,6 +344,8 @@ class OrderNotifier extends Notifier<OrderState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       await ref.read(deleteOrderUseCaseProvider)(id);
+      await ref.read(eventRepositoryProvider).deleteEventsForOrder(id);
+      ref.invalidate(eventsStreamProvider);
       await loadOrders();
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -349,7 +357,119 @@ class OrderNotifier extends Notifier<OrderState> {
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       await ref.read(deleteOrderUseCaseProvider).deleteMultiple(ids);
+      for (final id in ids) {
+        await ref.read(eventRepositoryProvider).deleteEventsForOrder(id);
+      }
+      ref.invalidate(eventsStreamProvider);
       await loadOrders();
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> updateOrderId(String oldOrderId, String newOrderId) async {
+    final cleanOld = oldOrderId.trim();
+    final cleanNew = newOrderId.trim();
+
+    if (cleanNew.isEmpty) {
+      throw Exception('New Order ID cannot be empty');
+    }
+    if (cleanOld == cleanNew) {
+      return;
+    }
+
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // 1. Check if new ID already exists
+      final newDoc = await firestore.collection('orders').doc(cleanNew).get();
+      if (newDoc.exists) {
+        throw Exception('Order ID "$cleanNew" already exists. Please choose a different Order ID.');
+      }
+
+      // 2. Fetch old order data
+      final oldDoc = await firestore.collection('orders').doc(cleanOld).get();
+      if (!oldDoc.exists) {
+        throw Exception('Original Order "$cleanOld" not found.');
+      }
+
+      final oldData = Map<String, dynamic>.from(oldDoc.data()!);
+      oldData['id'] = cleanNew;
+
+      final now = DateTime.now();
+      final logs = List<dynamic>.from(oldData['logs'] ?? []);
+      logs.add({
+        'timestamp': now.toIso8601String(),
+        'message': 'Order ID updated from $cleanOld to $cleanNew by Admin',
+      });
+      oldData['logs'] = logs;
+      oldData['updatedAt'] = now.toIso8601String();
+
+      // 3. Create document with new Order ID
+      await firestore.collection('orders').doc(cleanNew).set(oldData);
+
+      // 4. Migrate related collections (order_items, expenses, additional_revenue, events, change_requests, purchase_orders)
+      final items = await firestore
+          .collection('order_items')
+          .where('orderId', isEqualTo: cleanOld)
+          .get();
+      for (final doc in items.docs) {
+        await doc.reference.update({'orderId': cleanNew});
+      }
+
+      final expenses = await firestore
+          .collection('expenses')
+          .where('orderId', isEqualTo: cleanOld)
+          .get();
+      for (final doc in expenses.docs) {
+        await doc.reference.update({'orderId': cleanNew});
+      }
+
+      final addRev = await firestore
+          .collection('additional_revenue')
+          .where('orderId', isEqualTo: cleanOld)
+          .get();
+      for (final doc in addRev.docs) {
+        await doc.reference.update({'orderId': cleanNew});
+      }
+
+      final events = await firestore
+          .collection('events')
+          .where('orderId', isEqualTo: cleanOld)
+          .get();
+      for (final doc in events.docs) {
+        await doc.reference.update({'orderId': cleanNew});
+      }
+
+      final changeReqs = await firestore
+          .collection('change_requests')
+          .where('orderId', isEqualTo: cleanOld)
+          .get();
+      for (final doc in changeReqs.docs) {
+        await doc.reference.update({'orderId': cleanNew});
+      }
+
+      final pos = await firestore
+          .collection('purchase_orders')
+          .where('orderId', isEqualTo: cleanOld)
+          .get();
+      for (final doc in pos.docs) {
+        await doc.reference.update({'orderId': cleanNew});
+      }
+
+      // 5. Delete old order document
+      await firestore.collection('orders').doc(cleanOld).delete();
+
+      // 6. Invalidate streams and reload
+      ref.invalidate(ordersStreamProvider);
+      ref.invalidate(eventsStreamProvider);
+      ref.invalidate(allItemsStreamProvider);
+      ref.invalidate(allExpensesStreamProvider);
+      ref.invalidate(allAdditionalRevenueStreamProvider);
+      await loadOrders();
+      state = state.copyWith(isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;
@@ -380,28 +500,6 @@ class OrderNotifier extends Notifier<OrderState> {
         updatedOrder,
         items,
         additionalRevenue,
-      );
-
-      // Notify admin + founder
-      await ref
-          .read(notificationNotifierProvider.notifier)
-          .addNotification(
-            NotificationEntity(
-              id: const Uuid().v4(),
-              title: 'Revenue Finalized',
-              description:
-                  'Revenue for "${order.eventName}" finalized at Rs. ${order.totalAmount.toStringAsFixed(0)}',
-              timestamp: DateTime.now(),
-              type: 'finance',
-              relatedId: order.id,
-              targetRole: 'admin_founder',
-            ),
-          );
-      FcmSender.sendToTopics(
-        topics: ['role_admin', 'role_founder'],
-        title: 'Revenue Finalized',
-        body:
-            'Revenue for "${order.eventName}" finalized at Rs. ${order.totalAmount.toStringAsFixed(0)}',
       );
 
       await loadOrders();
@@ -444,28 +542,6 @@ class OrderNotifier extends Notifier<OrderState> {
       ref.invalidate(allItemsStreamProvider);
       ref.invalidate(allExpensesStreamProvider);
       ref.invalidate(ordersStreamProvider);
-
-      // Notify admin + founder
-      await ref
-          .read(notificationNotifierProvider.notifier)
-          .addNotification(
-            NotificationEntity(
-              id: const Uuid().v4(),
-              title: 'Expenses Finalized',
-              description:
-                  'Expenses for "${order.eventName}" finalized at Rs. ${order.totalExpenses.toStringAsFixed(0)}',
-              timestamp: DateTime.now(),
-              type: 'finance',
-              relatedId: order.id,
-              targetRole: 'admin_founder',
-            ),
-          );
-      FcmSender.sendToTopics(
-        topics: ['role_admin', 'role_founder'],
-        title: 'Expenses Finalized',
-        body:
-            'Expenses for "${order.eventName}" finalized at Rs. ${order.totalExpenses.toStringAsFixed(0)}',
-      );
 
       await loadOrders();
     } catch (e) {

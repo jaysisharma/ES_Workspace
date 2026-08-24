@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:order_app/domain/entities/client_entity.dart';
-import 'package:order_app/domain/entities/event_entity.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/order_item_entity.dart';
 import 'package:order_app/presentation/providers/client_provider.dart';
-import 'package:order_app/presentation/providers/event_notifier.dart';
+import 'package:order_app/presentation/providers/event_providers.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'item_row_model.dart';
 
@@ -207,19 +206,9 @@ class CreateOrderSubmitHelper {
         ref.read(orderItemNotifierProvider.notifier).loadItems(finalOrderId);
       }
 
-      if (!isEditMode && !isDraft) {
-        final event = EventEntity(
-          id: const Uuid().v4(),
-          orderId: finalOrderId,
-          title: eventNameController.text.trim(),
-          date: eventDate,
-          location: venueController.text.trim(),
-          role: 'Lead Tech',
-          status: 'In Progress',
-          completion: 0.0,
-          assignedStaffId: null,
-        );
-        await ref.read(eventNotifierProvider.notifier).create(event);
+      if (!isDraft) {
+        await ref.read(eventRepositoryProvider).syncEventForOrder(order);
+        ref.invalidate(eventsStreamProvider);
       }
 
       if (context.mounted) {

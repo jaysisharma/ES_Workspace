@@ -68,6 +68,8 @@ class ReportsPdfBuilder {
     required Uint8List logoBytes,
     required pw.Font font,
     required pw.Font boldFont,
+    String periodText = '',
+    String reportTitle = 'EVENT FINANCIAL REPORT',
     PdfPageFormat pageFormat = PdfPageFormat.a4,
     void Function(String)? onProgress,
   }) async {
@@ -86,13 +88,89 @@ class ReportsPdfBuilder {
     );
 
     final logoImage = pw.MemoryImage(logoBytes);
+    final isA5 = pageFormat.width < 500;
 
     pdf.addPage(
       pw.MultiPage(
         maxPages: 100,
         pageFormat: pageFormat,
         margin: getAdaptiveMargin(pageFormat),
-        header: (context) => PdfThemeAndStyles.buildHeader(logoImage, orders.isEmpty ? null : orders.first, title: 'FINANCIAL SUMMARY'),
+        header: (context) => pw.Container(
+          padding: const pw.EdgeInsets.only(top: 6, bottom: 12),
+          decoration: const pw.BoxDecoration(
+            border: pw.Border(
+              bottom: pw.BorderSide(
+                  color: PdfThemeAndStyles.borderColor, width: 1.5),
+            ),
+          ),
+          child: pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.center,
+            children: [
+              pw.Container(
+                width: isA5 ? 50 : 70,
+                height: isA5 ? 50 : 70,
+                child: pw.Image(logoImage, fit: pw.BoxFit.contain),
+              ),
+              pw.SizedBox(width: 12),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      reportTitle.toUpperCase(),
+                      style: pw.TextStyle(
+                        fontSize: isA5 ? 14 : 18,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfThemeAndStyles.darkColor,
+                        letterSpacing: 1.1,
+                      ),
+                    ),
+                    if (periodText.isNotEmpty) ...[
+                      pw.SizedBox(height: 3),
+                      pw.Text(
+                        'Period: $periodText',
+                        style: pw.TextStyle(
+                          fontSize: isA5 ? 9 : 11,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfThemeAndStyles.labelColor,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  pw.Text(
+                    'FINANCIAL STATEMENT',
+                    style: pw.TextStyle(
+                      fontSize: isA5 ? 10 : 13,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfThemeAndStyles.darkColor,
+                    ),
+                  ),
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    'Date: ${formatNepaliDate(DateTime.now(), "MMM dd, yyyy")}',
+                    style: pw.TextStyle(
+                      fontSize: isA5 ? 7.5 : 9,
+                      color: PdfThemeAndStyles.labelColor,
+                    ),
+                  ),
+                  pw.SizedBox(height: 2),
+                  pw.Text(
+                    'Total Events: ${orders.length}',
+                    style: pw.TextStyle(
+                      fontSize: isA5 ? 7.5 : 9,
+                      color: PdfThemeAndStyles.labelColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
         footer: (context) => PdfThemeAndStyles.buildFooter(context),
         build: (context) => [
           pw.SizedBox(height: 16),
@@ -105,6 +183,16 @@ class ReportsPdfBuilder {
             totalDue: totalDue,
           ),
           pw.SizedBox(height: 14),
+          pw.Text(
+            'ORDER-WISE BREAKDOWN',
+            style: pw.TextStyle(
+              fontSize: 8.5,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfThemeAndStyles.darkColor,
+              letterSpacing: 0.8,
+            ),
+          ),
+          pw.SizedBox(height: 6),
           PdfTablesBuilder.buildOrdersFinancialTable(orders),
           pw.SizedBox(height: 24),
           PdfThemeAndStyles.buildSignatureSection(),
@@ -426,7 +514,7 @@ class ReportsPdfBuilder {
       tableData.add([
         '${sn++}',
         desc,
-        item.rate.toStringAsFixed(2),
+        item.rate > 0 ? item.rate.toStringAsFixed(2) : '-',
         item.quantity.toString(),
         amtFloor.toString(),
         amtPs == 0 ? '00' : amtPs.toString().padLeft(2, '0'),
@@ -441,7 +529,7 @@ class ReportsPdfBuilder {
       tableData.add([
         '${sn++}',
         desc,
-        rev.rate.toStringAsFixed(2),
+        rev.rate > 0 ? rev.rate.toStringAsFixed(2) : '-',
         rev.quantity.toString(),
         amtFloor.toString(),
         amtPs == 0 ? '00' : amtPs.toString().padLeft(2, '0'),

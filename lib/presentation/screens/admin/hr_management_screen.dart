@@ -300,56 +300,111 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              Icons.picture_as_pdf_outlined,
-              color: colorScheme.primary,
-            ),
-            tooltip: 'Print Staff Directory PDF',
-            onPressed: () => _printStaffDirectoryPdf(usersAsync, profilesAsync),
-          ),
-          if (isAdmin) ...[
+          if (isAdmin)
             IconButton(
-              icon: const Icon(Icons.event_repeat),
-              tooltip: 'Leave Cycle & Reset Settings',
-              onPressed: () => showLeaveCycleSettingsDialog(context, ref),
-            ),
-            const SizedBox(width: 8),
-            isMobile
-                ? IconButton(
-                    icon: const Icon(Icons.person_add_alt_1),
-                    tooltip: 'New Employee Record',
-                    onPressed: () {
-                      context.pushPage(
-                        const AddEmployeeScreen(
-                          userId: '',
-                          userName: '',
-                          isNewUser: true,
-                        ),
-                      );
-                    },
-                  )
-                : ElevatedButton.icon(
-                    icon: const Icon(Icons.person_add_alt_1, size: 16),
-                    label: const Text('New Employee Record'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    onPressed: () {
-                      context.pushPage(
-                        const AddEmployeeScreen(
-                          userId: '',
-                          userName: '',
-                          isNewUser: true,
-                        ),
-                      );
-                    },
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+              tooltip: 'New Employee Record',
+              onPressed: () {
+                context.pushPage(
+                  const AddEmployeeScreen(
+                    userId: '',
+                    userName: '',
+                    isNewUser: true,
                   ),
-          ],
-          const SizedBox(width: 12),
+                );
+              },
+            ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded, size: 22),
+            tooltip: 'More actions',
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            onSelected: (value) {
+              switch (value) {
+                case 'new_employee':
+                  context.pushPage(
+                    const AddEmployeeScreen(
+                      userId: '',
+                      userName: '',
+                      isNewUser: true,
+                    ),
+                  );
+                  break;
+                case 'manual_attendance':
+                  showDialog(
+                    context: context,
+                    builder: (context) =>
+                        const AdminManualAttendanceDialog(),
+                  );
+                  break;
+                case 'leave_cycle_settings':
+                  showLeaveCycleSettingsDialog(context, ref);
+                  break;
+                case 'print_directory':
+                  _printStaffDirectoryPdf(usersAsync, profilesAsync);
+                  break;
+              }
+            },
+            itemBuilder: (context) => [
+              if (isAdmin) ...[
+                const PopupMenuItem(
+                  value: 'new_employee',
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_add_alt_1_rounded, size: 18),
+                      SizedBox(width: 12),
+                      Text(
+                        'New Employee Record',
+                        style: TextStyle(fontSize: 13.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'manual_attendance',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_calendar_rounded, size: 18),
+                      SizedBox(width: 12),
+                      Text(
+                        'Manual Attendance Entry',
+                        style: TextStyle(fontSize: 13.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'leave_cycle_settings',
+                  child: Row(
+                    children: [
+                      Icon(Icons.event_repeat_rounded, size: 18),
+                      SizedBox(width: 12),
+                      Text(
+                        'Leave Cycle & Reset Settings',
+                        style: TextStyle(fontSize: 13.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+              ],
+              const PopupMenuItem(
+                value: 'print_directory',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf_outlined, size: 18),
+                    SizedBox(width: 12),
+                    Text(
+                      'Print Staff Directory PDF',
+                      style: TextStyle(fontSize: 13.5),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 4),
         ],
         bottom: TabBar(
           controller: _tabController,

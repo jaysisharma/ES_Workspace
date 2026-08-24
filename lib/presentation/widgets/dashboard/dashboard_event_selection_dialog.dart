@@ -3,21 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/domain/entities/event_entity.dart';
 import 'package:order_app/presentation/providers/dashboard_strip_notifier.dart';
+import 'package:order_app/presentation/providers/event_providers.dart';
+import 'package:order_app/presentation/providers/order_providers.dart';
 
 class DashboardEventSelectionDialog extends ConsumerStatefulWidget {
   final List<EventEntity> allEvents;
 
-  const DashboardEventSelectionDialog({
-    super.key,
-    required this.allEvents,
-  });
+  const DashboardEventSelectionDialog({super.key, this.allEvents = const []});
 
-  static Future<void> show(BuildContext context, List<EventEntity> events) {
+  static Future<void> show(BuildContext context, [List<EventEntity>? events]) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => DashboardEventSelectionDialog(allEvents: events),
+      builder: (context) =>
+          DashboardEventSelectionDialog(allEvents: events ?? const []),
     );
   }
 
@@ -28,7 +28,6 @@ class DashboardEventSelectionDialog extends ConsumerStatefulWidget {
 
 class _DashboardEventSelectionDialogState
     extends ConsumerState<DashboardEventSelectionDialog> {
-  late DashboardStripMode _selectedMode;
   late List<String> _selectedIds;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
@@ -37,7 +36,6 @@ class _DashboardEventSelectionDialogState
   void initState() {
     super.initState();
     final currentState = ref.read(dashboardStripNotifierProvider);
-    _selectedMode = currentState.mode;
     _selectedIds = List<String>.from(currentState.selectedEventIds);
   }
 
@@ -61,8 +59,61 @@ class _DashboardEventSelectionDialogState
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    final availableEvents = List<EventEntity>.from(widget.allEvents);
-    availableEvents.sort((a, b) => b.date.compareTo(a.date));
+    final eventsAsync = ref.watch(eventsStreamProvider);
+    final ordersAsync = ref.watch(ordersStreamProvider);
+    final orderState = ref.watch(orderNotifierProvider);
+
+    final rawEvents = eventsAsync.value ?? widget.allEvents;
+    final orders = (ordersAsync.value ?? orderState.orders)
+        .where((o) => !o.isArchived)
+        .toList();
+    final orderMap = {for (final o in orders) o.id: o};
+
+    final activeEvents = rawEvents.where((e) => !e.isArchived).map((e) {
+      final linkedOrder = orderMap[e.orderId];
+      if (linkedOrder != null) {
+        return e.copyWith(
+          date: linkedOrder.eventDate,
+          title: linkedOrder.eventName.isNotEmpty
+              ? linkedOrder.eventName
+              : e.title,
+          location: linkedOrder.venue.isNotEmpty
+              ? linkedOrder.venue
+              : e.location,
+          isArchived: linkedOrder.isArchived,
+        );
+      }
+      return e;
+    }).toList();
+
+    final existingOrderIds = activeEvents.map((e) => e.orderId).toSet();
+    final orderEvents = orders
+        .where((o) => !existingOrderIds.contains(o.id))
+        .map(
+          (o) => EventEntity(
+            id: 'ord_evt_${o.id}',
+            orderId: o.id,
+            title: o.eventName.isNotEmpty ? o.eventName : 'Event #${o.id}',
+            date: o.eventDate,
+            location: o.venue,
+            role: 'Order',
+            status: o.status.name,
+            completion: 0.0,
+          ),
+        )
+        .toList();
+
+    final allCombinedEvents = [...activeEvents, ...orderEvents];
+
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    final availableEvents = allCombinedEvents.where((e) {
+      final localDate = e.date.toLocal();
+      final eventDay = DateTime(localDate.year, localDate.month, localDate.day);
+      return !eventDay.isBefore(todayStart);
+    }).toList();
+    availableEvents.sort((a, b) => a.date.compareTo(b.date));
 
     final filteredEvents = availableEvents.where((e) {
       if (_searchQuery.isEmpty) return true;
@@ -115,7 +166,7 @@ class _DashboardEventSelectionDialogState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Dashboard Events Strip',
+                        'Select Strip Events',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -124,7 +175,7 @@ class _DashboardEventSelectionDialogState
                         ),
                       ),
                       Text(
-                        'Choose which events appear on the dashboard banner',
+                        'Choose the events you want to display on the dashboard strip',
                         style: TextStyle(
                           fontSize: 12,
                           color: colorScheme.onSurfaceVariant,
@@ -151,131 +202,14 @@ class _DashboardEventSelectionDialogState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Mode Selection Section
-                  Text(
-                    'FILTER MODE',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.1,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Mode Cards Grid
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 2.3,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    children: DashboardStripMode.values.map((mode) {
-                      final isSelected = _selectedMode == mode;
-                      IconData icon;
-                      String subtitle;
-
-                      switch (mode) {
-                        case DashboardStripMode.thisWeek:
-                          icon = Icons.date_range_rounded;
-                          subtitle = 'Current week events';
-                          break;
-                        case DashboardStripMode.upcoming:
-                          icon = Icons.upcoming_rounded;
-                          subtitle = 'Today & future events';
-                          break;
-                        case DashboardStripMode.custom:
-                          icon = Icons.push_pin_rounded;
-                          subtitle = 'Handpicked selection';
-                          break;
-                        case DashboardStripMode.all:
-                          icon = Icons.all_inbox_rounded;
-                          subtitle = 'All active events';
-                          break;
-                      }
-
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () => setState(() => _selectedMode = mode),
-                          borderRadius: BorderRadius.circular(12),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? colorScheme.primary.withValues(alpha: 0.12)
-                                  : isDark
-                                      ? colorScheme.surfaceContainerHighest
-                                          .withValues(alpha: 0.3)
-                                      : colorScheme.surfaceContainerHighest
-                                          .withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected
-                                    ? colorScheme.primary
-                                    : colorScheme.outline.withValues(alpha: 0.2),
-                                width: isSelected ? 2 : 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  icon,
-                                  size: 20,
-                                  color: isSelected
-                                      ? colorScheme.primary
-                                      : colorScheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        mode.label,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.w600,
-                                          color: isSelected
-                                              ? colorScheme.primary
-                                              : colorScheme.onSurface,
-                                        ),
-                                      ),
-                                      Text(
-                                        subtitle,
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: colorScheme.onSurfaceVariant,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Custom Selection Section
+                  // Header with Count & Actions
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
                           Text(
-                            'EVENT SELECTION',
+                            'EVENTS',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -292,8 +226,9 @@ class _DashboardEventSelectionDialogState
                             decoration: BoxDecoration(
                               color: _selectedIds.isNotEmpty
                                   ? colorScheme.primary
-                                  : colorScheme.onSurfaceVariant
-                                      .withValues(alpha: 0.2),
+                                  : colorScheme.onSurfaceVariant.withValues(
+                                      alpha: 0.2,
+                                    ),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
@@ -319,8 +254,13 @@ class _DashboardEventSelectionDialogState
                                     .toList();
                               });
                             },
-                            child: const Text('Select All',
-                                style: TextStyle(fontSize: 11)),
+                            child: const Text(
+                              'Select All',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                           TextButton(
                             onPressed: () {
@@ -328,8 +268,13 @@ class _DashboardEventSelectionDialogState
                                 _selectedIds.clear();
                               });
                             },
-                            child: const Text('Clear',
-                                style: TextStyle(fontSize: 11)),
+                            child: const Text(
+                              'Clear',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -344,7 +289,7 @@ class _DashboardEventSelectionDialogState
                     onChanged: (val) => setState(() => _searchQuery = val),
                     style: const TextStyle(fontSize: 13),
                     decoration: InputDecoration(
-                      hintText: 'Search events by name or location...',
+                      hintText: 'Search events by name, venue...',
                       hintStyle: TextStyle(
                         fontSize: 12,
                         color: colorScheme.onSurfaceVariant,
@@ -365,8 +310,12 @@ class _DashboardEventSelectionDialogState
                           : null,
                       filled: true,
                       fillColor: isDark
-                          ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
-                          : colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                          ? colorScheme.surfaceContainerHighest.withValues(
+                              alpha: 0.3,
+                            )
+                          : colorScheme.surfaceContainerHighest.withValues(
+                              alpha: 0.5,
+                            ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 10,
@@ -406,21 +355,34 @@ class _DashboardEventSelectionDialogState
                           const SizedBox(height: 6),
                       itemBuilder: (context, index) {
                         final event = filteredEvents[index];
-                        final isChecked = _selectedIds.contains(event.id);
+                        final isChecked =
+                            _selectedIds.contains(event.id) ||
+                            (event.orderId.isNotEmpty &&
+                                _selectedIds.contains(event.orderId));
                         final dateStr = _formatDate(event.date);
+
+                        void toggleEventSelection(bool select) {
+                          setState(() {
+                            if (select) {
+                              if (!_selectedIds.contains(event.id)) {
+                                _selectedIds.add(event.id);
+                              }
+                              if (event.orderId.isNotEmpty &&
+                                  !_selectedIds.contains(event.orderId)) {
+                                _selectedIds.add(event.orderId);
+                              }
+                            } else {
+                              _selectedIds.remove(event.id);
+                              _selectedIds.remove(event.orderId);
+                              _selectedIds.remove('ord_evt_${event.orderId}');
+                            }
+                          });
+                        }
 
                         return Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                if (isChecked) {
-                                  _selectedIds.remove(event.id);
-                                } else {
-                                  _selectedIds.add(event.id);
-                                }
-                              });
-                            },
+                            onTap: () => toggleEventSelection(!isChecked),
                             borderRadius: BorderRadius.circular(10),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -429,17 +391,23 @@ class _DashboardEventSelectionDialogState
                               ),
                               decoration: BoxDecoration(
                                 color: isChecked
-                                    ? colorScheme.primary.withValues(alpha: 0.08)
+                                    ? colorScheme.primary.withValues(
+                                        alpha: 0.08,
+                                      )
                                     : isDark
-                                        ? colorScheme.surfaceContainerHighest
-                                            .withValues(alpha: 0.2)
-                                        : colorScheme.surfaceContainerHighest
-                                            .withValues(alpha: 0.3),
+                                    ? colorScheme.surfaceContainerHighest
+                                          .withValues(alpha: 0.2)
+                                    : colorScheme.surfaceContainerHighest
+                                          .withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                   color: isChecked
-                                      ? colorScheme.primary.withValues(alpha: 0.5)
-                                      : colorScheme.outline.withValues(alpha: 0.15),
+                                      ? colorScheme.primary.withValues(
+                                          alpha: 0.5,
+                                        )
+                                      : colorScheme.outline.withValues(
+                                          alpha: 0.15,
+                                        ),
                                 ),
                               ),
                               child: Row(
@@ -450,17 +418,8 @@ class _DashboardEventSelectionDialogState
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(4),
                                     ),
-                                    onChanged: (val) {
-                                      setState(() {
-                                        if (val == true) {
-                                          if (!_selectedIds.contains(event.id)) {
-                                            _selectedIds.add(event.id);
-                                          }
-                                        } else {
-                                          _selectedIds.remove(event.id);
-                                        }
-                                      });
-                                    },
+                                    onChanged: (val) =>
+                                        toggleEventSelection(val == true),
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
@@ -482,14 +441,16 @@ class _DashboardEventSelectionDialogState
                                             Icon(
                                               Icons.calendar_today_rounded,
                                               size: 11,
-                                              color: colorScheme.onSurfaceVariant,
+                                              color:
+                                                  colorScheme.onSurfaceVariant,
                                             ),
                                             const SizedBox(width: 4),
                                             Text(
                                               dateStr,
                                               style: TextStyle(
                                                 fontSize: 11,
-                                                color: colorScheme.onSurfaceVariant,
+                                                color: colorScheme
+                                                    .onSurfaceVariant,
                                               ),
                                             ),
                                             if (event.location.isNotEmpty) ...[
@@ -497,7 +458,8 @@ class _DashboardEventSelectionDialogState
                                               Icon(
                                                 Icons.location_on_outlined,
                                                 size: 11,
-                                                color: colorScheme.onSurfaceVariant,
+                                                color: colorScheme
+                                                    .onSurfaceVariant,
                                               ),
                                               const SizedBox(width: 2),
                                               Expanded(
@@ -505,11 +467,12 @@ class _DashboardEventSelectionDialogState
                                                   event.location,
                                                   style: TextStyle(
                                                     fontSize: 11,
-                                                    color:
-                                                        colorScheme.onSurfaceVariant,
+                                                    color: colorScheme
+                                                        .onSurfaceVariant,
                                                   ),
                                                   maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ],
@@ -524,8 +487,9 @@ class _DashboardEventSelectionDialogState
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: colorScheme.primary
-                                          .withValues(alpha: 0.1),
+                                      color: colorScheme.primary.withValues(
+                                        alpha: 0.1,
+                                      ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -578,16 +542,16 @@ class _DashboardEventSelectionDialogState
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () async {
-                      final notifier =
-                          ref.read(dashboardStripNotifierProvider.notifier);
-                      await notifier.setMode(_selectedMode);
+                      final notifier = ref.read(
+                        dashboardStripNotifierProvider.notifier,
+                      );
                       await notifier.setSelectedEvents(_selectedIds);
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Dashboard events strip updated (${_selectedMode.label})',
+                              'Dashboard strip updated (${_selectedIds.length} events selected)',
                             ),
                             behavior: SnackBarBehavior.floating,
                             duration: const Duration(seconds: 2),

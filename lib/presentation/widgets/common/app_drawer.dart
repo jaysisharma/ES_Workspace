@@ -248,7 +248,7 @@ class AppDrawer extends ConsumerWidget {
               Scaffold.of(context).closeDrawer();
               await ref.read(authNotifierProvider.notifier).logout();
               if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
+                Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const RoleBasedRouter()),
                   (route) => false,
                 );

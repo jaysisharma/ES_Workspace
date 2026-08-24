@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/core/utils/excel_export_helper.dart';
 import 'package:order_app/domain/entities/client_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/providers/auth_notifier.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/client_provider.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
@@ -40,6 +43,18 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
 
   // ── Form sheet ──────────────────────────────────────────────────────────────
   void _showForm({ClientEntity? existing}) {
+    final currentUserRole = ref.read(authNotifierProvider).user?.role;
+    if (currentUserRole != UserRole.admin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Access denied. Only Admin can add or edit clients.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -74,6 +89,9 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
 
   // ── Actions menu ────────────────────────────────────────────────────────────
   void _showMenu(ClientEntity client) {
+    final currentUserRole = ref.read(authNotifierProvider).user?.role;
+    if (currentUserRole != UserRole.admin) return;
+
     final colorScheme = Theme.of(context).colorScheme;
 
     showModalBottomSheet(
@@ -127,6 +145,18 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
   }
 
   void _confirmDelete(ClientEntity client) {
+    final currentUserRole = ref.read(authNotifierProvider).user?.role;
+    if (currentUserRole != UserRole.admin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Access denied. Only Admin can delete clients.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final colorScheme = Theme.of(context).colorScheme;
     final labelColor = colorScheme.onSurfaceVariant;
 
@@ -182,16 +212,19 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
       return;
     }
 
-    final headers = ['Client Name', 'Contact Person', 'Phone', 'Email', 'Notes'];
-    final rows = clients.map((c) => [
-      c.name,
-      c.contactPerson,
-      c.phone,
-      c.email,
-      c.notes,
-    ]).toList();
+    final headers = [
+      'Client Name',
+      'Contact Person',
+      'Phone',
+      'Email',
+      'Notes',
+    ];
+    final rows = clients
+        .map((c) => [c.name, c.contactPerson, c.phone, c.email, c.notes])
+        .toList();
 
-    final fileName = 'Clients_Export_${formatNepaliDate(DateTime.now(), "yyyyMMdd")}.xlsx';
+    final fileName =
+        'Clients_Export_${formatNepaliDate(DateTime.now(), "yyyyMMdd")}.xlsx';
 
     await ExcelExportHelper.exportAndShareExcel(
       context: context,
@@ -215,6 +248,8 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
 
     final clientState = ref.watch(clientNotifierProvider);
     final displayed = _filter(clientState.clients);
+    final currentUserRole = ref.watch(authNotifierProvider).user?.role;
+    final bool canManageContacts = currentUserRole == UserRole.admin;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -284,21 +319,25 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: clientState.isLoading ? null : _showForm,
-                        icon: Icon(
-                          Icons.add_rounded,
-                          color: primaryColor,
-                          size: 26,
-                        ),
-                        style: IconButton.styleFrom(
-                          backgroundColor: primaryColor.withValues(alpha: 0.1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                      if (canManageContacts) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: clientState.isLoading ? null : _showForm,
+                          icon: Icon(
+                            Icons.add_rounded,
+                            color: primaryColor,
+                            size: 26,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: primaryColor.withValues(
+                              alpha: 0.1,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ],
@@ -422,7 +461,7 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
                                 : 'No results for "$_query"',
                             style: TextStyle(color: labelColor, fontSize: 14),
                           ),
-                          if (_query.isEmpty) ...[
+                          if (_query.isEmpty && canManageContacts) ...[
                             const SizedBox(height: 16),
                             TextButton.icon(
                               onPressed: _showForm,
@@ -446,7 +485,9 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
                         itemCount: displayed.length,
                         itemBuilder: (_, i) => _ClientCard(
                           client: displayed[i],
-                          onMenuTap: () => _showMenu(displayed[i]),
+                          onMenuTap: canManageContacts
+                              ? () => _showMenu(displayed[i])
+                              : null,
                         ),
                       ),
                     ),
@@ -461,22 +502,26 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
         children: [
           if (Navigator.canPop(context)) ...[
             const BottomRightBackButton(),
-            const SizedBox(width: 12),
+            if (canManageContacts) const SizedBox(width: 12),
           ],
-          FloatingActionButton.extended(
-            heroTag: 'client_fab',
-            onPressed: clientState.isLoading ? null : _showForm,
-            backgroundColor: primaryColor,
-            elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
+          if (canManageContacts)
+            FloatingActionButton.extended(
+              heroTag: 'client_fab',
+              onPressed: clientState.isLoading ? null : _showForm,
+              backgroundColor: primaryColor,
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Add Client',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text(
-              'Add Client',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-          ),
         ],
       ),
     );
@@ -487,9 +532,9 @@ class _ClientScreenState extends ConsumerState<ClientScreen> {
 
 class _ClientCard extends StatelessWidget {
   final ClientEntity client;
-  final VoidCallback onMenuTap;
+  final VoidCallback? onMenuTap;
 
-  const _ClientCard({required this.client, required this.onMenuTap});
+  const _ClientCard({required this.client, this.onMenuTap});
 
   @override
   Widget build(BuildContext context) {
@@ -562,18 +607,19 @@ class _ClientCard extends StatelessWidget {
                   ),
                 ),
               ),
-              GestureDetector(
-                onTap: onMenuTap,
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: labelColor.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(4),
+              if (onMenuTap != null)
+                GestureDetector(
+                  onTap: onMenuTap,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: labelColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Icon(Icons.more_vert, color: labelColor, size: 18),
                   ),
-                  child: Icon(Icons.more_vert, color: labelColor, size: 18),
                 ),
-              ),
             ],
           ),
 

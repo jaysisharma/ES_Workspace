@@ -154,7 +154,7 @@ class ProfileScreen extends ConsumerWidget {
               onPressed: () async {
                 await ref.read(authNotifierProvider.notifier).logout();
                 if (context.mounted) {
-                  Navigator.of(context).pushAndRemoveUntil(
+                  Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (_) => const RoleBasedRouter()),
                     (route) => false,
                   );

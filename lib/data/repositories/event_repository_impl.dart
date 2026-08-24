@@ -34,4 +34,14 @@ class EventRepositoryImpl implements EventRepository {
   Future<void> deleteEvent(String id) {
     return _remoteDataSource.deleteEvent(id);
   }
+
+  @override
+  Future<void> syncEventForOrder(dynamic order) {
+    return _remoteDataSource.syncEventForOrder(order);
+  }
+
+  @override
+  Future<void> deleteEventsForOrder(String orderId) {
+    return _remoteDataSource.deleteEventsForOrder(orderId);
+  }
 }

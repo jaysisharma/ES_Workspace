@@ -309,12 +309,18 @@ class FirebaseAuthRepository implements AuthRepository {
   @override
   Future<void> logout() async {
     try {
-      await _firebaseAuth.signOut();
+      await _firebaseAuth.signOut().catchError((e) {
+        debugPrint('Firebase signout error ignored on logout: $e');
+      });
+    } catch (e) {
+      debugPrint('Firebase Auth signOut caught error: $e');
+    }
+    try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('user_session_v1');
       debugPrint('🧹 [AuthRepo] Local persistent session cleared upon logout');
     } catch (e) {
-      throw ServerException('Logout failed: ${e.toString()}');
+      debugPrint('Error clearing local session: $e');
     }
   }
 

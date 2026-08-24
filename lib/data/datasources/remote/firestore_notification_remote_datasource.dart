@@ -5,7 +5,10 @@ import 'package:order_app/domain/entities/notification_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 
 abstract class NotificationRemoteDataSource {
-  Stream<List<NotificationEntity>> getNotifications();
+  Stream<List<NotificationEntity>> getNotifications({
+    String? userId,
+    UserRole? role,
+  });
   Future<void> markAsRead(String id);
   Future<void> markAllAsRead();
   Future<void> addNotification(NotificationEntity notification);
@@ -24,91 +27,51 @@ class FirestoreNotificationRemoteDataSource
         _auth = auth ?? FirebaseAuth.instance;
 
   @override
-  Stream<List<NotificationEntity>> getNotifications() {
-    final currentUser = _auth.currentUser;
-    final uid = currentUser?.uid;
-    final authCreatedAt = currentUser?.metadata.creationTime;
+  Stream<List<NotificationEntity>> getNotifications({
+    String? userId,
+    UserRole? role,
+  }) {
+    final effectiveUid = userId ?? _auth.currentUser?.uid;
+    final effectiveRole = role ?? UserRole.admin;
+    final allowedTargetRoles = _allowedTargetRoles(effectiveRole);
 
-    // Fetch notifications where:
-    //  - targetRole matches the current user's role, OR
-    //  - targetUserId matches the current user's uid
-    //  - timestamp is after the user's account creation time (keeping it fresh for new users)
     return _firestore
         .collection('notifications')
         .orderBy('timestamp', descending: true)
         .snapshots()
-        .asyncMap((snapshot) async {
-          // Get current user's role and account creation date from Firestore users collection
-          String? roleStr;
-          DateTime? accountCreatedAt = authCreatedAt;
-
-          if (uid != null) {
-            try {
-              final userDoc = await _firestore.collection('users').doc(uid).get();
-              final data = userDoc.data();
-              if (data != null) {
-                roleStr = data['role'] as String?;
-                final rawCreatedAt = data['createdAt'];
-                if (rawCreatedAt != null) {
-                  if (rawCreatedAt is Timestamp) {
-                    accountCreatedAt = rawCreatedAt.toDate();
-                  } else if (rawCreatedAt is String) {
-                    accountCreatedAt =
-                        DateTime.tryParse(rawCreatedAt) ?? accountCreatedAt;
-                  }
-                }
-              }
-            } catch (_) {}
-          }
-
-          final role = _roleFromString(roleStr);
-          final allowedTargetRoles = _allowedTargetRoles(role);
-
+        .map((snapshot) {
           return snapshot.docs
-              .map((doc) => NotificationModel.fromJson(doc.data()))
-              .where((n) {
-                // If user account creation timestamp is known, do not show notifications
-                // created before the user account creation (allow 1 min buffer for creation sync)
-                if (accountCreatedAt != null) {
-                  final threshold =
-                      accountCreatedAt.subtract(const Duration(minutes: 1));
-                  if (n.timestamp.isBefore(threshold)) {
-                    return false;
+              .map((doc) {
+                try {
+                  final data = doc.data();
+                  if (!data.containsKey('id') || data['id'] == null) {
+                    data['id'] = doc.id;
                   }
+                  return NotificationModel.fromJson(data);
+                } catch (e) {
+                  return null;
+                }
+              })
+              .whereType<NotificationModel>()
+              .where((n) {
+                // 1. User-specific notification targeting this user
+                if (n.targetUserId != null && n.targetUserId!.isNotEmpty) {
+                  return effectiveUid != null && n.targetUserId == effectiveUid;
                 }
 
-                // User-specific notification
-                if (n.targetUserId != null) return n.targetUserId == uid;
-                // Role-based notification
+                // 2. Role-based notification matching this user's role
                 return allowedTargetRoles.contains(n.targetRole);
               })
               .toList();
         });
   }
 
-  static UserRole _roleFromString(String? role) {
-    switch (role?.toLowerCase()) {
-      case 'founder':
-      case 'director':
-      case 'ceo':
-        return UserRole.founder;
-      case 'finance':
-        return UserRole.finance;
-      case 'staff':
-        return UserRole.staff;
-      case 'admin':
-      default:
-        return UserRole.admin;
-    }
-  }
-
-  /// Returns the targetRole values this role is allowed to see.
   static List<String> _allowedTargetRoles(UserRole role) {
     switch (role) {
       case UserRole.founder:
         return ['admin_founder', 'founder', 'management', 'all'];
       case UserRole.admin:
-        return ['admin_founder', 'admin', 'management', 'all'];
+        return ['admin_founder', 'admin', 'founder', 'management', 'all'];
       case UserRole.finance:
         return ['finance', 'management', 'all'];
       case UserRole.staff:

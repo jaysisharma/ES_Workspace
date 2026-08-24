@@ -375,7 +375,7 @@ void showLeaveRequestSheet({
                                         )
                                         .submitLeave(request);
 
-                                    // Dispatch notification to Admins
+                                    // Dispatch notification to Admins & Founders
                                     await ref
                                         .read(
                                           notificationNotifierProvider.notifier,
@@ -389,12 +389,12 @@ void showLeaveRequestSheet({
                                                 '$staffName requested $leaveType from ${formatNepaliDate(startDate, 'dd MMM')} to ${formatNepaliDate(endDate, 'dd MMM')}.',
                                             timestamp: DateTime.now(),
                                             type: 'system',
-                                            targetRole: 'admin',
+                                            targetRole: 'admin_founder',
                                           ),
                                         );
 
-                                    FcmSender.sendToTopic(
-                                      topic: 'role_admin',
+                                    FcmSender.sendToTopics(
+                                      topics: ['role_admin', 'role_founder'],
                                       title: 'New Leave Request: $staffName',
                                       body: '$staffName requested $leaveType.',
                                     );

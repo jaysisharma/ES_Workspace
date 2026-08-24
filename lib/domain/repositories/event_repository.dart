@@ -6,4 +6,6 @@ abstract class EventRepository {
   Future<void> createEvent(EventEntity event);
   Future<void> updateEvent(EventEntity event);
   Future<void> deleteEvent(String id);
+  Future<void> syncEventForOrder(dynamic order);
+  Future<void> deleteEventsForOrder(String orderId);
 }

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/presentation/widgets/order_details/edit_order_id_dialog.dart';
 import 'package:order_app/presentation/widgets/order_details/order_details_helper_widgets.dart';
 
-class OrderDetailsHeaderWidget extends StatelessWidget {
+class OrderDetailsHeaderWidget extends ConsumerWidget {
   final OrderEntity order;
   final Color statusColor;
   final Color statusWellColor;
@@ -24,7 +28,10 @@ class OrderDetailsHeaderWidget extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userRole = ref.watch(authNotifierProvider).user?.role;
+    final isAdminOrFounder =
+        userRole == UserRole.admin || userRole == UserRole.founder;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -124,11 +131,51 @@ class OrderDetailsHeaderWidget extends StatelessWidget {
                   ),
                 ],
               ),
-              Text(
-                'ID: ${order.id.length > 10 ? order.id.substring(0, 10) : order.id}',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: labelColor,
+              InkWell(
+                onTap: isAdminOrFounder
+                    ? () => EditOrderIdDialog.show(context, order)
+                    : null,
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isAdminOrFounder
+                        ? primaryColor.withValues(alpha: 0.08)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    border: isAdminOrFounder
+                        ? Border.all(
+                            color: primaryColor.withValues(alpha: 0.25),
+                            width: 0.8,
+                          )
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'ID: ${order.id}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isAdminOrFounder
+                              ? FontWeight.w700
+                              : FontWeight.normal,
+                          color: isAdminOrFounder ? primaryColor : labelColor,
+                        ),
+                      ),
+                      if (isAdminOrFounder) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.edit_rounded,
+                          size: 11,
+                          color: primaryColor,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ],

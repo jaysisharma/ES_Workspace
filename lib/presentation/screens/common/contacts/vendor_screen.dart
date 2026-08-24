@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/excel_export_helper.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/domain/entities/vendor_entity.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/vendor_provider.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
@@ -40,6 +42,18 @@ class _VendorScreenState extends ConsumerState<VendorScreen> {
 
   // ── Form sheet ──────────────────────────────────────────────────────────────
   void _showForm({VendorEntity? existing}) {
+    final currentUserRole = ref.read(authNotifierProvider).user?.role;
+    if (currentUserRole != UserRole.admin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Access denied. Only Admin can add or edit vendors.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -74,6 +88,9 @@ class _VendorScreenState extends ConsumerState<VendorScreen> {
 
   // ── Actions menu ────────────────────────────────────────────────────────────
   void _showMenu(VendorEntity vendor) {
+    final currentUserRole = ref.read(authNotifierProvider).user?.role;
+    if (currentUserRole != UserRole.admin) return;
+
     final colorScheme = Theme.of(context).colorScheme;
 
     showModalBottomSheet(
@@ -127,6 +144,18 @@ class _VendorScreenState extends ConsumerState<VendorScreen> {
   }
 
   void _confirmDelete(VendorEntity vendor) {
+    final currentUserRole = ref.read(authNotifierProvider).user?.role;
+    if (currentUserRole != UserRole.admin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Access denied. Only Admin can delete vendors.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     final colorScheme = Theme.of(context).colorScheme;
     final labelColor = colorScheme.onSurfaceVariant;
 
@@ -182,16 +211,19 @@ class _VendorScreenState extends ConsumerState<VendorScreen> {
       return;
     }
 
-    final headers = ['Vendor Name', 'Contact Person', 'Phone', 'Email', 'Notes'];
-    final rows = vendors.map((v) => [
-      v.name,
-      v.contactPerson,
-      v.phone,
-      v.email,
-      v.notes,
-    ]).toList();
+    final headers = [
+      'Vendor Name',
+      'Contact Person',
+      'Phone',
+      'Email',
+      'Notes',
+    ];
+    final rows = vendors
+        .map((v) => [v.name, v.contactPerson, v.phone, v.email, v.notes])
+        .toList();
 
-    final fileName = 'Vendors_Export_${formatNepaliDate(DateTime.now(), "yyyyMMdd")}.xlsx';
+    final fileName =
+        'Vendors_Export_${formatNepaliDate(DateTime.now(), "yyyyMMdd")}.xlsx';
 
     await ExcelExportHelper.exportAndShareExcel(
       context: context,
@@ -215,6 +247,8 @@ class _VendorScreenState extends ConsumerState<VendorScreen> {
 
     final vendorState = ref.watch(vendorNotifierProvider);
     final displayed = _filter(vendorState.vendors);
+    final currentUserRole = ref.watch(authNotifierProvider).user?.role;
+    final bool canManageContacts = currentUserRole == UserRole.admin;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -284,21 +318,25 @@ class _VendorScreenState extends ConsumerState<VendorScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: vendorState.isLoading ? null : _showForm,
-                        icon: Icon(
-                          Icons.add_rounded,
-                          color: primaryColor,
-                          size: 26,
-                        ),
-                        style: IconButton.styleFrom(
-                          backgroundColor: primaryColor.withValues(alpha: 0.1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                      if (canManageContacts) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: vendorState.isLoading ? null : _showForm,
+                          icon: Icon(
+                            Icons.add_rounded,
+                            color: primaryColor,
+                            size: 26,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: primaryColor.withValues(
+                              alpha: 0.1,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ],
@@ -422,7 +460,7 @@ class _VendorScreenState extends ConsumerState<VendorScreen> {
                                 : 'No results for "$_query"',
                             style: TextStyle(color: labelColor, fontSize: 14),
                           ),
-                          if (_query.isEmpty) ...[
+                          if (_query.isEmpty && canManageContacts) ...[
                             const SizedBox(height: 16),
                             TextButton.icon(
                               onPressed: _showForm,
@@ -446,7 +484,9 @@ class _VendorScreenState extends ConsumerState<VendorScreen> {
                         itemCount: displayed.length,
                         itemBuilder: (_, i) => _VendorCard(
                           vendor: displayed[i],
-                          onMenuTap: () => _showMenu(displayed[i]),
+                          onMenuTap: canManageContacts
+                              ? () => _showMenu(displayed[i])
+                              : null,
                         ),
                       ),
                     ),
@@ -461,22 +501,26 @@ class _VendorScreenState extends ConsumerState<VendorScreen> {
         children: [
           if (Navigator.canPop(context)) ...[
             const BottomRightBackButton(),
-            const SizedBox(width: 12),
+            if (canManageContacts) const SizedBox(width: 12),
           ],
-          FloatingActionButton.extended(
-            heroTag: 'vendor_fab',
-            onPressed: vendorState.isLoading ? null : _showForm,
-            backgroundColor: primaryColor,
-            elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
+          if (canManageContacts)
+            FloatingActionButton.extended(
+              heroTag: 'vendor_fab',
+              onPressed: vendorState.isLoading ? null : _showForm,
+              backgroundColor: primaryColor,
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                'Add Vendor',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
             ),
-            icon: const Icon(Icons.add, color: Colors.white),
-            label: const Text(
-              'Add Vendor',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-          ),
         ],
       ),
     );
@@ -487,9 +531,9 @@ class _VendorScreenState extends ConsumerState<VendorScreen> {
 
 class _VendorCard extends StatelessWidget {
   final VendorEntity vendor;
-  final VoidCallback onMenuTap;
+  final VoidCallback? onMenuTap;
 
-  const _VendorCard({required this.vendor, required this.onMenuTap});
+  const _VendorCard({required this.vendor, this.onMenuTap});
 
   @override
   Widget build(BuildContext context) {
@@ -562,18 +606,19 @@ class _VendorCard extends StatelessWidget {
                   ),
                 ),
               ),
-              GestureDetector(
-                onTap: onMenuTap,
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: labelColor.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(4),
+              if (onMenuTap != null)
+                GestureDetector(
+                  onTap: onMenuTap,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: labelColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Icon(Icons.more_vert, color: labelColor, size: 18),
                   ),
-                  child: Icon(Icons.more_vert, color: labelColor, size: 18),
                 ),
-              ),
             ],
           ),
 

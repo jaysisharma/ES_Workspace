@@ -106,6 +106,18 @@ class OrderItemNotifier extends Notifier<OrderItemState> {
     await bulkUpdateItems(updatedItems);
   }
 
+  Future<void> deleteItem(String itemId) async {
+    try {
+      await ref.read(deleteOrderItemUseCaseProvider)(itemId);
+      state = state.copyWith(
+        items: state.items.where((i) => i.id != itemId).toList(),
+      );
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      rethrow;
+    }
+  }
+
   Future<void> deleteItemsForOrder(String orderId) async {
     try {
       // Fetch items for this order from Firestore, then delete each one

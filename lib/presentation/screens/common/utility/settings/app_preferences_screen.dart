@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/presentation/providers/settings_provider.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/event_providers.dart';
-import 'package:order_app/presentation/providers/dashboard_strip_notifier.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/providers/dashboard_strip_notifier.dart';
+import 'package:order_app/presentation/screens/admin/bulk_delete_orders_screen.dart';
 import 'package:order_app/presentation/widgets/dashboard/dashboard_event_selection_dialog.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
@@ -22,11 +23,17 @@ class AppPreferencesScreen extends ConsumerWidget {
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = const Color(0xFF0075db);
-    final bgColor = isDarkMode ? const Color(0xFF0b1319) : const Color(0xFFf8fafc);
+    final bgColor = isDarkMode
+        ? const Color(0xFF0b1319)
+        : const Color(0xFFf8fafc);
     final cardColor = isDarkMode ? const Color(0xFF141f28) : Colors.white;
-    final borderColor = isDarkMode ? const Color(0xFF1e2d3d) : const Color(0xFFe2e8f0);
+    final borderColor = isDarkMode
+        ? const Color(0xFF1e2d3d)
+        : const Color(0xFFe2e8f0);
     final textColor = isDarkMode ? Colors.white : const Color(0xFF0f172a);
-    final labelColor = isDarkMode ? const Color(0xFF94a3b8) : const Color(0xFF64748b);
+    final labelColor = isDarkMode
+        ? const Color(0xFF94a3b8)
+        : const Color(0xFF64748b);
     final dividerColor = isDarkMode
         ? const Color(0xFF1e2d3d).withValues(alpha: 0.6)
         : const Color(0xFFe2e8f0);
@@ -43,7 +50,10 @@ class AppPreferencesScreen extends ConsumerWidget {
             border: Border(bottom: BorderSide(color: borderColor)),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
             child: Row(
               children: [
                 IconButton(
@@ -102,14 +112,17 @@ class AppPreferencesScreen extends ConsumerWidget {
                   Divider(height: 28, color: dividerColor),
                   _buildPreferenceRow(
                     title: 'Enable Notifications',
-                    subtitle: 'Receive real-time order updates and system alerts',
+                    subtitle:
+                        'Receive real-time order updates and system alerts',
                     textColor: textColor,
                     labelColor: labelColor,
                     child: Switch.adaptive(
                       value: settings.notificationsEnabled,
                       activeTrackColor: primaryColor,
                       onChanged: (val) {
-                        ref.read(settingsProvider.notifier).toggleNotifications(val);
+                        ref
+                            .read(settingsProvider.notifier)
+                            .toggleNotifications(val);
                       },
                     ),
                   ),
@@ -123,7 +136,9 @@ class AppPreferencesScreen extends ConsumerWidget {
                       value: isDarkMode,
                       activeTrackColor: primaryColor,
                       onChanged: (val) {
-                        ref.read(settingsProvider.notifier).setThemeMode(
+                        ref
+                            .read(settingsProvider.notifier)
+                            .setThemeMode(
                               val ? ThemeMode.dark : ThemeMode.light,
                             );
                       },
@@ -133,15 +148,21 @@ class AppPreferencesScreen extends ConsumerWidget {
                     Divider(height: 28, color: dividerColor),
                     _buildPreferenceRow(
                       title: 'Dashboard Event Strip',
-                      subtitle: 'Active mode: ${stripState.mode.label}',
+                      subtitle:
+                          '${stripState.selectedEventIds.length} events selected',
                       textColor: textColor,
                       labelColor: labelColor,
                       child: OutlinedButton.icon(
                         onPressed: () {
-                          final events = ref.read(eventsStreamProvider).value ?? [];
+                          final events =
+                              ref.read(eventsStreamProvider).value ?? [];
                           DashboardEventSelectionDialog.show(context, events);
                         },
-                        icon: Icon(Icons.tune_rounded, size: 16, color: primaryColor),
+                        icon: Icon(
+                          Icons.tune_rounded,
+                          size: 16,
+                          color: primaryColor,
+                        ),
                         label: Text(
                           'Configure',
                           style: TextStyle(
@@ -151,9 +172,58 @@ class AppPreferencesScreen extends ConsumerWidget {
                           ),
                         ),
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: primaryColor.withValues(alpha: 0.4)),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          side: BorderSide(
+                            color: primaryColor.withValues(alpha: 0.4),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Divider(height: 28, color: dividerColor),
+                    _buildPreferenceRow(
+                      title: 'Bulk Delete Orders',
+                      subtitle: 'Purge historical orders till date or order #',
+                      textColor: textColor,
+                      labelColor: labelColor,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const BulkDeleteOrdersScreen(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(
+                          Icons.delete_sweep_rounded,
+                          size: 16,
+                          color: Colors.redAccent,
+                        ),
+                        label: const Text(
+                          'Open Tool',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.redAccent,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: Colors.redAccent.withValues(alpha: 0.4),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ),
@@ -191,7 +261,10 @@ class AppPreferencesScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              Text(subtitle, style: TextStyle(color: labelColor, fontSize: 11.5)),
+              Text(
+                subtitle,
+                style: TextStyle(color: labelColor, fontSize: 11.5),
+              ),
             ],
           ),
         ),
@@ -216,13 +289,19 @@ class AppPreferencesScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: isDarkMode ? const Color(0xFF0b1319) : const Color(0xFFf1f5f9),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isDarkMode ? const Color(0xFF1e2d3d) : const Color(0xFFe2e8f0)),
+        border: Border.all(
+          color: isDarkMode ? const Color(0xFF1e2d3d) : const Color(0xFFe2e8f0),
+        ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
           dropdownColor: cardColor,
-          icon: Icon(Icons.keyboard_arrow_down_rounded, color: labelColor, size: 18),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: labelColor,
+            size: 18,
+          ),
           style: TextStyle(
             color: textColor,
             fontSize: 13,

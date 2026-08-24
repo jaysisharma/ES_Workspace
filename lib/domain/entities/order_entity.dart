@@ -93,6 +93,7 @@ class OrderEntity {
   });
 
   OrderEntity copyWith({
+    String? id,
     String? eventName,
     DateTime? eventDate,
     DateTime? eventEndDate,
@@ -129,7 +130,7 @@ class OrderEntity {
     String? orderType,
   }) {
     return OrderEntity(
-      id: id,
+      id: id ?? this.id,
       eventName: eventName ?? this.eventName,
       eventDate: eventDate ?? this.eventDate,
       eventEndDate: eventEndDate ?? this.eventEndDate,

@@ -227,7 +227,7 @@ class PushNotificationService {
         return ['staff', 'all'];
       case 'admin':
       default:
-        return ['admin_founder', 'admin', 'management', 'all'];
+        return ['admin_founder', 'admin', 'founder', 'management', 'all'];
     }
   }
 

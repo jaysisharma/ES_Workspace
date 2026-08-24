@@ -424,11 +424,18 @@ class _AdminAttendanceDashboardState
     return Scaffold(
       floatingActionButton: const BottomRightBackButton(),
       appBar: AppBar(
-        title: const Text('Staff Attendance & Geofence Audit'),
+        title: const Text(
+          'Staff Attendance',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.table_chart_outlined),
+            icon: const Icon(Icons.table_chart_outlined, size: 20),
             tooltip: 'Export Month Excel',
+            visualDensity: VisualDensity.compact,
             onPressed: () {
               attendanceStream.whenData((allRecords) {
                 _exportEmployeeMonthlyExcel(
@@ -440,8 +447,9 @@ class _AdminAttendanceDashboardState
             },
           ),
           IconButton(
-            icon: const Icon(Icons.share_location_rounded),
+            icon: const Icon(Icons.share_location_rounded, size: 20),
             tooltip: 'Manage Geofence Zone',
+            visualDensity: VisualDensity.compact,
             onPressed: () {
               showDialog(
                 context: context,
@@ -450,7 +458,9 @@ class _AdminAttendanceDashboardState
             },
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, size: 20),
+            tooltip: 'Refresh',
+            visualDensity: VisualDensity.compact,
             onPressed: () {
               ref.invalidate(allAttendanceStreamProvider);
               ref.invalidate(usersStreamProvider);
@@ -526,15 +536,24 @@ class _AdminAttendanceDashboardState
                 }
 
                 // Day View Mode
-                var dayRecords = filtered.where((r) {
+                final dayBaseRecords = filtered.where((r) {
                   return r.checkInTime.year == _selectedDate.year &&
                       r.checkInTime.month == _selectedDate.month &&
                       r.checkInTime.day == _selectedDate.day;
                 }).toList();
 
-                if (_showOnlyOutOfBounds) {
-                  dayRecords = dayRecords.where((r) => !r.isWithinGeofence).toList();
-                }
+                final totalLogsCount = dayBaseRecords.length;
+                final onDutyCount =
+                    dayBaseRecords.where((r) => !r.isCheckedOut).length;
+                final presentCount = dayBaseRecords
+                    .where((r) => r.status == AttendanceStatus.present)
+                    .length;
+                final outOfFenceCount =
+                    dayBaseRecords.where((r) => !r.isWithinGeofence).length;
+
+                var dayRecords = _showOnlyOutOfBounds
+                    ? dayBaseRecords.where((r) => !r.isWithinGeofence).toList()
+                    : dayBaseRecords;
 
                 dayRecords.sort((a, b) => b.checkInTime.compareTo(a.checkInTime));
 
@@ -549,15 +568,19 @@ class _AdminAttendanceDashboardState
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildMetricChip('Total Logs', '${dayRecords.length}', Theme.of(context).colorScheme.primary),
+                          _buildMetricChip(
+                            'Total Logs',
+                            '$totalLogsCount',
+                            Theme.of(context).colorScheme.primary,
+                          ),
                           _buildMetricChip(
                             'On Duty',
-                            '${dayRecords.where((r) => !r.isCheckedOut).length}',
+                            '$onDutyCount',
                             Theme.of(context).colorScheme.secondary,
                           ),
                           _buildMetricChip(
                             'Present',
-                            '${dayRecords.where((r) => r.status == AttendanceStatus.present).length}',
+                            '$presentCount',
                             Theme.of(context).colorScheme.tertiary,
                           ),
                           GestureDetector(
@@ -568,7 +591,7 @@ class _AdminAttendanceDashboardState
                             },
                             child: _buildMetricChip(
                               'Out of Fence',
-                              '${allRecords.where((r) => !r.isWithinGeofence).length}',
+                              '$outOfFenceCount',
                               Theme.of(context).colorScheme.error,
                               _showOnlyOutOfBounds,
                             ),

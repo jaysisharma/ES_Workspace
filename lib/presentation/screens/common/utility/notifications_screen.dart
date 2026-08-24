@@ -4,11 +4,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/presentation/providers/notification_notifier.dart';
 import 'package:order_app/domain/entities/notification_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
 import 'package:order_app/presentation/providers/event_providers.dart';
 import 'package:order_app/presentation/screens/common/orders/order_details_screen.dart';
 import 'package:order_app/presentation/screens/common/events/event_task_detail_screen.dart';
+import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
+import 'package:order_app/presentation/screens/staff/staff_attendance_screen.dart';
+import 'package:order_app/presentation/screens/staff/tasks_screen.dart';
+import 'package:order_app/presentation/screens/admin/manual_tasks_screen.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -84,6 +90,94 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             duration: const Duration(seconds: 2),
           ),
         );
+      }
+    }
+  }
+
+  Future<void> _handleNotificationTap(NotificationEntity n) async {
+    if (_isSelectionMode) {
+      _toggleSelection(n.id);
+      return;
+    }
+
+    ref.read(notificationNotifierProvider.notifier).markAsRead(n.id);
+
+    final relatedId = n.relatedId?.trim();
+    final titleLower = n.title.toLowerCase();
+    final descLower = n.description.toLowerCase();
+    final userRole = ref.read(authNotifierProvider).user?.role;
+
+    // 1. Order or Event related notification
+    if (relatedId != null && relatedId.isNotEmpty) {
+      OrderEntity? order;
+
+      // Check stream cache first
+      final orders = ref.read(ordersStreamProvider).value ??
+          ref.read(orderNotifierProvider).orders;
+      order = orders.where((o) => o.id == relatedId).firstOrNull;
+
+      // If not loaded in memory, fetch directly by ID
+      if (order == null) {
+        try {
+          order = await ref.read(getOrderByIdUseCaseProvider)(relatedId);
+        } catch (e) {
+          debugPrint('Error fetching order by id $relatedId: $e');
+        }
+      }
+
+      if (order != null && mounted) {
+        if (userRole == UserRole.staff) {
+          final events = ref.read(eventsStreamProvider).value ?? [];
+          final event = events.where((e) => e.orderId == order!.id).firstOrNull;
+          if (event != null) {
+            Navigator.push(
+              context,
+              SlidePageRoute(page: EventTaskDetailScreen(event: event)),
+            );
+            return;
+          }
+        }
+        Navigator.push(
+          context,
+          SlidePageRoute(page: OrderDetailsScreen(order: order)),
+        );
+        return;
+      }
+    }
+
+    // 2. Leave / HR related notification
+    if (titleLower.contains('leave') || descLower.contains('leave')) {
+      if (!mounted) return;
+      if (userRole == UserRole.admin || userRole == UserRole.founder) {
+        Navigator.push(
+          context,
+          SlidePageRoute(page: const HrManagementScreen()),
+        );
+        return;
+      } else if (userRole == UserRole.staff) {
+        Navigator.push(
+          context,
+          SlidePageRoute(page: const StaffAttendanceScreen()),
+        );
+        return;
+      }
+    }
+
+    // 3. Task related notification
+    if (n.type == 'task' || titleLower.contains('task') || descLower.contains('task')) {
+      if (!mounted) return;
+      if (userRole == UserRole.staff) {
+        Navigator.push(
+          context,
+          SlidePageRoute(page: const TasksScreen()),
+        );
+        return;
+      } else if (userRole == UserRole.admin || userRole == UserRole.founder) {
+        Navigator.push(
+          context,
+          SlidePageRoute(page: const ManualTasksScreen()),
+        );
+        return;
       }
     }
   }
@@ -193,40 +287,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                             });
                           }
                         },
-                        onTap: () async {
-                          if (_isSelectionMode) {
-                            _toggleSelection(n.id);
-                            return;
-                          }
-
-                          ref.read(notificationNotifierProvider.notifier).markAsRead(n.id);
-
-                          if (n.relatedId != null) {
-                            try {
-                              final orders = ref.read(orderNotifierProvider).orders;
-                              final order = orders.where((o) => o.id == n.relatedId).firstOrNull;
-
-                              if (order != null && context.mounted) {
-                                final events = ref.read(eventsStreamProvider).value ?? [];
-                                final event = events.where((e) => e.orderId == order.id).firstOrNull;
-
-                                if (event != null) {
-                                  Navigator.push(
-                                    context,
-                                    SlidePageRoute(page: EventTaskDetailScreen(event: event)),
-                                  );
-                                } else {
-                                  Navigator.push(
-                                    context,
-                                    SlidePageRoute(page: OrderDetailsScreen(order: order)),
-                                  );
-                                }
-                              }
-                            } catch (e) {
-                              // Order might not be loaded yet or deleted
-                            }
-                          }
-                        },
+                        onTap: () => _handleNotificationTap(n),
                       );
 
                       if (_isSelectionMode) {

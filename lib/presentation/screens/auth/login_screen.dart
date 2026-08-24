@@ -97,32 +97,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      RichText(
-                        text: TextSpan(
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
-                            color: textColor,
-                            fontFamily: 'Manrope',
-                            letterSpacing: -0.5,
-                          ),
-                          children: const [
-                            TextSpan(text: 'ES Workspace '),
-                            TextSpan(
-                              text: 'Pro',
-                              style: TextStyle(color: primaryColor),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
                       Text(
-                        'Event Order & Revenue Management',
+                        'ES Workspace',
                         style: TextStyle(
-                          color: labelColor,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                          color: textColor,
                           fontFamily: 'Manrope',
+                          letterSpacing: -0.5,
                         ),
                       ),
                     ],

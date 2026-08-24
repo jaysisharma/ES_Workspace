@@ -307,6 +307,8 @@ class OrderPdfService {
     required double totalExpenses,
     required double netProfit,
     required double margin,
+    String periodText = '',
+    String reportTitle = 'EVENT FINANCIAL REPORT',
     PdfPageFormat pageFormat = PdfPageFormat.a4,
     void Function(String)? onProgress,
   }) async {
@@ -317,6 +319,8 @@ class OrderPdfService {
       totalExpenses: totalExpenses,
       netProfit: netProfit,
       margin: margin,
+      periodText: periodText,
+      reportTitle: reportTitle,
       logoBytes: _cachedLogoBytes!,
       font: _cachedRegularFont!,
       boldFont: _cachedBoldFont!,

@@ -61,7 +61,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final labelColor = colorScheme.onSurfaceVariant;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
@@ -84,29 +83,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             const SizedBox(height: 28),
 
             // Title - Static
-            RichText(
-              text: TextSpan(
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                  color: colorScheme.onSurface,
-                  fontFamily: 'Manrope',
-                  letterSpacing: -0.5,
-                ),
-                children: [const TextSpan(text: 'ES Workspace ')],
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // Tagline
             Text(
-              'Event Order & Revenue Management',
+              'ES Workspace',
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: labelColor,
+                fontSize: 30,
+                fontWeight: FontWeight.w800,
+                color: colorScheme.onSurface,
                 fontFamily: 'Manrope',
-                letterSpacing: 0.4,
+                letterSpacing: -0.5,
               ),
             ),
             const SizedBox(height: 60),

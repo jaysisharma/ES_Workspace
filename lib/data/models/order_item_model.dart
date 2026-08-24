@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:order_app/domain/entities/order_item_entity.dart';
 
 class OrderItemModel extends OrderItemEntity {
@@ -21,9 +22,20 @@ class OrderItemModel extends OrderItemEntity {
     super.vendorBillUrl,
     super.vendorBillPath,
     super.vendorBillName,
+    super.dueDate,
+    super.createdBy,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
+    // dueDate stored as Firestore Timestamp or ISO string
+    DateTime? dueDate;
+    final rawDue = json['dueDate'];
+    if (rawDue is Timestamp) {
+      dueDate = rawDue.toDate();
+    } else if (rawDue is String && rawDue.isNotEmpty) {
+      dueDate = DateTime.tryParse(rawDue);
+    }
+
     return OrderItemModel(
       id: json['id'] as String,
       orderId: json['orderId'] as String,
@@ -44,6 +56,8 @@ class OrderItemModel extends OrderItemEntity {
       vendorBillUrl: json['vendorBillUrl'] as String?,
       vendorBillPath: json['vendorBillPath'] as String?,
       vendorBillName: json['vendorBillName'] as String?,
+      dueDate: dueDate,
+      createdBy: json['createdBy'] as String?,
     );
   }
 
@@ -68,6 +82,8 @@ class OrderItemModel extends OrderItemEntity {
       'vendorBillUrl': vendorBillUrl,
       'vendorBillPath': vendorBillPath,
       'vendorBillName': vendorBillName,
+      'dueDate': dueDate?.toIso8601String(),
+      'createdBy': createdBy,
     };
   }
 
@@ -92,6 +108,8 @@ class OrderItemModel extends OrderItemEntity {
       vendorBillUrl: entity.vendorBillUrl,
       vendorBillPath: entity.vendorBillPath,
       vendorBillName: entity.vendorBillName,
+      dueDate: entity.dueDate,
+      createdBy: entity.createdBy,
     );
   }
 }
