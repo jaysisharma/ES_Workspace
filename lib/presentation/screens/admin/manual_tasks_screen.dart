@@ -872,12 +872,12 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
           );
           await notifier.addItem(task, reload: false);
 
-          // Send in-app notification to this staff member
+          final notifId = const Uuid().v4();
           await ref
               .read(notificationNotifierProvider.notifier)
               .addNotification(
                 NotificationEntity(
-                  id: const Uuid().v4(),
+                  id: notifId,
                   title: 'New Task Assigned',
                   description: 'You have been assigned: "${task.itemName}"',
                   timestamp: DateTime.now(),
@@ -891,6 +891,7 @@ class _AssignTaskSheetState extends ConsumerState<_AssignTaskSheet> {
             userId: staff.id,
             title: 'New Task Assigned',
             body: 'You have been assigned: "${task.itemName}"',
+            notificationId: notifId,
           );
         }
       }

@@ -22,11 +22,12 @@ class PushNotificationService {
 
   static final List<StreamSubscription<QuerySnapshot>> _firestoreSubscriptions = [];
 
-  // Deduplication cache to prevent dual-delivery duplicate banners in foreground
+  // Deduplication cache to prevent dual-delivery duplicate banners across FCM & Firestore
   static final Set<String> _recentNotificationKeys = {};
 
-  // Track when we started listening so we only show NEW notifications
+  // Track when we started listening so we only show genuinely new notifications
   static DateTime? _listeningSince;
+  static String? _listeningUserId;
 
   /// Call once at app start — sets up local notification channel and permissions.
   static Future<void> initialize() async {
@@ -148,6 +149,7 @@ class PushNotificationService {
     await stopListening();
 
     _listeningSince = DateTime.now();
+    _listeningUserId = userId;
     final allowedRoles = _allowedTargetRoles(role);
 
     // 1. User-Specific Listener (Never eclipsed by global limits)
@@ -185,6 +187,15 @@ class PushNotificationService {
       final data = change.doc.data();
       if (data == null) continue;
 
+      // If document is targeted to another specific user, ignore it in role broadcasts
+      final targetUserId = data['targetUserId'] as String?;
+      if (targetUserId != null &&
+          targetUserId.isNotEmpty &&
+          _listeningUserId != null &&
+          targetUserId != _listeningUserId) {
+        continue;
+      }
+
       // Ignore notifications that existed before we started listening
       final rawTs = data['timestamp'];
       DateTime? ts;
@@ -212,6 +223,7 @@ class PushNotificationService {
     }
     _firestoreSubscriptions.clear();
     _listeningSince = null;
+    _listeningUserId = null;
   }
 
   /// Which targetRole values a given role should receive.
@@ -232,28 +244,47 @@ class PushNotificationService {
   }
 
   /// Immediately shows a notification in the phone/desktop notification panel
-  /// with automatic deduplication across FCM and Firestore.
+  /// with unified content + ID deduplication across FCM and Firestore.
   static Future<void> showLocalNotification({
     required String title,
     required String body,
     String? payload,
     String? notificationId,
   }) async {
-    final dedupKey = notificationId ?? '$title::$body';
-    if (_recentNotificationKeys.contains(dedupKey)) {
-      debugPrint('🔕 [PushNotificationService] Skipped duplicate notification: $dedupKey');
+    final cleanTitle = title.trim();
+    final cleanBody = body.trim();
+    if (cleanTitle.isEmpty && cleanBody.isEmpty) return;
+
+    // Normalised content key catches identical notifications regardless of ID differences
+    final contentKey = '${cleanTitle.toLowerCase()}::${cleanBody.toLowerCase()}';
+
+    // If we've seen this exact content OR notification ID recently, drop the duplicate
+    if (_recentNotificationKeys.contains(contentKey) ||
+        (notificationId != null && _recentNotificationKeys.contains(notificationId))) {
+      debugPrint('🔕 [PushNotificationService] Blocked duplicate notification: "$cleanTitle"');
       return;
     }
-    _recentNotificationKeys.add(dedupKey);
-    // Expire deduplication key after 8 seconds
-    Future.delayed(const Duration(seconds: 8), () {
-      _recentNotificationKeys.remove(dedupKey);
+
+    _recentNotificationKeys.add(contentKey);
+    if (notificationId != null && notificationId.isNotEmpty) {
+      _recentNotificationKeys.add(notificationId);
+    }
+
+    // Keep deduplication active for 15 seconds
+    Future.delayed(const Duration(seconds: 15), () {
+      _recentNotificationKeys.remove(contentKey);
+      if (notificationId != null && notificationId.isNotEmpty) {
+        _recentNotificationKeys.remove(notificationId);
+      }
     });
 
+    // Deterministic integer ID: if duplicate slips through OS, it updates the existing slot rather than stacking
+    final int notifIntId = (notificationId ?? contentKey).hashCode & 0x7FFFFFFF;
+
     await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      body,
+      notifIntId,
+      cleanTitle,
+      cleanBody,
       const NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,

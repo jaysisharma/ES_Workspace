@@ -39,6 +39,7 @@ class FcmSender {
     required String topic,
     required String title,
     required String body,
+    String? notificationId,
     Map<String, String>? data,
   }) async {
     try {
@@ -47,11 +48,17 @@ class FcmSender {
         'https://fcm.googleapis.com/v1/projects/$_projectId/messages:send',
       );
 
+      final messageData = <String, String>{
+        if (notificationId != null && notificationId.isNotEmpty)
+          'notificationId': notificationId,
+        ...?data,
+      };
+
       final payload = {
         'message': {
           'topic': topic,
           'notification': {'title': title, 'body': body},
-          'data': data ?? {},
+          'data': messageData,
           'android': {
             'priority': 'high',
             'notification': {'channel_id': 'order_app_high', 'sound': 'default'},
@@ -84,12 +91,14 @@ class FcmSender {
     required String userId,
     required String title,
     required String body,
+    String? notificationId,
     Map<String, String>? data,
   }) =>
       sendToTopic(
         topic: 'user_$userId',
         title: title,
         body: body,
+        notificationId: notificationId,
         data: data,
       );
 
@@ -98,11 +107,18 @@ class FcmSender {
     required List<String> topics,
     required String title,
     required String body,
+    String? notificationId,
     Map<String, String>? data,
   }) =>
       Future.wait(
         topics.map(
-          (t) => sendToTopic(topic: t, title: title, body: body, data: data),
+          (t) => sendToTopic(
+            topic: t,
+            title: title,
+            body: body,
+            notificationId: notificationId,
+            data: data,
+          ),
         ),
       );
 }
