@@ -153,7 +153,8 @@ class _FinancialReportsScreenState
                           'Event Name',
                           'Venue',
                           'Client Name',
-                          'Event / Rental',
+                          'Event Type',
+                          'Category',
                           'Event Date (BS)',
                           'Event Date (AD)',
                           'Total Revenue (NPR)',
@@ -188,7 +189,9 @@ class _FinancialReportsScreenState
                           final clientName = o.client.isNotEmpty
                               ? o.client
                               : (o.contactPerson.isNotEmpty ? o.contactPerson : 'N/A');
-                          final eventType = o.category.isNotEmpty ? o.category : 'Event';
+                          final eventType =
+                              (o.orderType.toLowerCase() == 'rental') ? 'Rental' : 'Event';
+                          final category = o.category.isNotEmpty ? o.category : 'N/A';
                           final rev = o.totalAmount;
                           final advance = o.advanceReceived;
                           final due = (rev - advance).clamp(0.0, double.infinity);
@@ -208,6 +211,7 @@ class _FinancialReportsScreenState
                             o.venue.isNotEmpty ? o.venue : 'N/A',
                             clientName,
                             eventType,
+                            category,
                             bsDate,
                             adDate,
                             rev,
@@ -223,6 +227,7 @@ class _FinancialReportsScreenState
                         rows.add([
                           'TOTAL',
                           '${sorted.length} Events',
+                          '',
                           '',
                           '',
                           '',

@@ -355,6 +355,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   eventDates: allScheduledDates,
                   eventCounts: eventCounts,
                   orderCounts: orderCounts,
+                  onMonthChanged: (newNepaliDate) {
+                    setState(() {
+                      _selectedDate = safeNepaliToDateTime(newNepaliDate);
+                      _isDayFiltered = false;
+                    });
+                  },
                   onDateSelected: (nepaliDate) {
                     final targetDate = safeNepaliToDateTime(nepaliDate);
                     final targetNepaliDay = nepaliDate.day;

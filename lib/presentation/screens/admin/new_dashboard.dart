@@ -791,8 +791,7 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                             isMobile: isMobile,
                             onTap: () => Navigator.push(
                               context,
-                              SlidePageRoute(
-                                  page: const ManualTasksScreen()),
+                              SlidePageRoute(page: const ManualTasksScreen()),
                             ),
                           ),
 
@@ -918,7 +917,7 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
 
                           // Company Profile
                           _buildModuleCard(
-                            title: 'Company Profile',
+                            title: 'Documents',
                             subtitle: 'Synology files & company doc',
                             icon: Icons.picture_as_pdf_rounded,
                             accentColor: const Color(0xFFe11d48),

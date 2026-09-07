@@ -7,6 +7,7 @@ import 'package:order_app/presentation/widgets/calendar/nepali_year_month_picker
 class NepaliCalendarView extends StatefulWidget {
   final NepaliDateTime selectedDate;
   final ValueChanged<NepaliDateTime>? onDateSelected;
+  final ValueChanged<NepaliDateTime>? onMonthChanged;
   final NepaliDateTime? rangeStartDate;
   final NepaliDateTime? rangeEndDate;
   final Function(NepaliDateTime start, NepaliDateTime? end)? onRangeSelected;
@@ -20,6 +21,7 @@ class NepaliCalendarView extends StatefulWidget {
     super.key,
     required this.selectedDate,
     this.onDateSelected,
+    this.onMonthChanged,
     this.rangeStartDate,
     this.rangeEndDate,
     this.onRangeSelected,
@@ -78,6 +80,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
         _displayMonth--;
       }
     });
+    widget.onMonthChanged?.call(NepaliDateTime(_displayYear, _displayMonth, 1));
   }
 
   void _nextMonth() {
@@ -89,6 +92,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
         _displayMonth++;
       }
     });
+    widget.onMonthChanged?.call(NepaliDateTime(_displayYear, _displayMonth, 1));
   }
 
   void _goToToday() {
@@ -97,6 +101,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
       _displayYear = now.year;
       _displayMonth = now.month;
     });
+    widget.onMonthChanged?.call(now);
     widget.onDateSelected?.call(now);
   }
 
@@ -111,6 +116,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
         _displayYear = result['year']!;
         _displayMonth = result['month']!;
       });
+      widget.onMonthChanged?.call(NepaliDateTime(_displayYear, _displayMonth, 1));
     }
   }
 

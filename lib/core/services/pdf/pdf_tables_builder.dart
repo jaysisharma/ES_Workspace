@@ -456,21 +456,27 @@ class PdfTablesBuilder {
     final headers = [
       'Order ID',
       'Event Name',
+      'Type',
+      'Category',
       'Revenue',
       'Expenses',
       'Profit',
       'Advance',
       'Due',
     ];
-    final headerWidths = [1.8, 3.8, 1.8, 1.8, 1.8, 1.8, 1.8];
+    final headerWidths = [1.3, 2.5, 1.0, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2];
 
     final data = orders.map((order) {
+      final type = (order.orderType.toLowerCase() == 'rental') ? 'Rental' : 'Event';
+      final category = order.category.isNotEmpty ? order.category : '-';
       final profit = order.totalAmount - order.totalExpenses;
       final due = (order.totalAmount - order.advanceReceived)
           .clamp(0.0, double.infinity);
       return [
         order.id,
         order.eventName,
+        type,
+        category,
         order.totalAmount.toStringAsFixed(0),
         order.totalExpenses.toStringAsFixed(0),
         profit.toStringAsFixed(0),
@@ -491,22 +497,24 @@ class PdfTablesBuilder {
         width: 0.5,
       ),
       headerStyle: pw.TextStyle(
-        fontSize: 7.5,
+        fontSize: 7,
         fontWeight: pw.FontWeight.bold,
         color: PdfThemeAndStyles.darkColor,
       ),
       headerDecoration:
           const pw.BoxDecoration(color: PdfThemeAndStyles.lightBg),
-      cellStyle: const pw.TextStyle(fontSize: 7.5),
-      cellPadding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+      cellStyle: const pw.TextStyle(fontSize: 7),
+      cellPadding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 3.5),
       cellAlignments: {
         0: pw.Alignment.centerLeft,
         1: pw.Alignment.centerLeft,
-        2: pw.Alignment.centerRight,
-        3: pw.Alignment.centerRight,
+        2: pw.Alignment.center,
+        3: pw.Alignment.centerLeft,
         4: pw.Alignment.centerRight,
         5: pw.Alignment.centerRight,
         6: pw.Alignment.centerRight,
+        7: pw.Alignment.centerRight,
+        8: pw.Alignment.centerRight,
       },
     );
   }

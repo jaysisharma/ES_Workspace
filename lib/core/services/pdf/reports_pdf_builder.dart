@@ -727,6 +727,10 @@ class ReportsPdfBuilder {
                         style: const pw.TextStyle(fontSize: 8.5),
                       ),
                       pw.Text(
+                        'Type: ${(order.orderType.toLowerCase() == 'rental') ? 'Rental' : 'Event'}${order.category.isNotEmpty ? '  |  Category: ${order.category}' : ''}',
+                        style: const pw.TextStyle(fontSize: 8.5),
+                      ),
+                      pw.Text(
                         'Event Date: ${formatNepaliDate(order.eventDate, 'yyyy-MM-dd')}',
                         style: const pw.TextStyle(fontSize: 8.5),
                       ),

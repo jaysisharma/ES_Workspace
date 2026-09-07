@@ -155,37 +155,109 @@ class PdfThemeAndStyles {
   }
 
   static pw.Widget buildOrderInfoCard(OrderEntity order) {
+    final eventType =
+        (order.orderType.toLowerCase() == 'rental') ? 'Rental' : 'Event';
+    final category =
+        order.category.trim().isNotEmpty ? order.category.trim() : 'N/A';
+
     return card(
       title: 'ORDER INFORMATION',
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(
-            order.eventName,
-            style: pw.TextStyle(
-              fontSize: 16,
-              fontWeight: pw.FontWeight.bold,
-              color: darkColor,
-            ),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: pw.Text(
+                  order.eventName,
+                  style: pw.TextStyle(
+                    fontSize: 14,
+                    fontWeight: pw.FontWeight.bold,
+                    color: darkColor,
+                  ),
+                ),
+              ),
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: borderColor, width: 0.5),
+                  color: lightBg,
+                  borderRadius: pw.BorderRadius.circular(2),
+                ),
+                child: pw.Text(
+                  eventType.toUpperCase(),
+                  style: pw.TextStyle(
+                    fontSize: 7.5,
+                    fontWeight: pw.FontWeight.bold,
+                    color: darkColor,
+                  ),
+                ),
+              ),
+            ],
           ),
           pw.SizedBox(height: 8),
-          infoRow('Order ID', order.id),
-          pw.SizedBox(height: 4),
-          infoRow('Venue', order.venue),
-          pw.SizedBox(height: 4),
-          infoRow(
-            'Event Dates',
-            formatDateRange(order.eventDate, order.eventEndDate),
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    infoRow('Order ID', order.id),
+                    pw.SizedBox(height: 4),
+                    infoRow('Event Type', eventType),
+                    pw.SizedBox(height: 4),
+                    infoRow('Category', category),
+                    if (order.client.trim().isNotEmpty) ...[
+                      pw.SizedBox(height: 4),
+                      infoRow('Client', order.client),
+                    ],
+                    pw.SizedBox(height: 4),
+                    infoRow(
+                      'Venue',
+                      order.venue.isNotEmpty ? order.venue : 'N/A',
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(width: 16),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    infoRow(
+                      'Event Dates',
+                      formatDateRange(order.eventDate, order.eventEndDate),
+                    ),
+                    pw.SizedBox(height: 4),
+                    infoRow(
+                      'Setup Dates',
+                      formatDateRange(order.setupDate, order.setupEndDate),
+                    ),
+                    pw.SizedBox(height: 4),
+                    infoRow(
+                      'Contact',
+                      order.contactPerson.isNotEmpty
+                          ? order.contactPerson
+                          : 'N/A',
+                    ),
+                    pw.SizedBox(height: 4),
+                    infoRow(
+                      'Phone',
+                      order.contactNumber.isNotEmpty
+                          ? order.contactNumber
+                          : 'N/A',
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          pw.SizedBox(height: 4),
-          infoRow(
-            'Setup Dates',
-            formatDateRange(order.setupDate, order.setupEndDate),
-          ),
-          pw.SizedBox(height: 4),
-          infoRow('Contact', order.contactPerson),
-          pw.SizedBox(height: 4),
-          infoRow('Phone', order.contactNumber),
         ],
       ),
     );

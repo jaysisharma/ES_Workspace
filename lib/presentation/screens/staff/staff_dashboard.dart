@@ -559,31 +559,36 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
     final orderMap = {for (final o in orders) o.id: o};
 
     // Filter manual tasks assigned to this staff member
-    final myManualTasks = allItems.where((i) {
-      if (!i.isManualTask) return false;
-      if (currentUserId != null && i.assignedStaffId == currentUserId) return true;
-      if (currentUserEmail != null &&
-          i.assignedStaffId != null &&
-          i.assignedStaffId!.toLowerCase().trim() == currentUserEmail) {
-        return true;
-      }
-      if (currentUserEmail != null &&
-          i.assignedStaffName != null &&
-          (i.assignedStaffName!.toLowerCase().contains(currentUserEmail) ||
-              currentUserEmail.contains(i.assignedStaffName!.toLowerCase()))) {
-        return true;
-      }
-      if (i.assignedStaffId == null || i.assignedStaffId!.isEmpty) return true;
-      return false;
-    }).toList()
-      ..sort((a, b) {
-        if (a.isCompleted != b.isCompleted) {
-          return a.isCompleted ? 1 : -1;
-        }
-        return 0;
-      });
-    final pendingManualTasks =
-        myManualTasks.where((t) => !t.isCompleted).length;
+    final myManualTasks =
+        allItems.where((i) {
+          if (!i.isManualTask) return false;
+          if (currentUserId != null && i.assignedStaffId == currentUserId)
+            return true;
+          if (currentUserEmail != null &&
+              i.assignedStaffId != null &&
+              i.assignedStaffId!.toLowerCase().trim() == currentUserEmail) {
+            return true;
+          }
+          if (currentUserEmail != null &&
+              i.assignedStaffName != null &&
+              (i.assignedStaffName!.toLowerCase().contains(currentUserEmail) ||
+                  currentUserEmail.contains(
+                    i.assignedStaffName!.toLowerCase(),
+                  ))) {
+            return true;
+          }
+          if (i.assignedStaffId == null || i.assignedStaffId!.isEmpty)
+            return true;
+          return false;
+        }).toList()..sort((a, b) {
+          if (a.isCompleted != b.isCompleted) {
+            return a.isCompleted ? 1 : -1;
+          }
+          return 0;
+        });
+    final pendingManualTasks = myManualTasks
+        .where((t) => !t.isCompleted)
+        .length;
 
     // Dynamically resolve event details from parent order to guarantee real-time synchronization
     final resolvedEvents = events.map((e) {
@@ -921,7 +926,7 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
 
                     // 5. Company PDF & Assets
                     _buildModuleCard(
-                      title: 'Company Profile',
+                      title: 'Documents',
                       subtitle: 'Synology documents & assets',
                       icon: Icons.picture_as_pdf_rounded,
                       accentColor: const Color(0xFFe11d48), // Rose
@@ -1013,7 +1018,9 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    itemCount: myManualTasks.length > 3 ? 3 : myManualTasks.length,
+                    itemCount: myManualTasks.length > 3
+                        ? 3
+                        : myManualTasks.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (ctx, i) {
                       final task = myManualTasks[i];
@@ -1025,7 +1032,9 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
                           border: Border.all(
                             color: task.isCompleted
                                 ? borderColor
-                                : const Color(0xFFf97316).withValues(alpha: 0.35),
+                                : const Color(
+                                    0xFFf97316,
+                                  ).withValues(alpha: 0.35),
                           ),
                         ),
                         child: Row(
@@ -1052,8 +1061,11 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
                                   ),
                                 ),
                                 child: task.isCompleted
-                                    ? const Icon(Icons.check,
-                                        size: 14, color: Colors.white)
+                                    ? const Icon(
+                                        Icons.check,
+                                        size: 14,
+                                        color: Colors.white,
+                                      )
                                     : null,
                               ),
                             ),
@@ -1070,7 +1082,9 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
                                       decoration: task.isCompleted
                                           ? TextDecoration.lineThrough
                                           : null,
-                                      color: task.isCompleted ? textMuted : null,
+                                      color: task.isCompleted
+                                          ? textMuted
+                                          : null,
                                     ),
                                   ),
                                   if (task.specification.isNotEmpty) ...[
@@ -1078,7 +1092,9 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
                                     Text(
                                       task.specification,
                                       style: TextStyle(
-                                          fontSize: 12, color: textMuted),
+                                        fontSize: 12,
+                                        color: textMuted,
+                                      ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -1088,12 +1104,15 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
-                                color: (task.isCompleted
-                                        ? Colors.green
-                                        : const Color(0xFFf97316))
-                                    .withValues(alpha: 0.12),
+                                color:
+                                    (task.isCompleted
+                                            ? Colors.green
+                                            : const Color(0xFFf97316))
+                                        .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(

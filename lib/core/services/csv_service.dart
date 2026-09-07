@@ -11,6 +11,9 @@ class CsvService {
     rows.add([
       'Order ID',
       'Event Name',
+      'Event Type',
+      'Category',
+      'Client',
       'Venue',
       'Contact Person',
       'Contact Number',
@@ -25,9 +28,14 @@ class CsvService {
 
     // Data rows
     for (var order in orders) {
+      final type = (order.orderType.toLowerCase() == 'rental') ? 'Rental' : 'Event';
+      final category = order.category.isNotEmpty ? order.category : 'N/A';
       rows.add([
         order.id,
         order.eventName,
+        type,
+        category,
+        order.client,
         order.venue,
         order.contactPerson,
         order.contactNumber,
