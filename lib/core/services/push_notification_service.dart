@@ -106,14 +106,16 @@ class PushNotificationService {
         FirebaseMessaging.instance.unsubscribeFromTopic('role_management'),
       ]);
 
-      final cleanRole = role.toLowerCase().replaceAll(' ', '_').trim();
+      String cleanRole = role.toLowerCase().replaceAll(' ', '_').trim();
+      if (cleanRole == 'companysecretary') cleanRole = 'company_secretary';
+      if (cleanRole == 'seniorstaff') cleanRole = 'senior_staff';
+
       await FirebaseMessaging.instance.subscribeToTopic('role_$cleanRole');
 
       if (cleanRole == 'admin' ||
           cleanRole == 'founder' ||
           cleanRole == 'director' ||
           cleanRole == 'company_secretary' ||
-          cleanRole == 'companysecretary' ||
           cleanRole == 'finance') {
         await FirebaseMessaging.instance.subscribeToTopic('role_management');
       }
