@@ -1,11 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:order_app/domain/entities/leave_request_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
 
 class LeaveRequestModel extends LeaveRequestEntity {
   LeaveRequestModel({
     required super.id,
     required super.staffId,
     required super.staffName,
+    super.applicantRole = UserRole.staff,
     required super.startDate,
     required super.endDate,
     required super.leaveType,
@@ -43,11 +45,39 @@ class LeaveRequestModel extends LeaveRequestEntity {
     return null;
   }
 
+  static UserRole _parseRole(String? roleStr) {
+    if (roleStr == null) return UserRole.staff;
+    final clean = roleStr
+        .toLowerCase()
+        .replaceAll(' ', '')
+        .replaceAll('_', '')
+        .replaceAll('-', '');
+    switch (clean) {
+      case 'admin':
+        return UserRole.admin;
+      case 'director':
+      case 'founder':
+      case 'ceo':
+        return UserRole.director;
+      case 'companysecretary':
+      case 'secretary':
+        return UserRole.companySecretary;
+      case 'seniorstaff':
+        return UserRole.seniorStaff;
+      case 'finance':
+        return UserRole.finance;
+      case 'staff':
+      default:
+        return UserRole.staff;
+    }
+  }
+
   factory LeaveRequestModel.fromJson(Map<String, dynamic> json) {
     return LeaveRequestModel(
       id: json['id']?.toString() ?? '',
       staffId: json['staffId']?.toString() ?? '',
       staffName: json['staffName']?.toString() ?? '',
+      applicantRole: _parseRole(json['applicantRole']?.toString()),
       startDate: _parseDateTime(json['startDate']),
       endDate: _parseDateTime(json['endDate']),
       leaveType: json['leaveType']?.toString() ?? 'General',
@@ -64,6 +94,7 @@ class LeaveRequestModel extends LeaveRequestEntity {
       'id': id,
       'staffId': staffId,
       'staffName': staffName,
+      'applicantRole': applicantRole.name,
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),
       'leaveType': leaveType,
@@ -80,6 +111,7 @@ class LeaveRequestModel extends LeaveRequestEntity {
       id: entity.id,
       staffId: entity.staffId,
       staffName: entity.staffName,
+      applicantRole: entity.applicantRole,
       startDate: entity.startDate,
       endDate: entity.endDate,
       leaveType: entity.leaveType,

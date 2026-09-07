@@ -1,3 +1,5 @@
+import 'package:order_app/domain/entities/user_entity.dart';
+
 enum LeaveStatus {
   pending,
   approved,
@@ -39,6 +41,7 @@ class LeaveRequestEntity {
   final String id;
   final String staffId;
   final String staffName;
+  final UserRole applicantRole;
   final DateTime startDate;
   final DateTime endDate;
   final String leaveType;
@@ -52,6 +55,7 @@ class LeaveRequestEntity {
     required this.id,
     required this.staffId,
     required this.staffName,
+    this.applicantRole = UserRole.staff,
     required this.startDate,
     required this.endDate,
     required this.leaveType,
@@ -66,6 +70,7 @@ class LeaveRequestEntity {
     String? id,
     String? staffId,
     String? staffName,
+    UserRole? applicantRole,
     DateTime? startDate,
     DateTime? endDate,
     String? leaveType,
@@ -79,6 +84,7 @@ class LeaveRequestEntity {
       id: id ?? this.id,
       staffId: staffId ?? this.staffId,
       staffName: staffName ?? this.staffName,
+      applicantRole: applicantRole ?? this.applicantRole,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       leaveType: leaveType ?? this.leaveType,

@@ -98,15 +98,23 @@ class PushNotificationService {
       await Future.wait([
         FirebaseMessaging.instance.unsubscribeFromTopic('role_admin'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_founder'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_director'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_company_secretary'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_senior_staff'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_finance'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_staff'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_management'),
       ]);
-      // Subscribe to this user's role topic
-      final cleanRole = role.toLowerCase().trim();
+
+      final cleanRole = role.toLowerCase().replaceAll(' ', '_').trim();
       await FirebaseMessaging.instance.subscribeToTopic('role_$cleanRole');
 
-      if (cleanRole == 'admin' || cleanRole == 'founder' || cleanRole == 'finance') {
+      if (cleanRole == 'admin' ||
+          cleanRole == 'founder' ||
+          cleanRole == 'director' ||
+          cleanRole == 'company_secretary' ||
+          cleanRole == 'companysecretary' ||
+          cleanRole == 'finance') {
         await FirebaseMessaging.instance.subscribeToTopic('role_management');
       }
 
@@ -128,6 +136,9 @@ class PushNotificationService {
         FirebaseMessaging.instance.unsubscribeFromTopic('role_$role'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_admin'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_founder'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_director'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_company_secretary'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_senior_staff'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_finance'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_staff'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_management'),
@@ -228,18 +239,32 @@ class PushNotificationService {
 
   /// Which targetRole values a given role should receive.
   static List<String> _allowedTargetRoles(String role) {
-    switch (role.toLowerCase()) {
+    final clean = role.toLowerCase().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
+    switch (clean) {
       case 'founder':
       case 'director':
       case 'ceo':
-        return ['admin_founder', 'founder', 'management', 'all'];
+        return ['director', 'admin_founder', 'founder', 'management', 'all'];
+      case 'companysecretary':
+      case 'secretary':
+        return ['company_secretary', 'admin_company_secretary', 'management', 'all'];
       case 'finance':
         return ['finance', 'management', 'all'];
+      case 'seniorstaff':
+        return ['senior_staff', 'staff', 'all'];
       case 'staff':
         return ['staff', 'all'];
       case 'admin':
       default:
-        return ['admin_founder', 'admin', 'founder', 'management', 'all'];
+        return [
+          'admin',
+          'admin_company_secretary',
+          'admin_founder',
+          'founder',
+          'director',
+          'management',
+          'all',
+        ];
     }
   }
 

@@ -625,9 +625,14 @@ class _AddUserScreenState extends ConsumerState<AddUserScreen> {
               setState(() => _selectedRole = newVal);
             }
           },
-          items: UserRole.values.map<DropdownMenuItem<UserRole>>((
-            UserRole role,
-          ) {
+          items: [
+            UserRole.admin,
+            UserRole.director,
+            UserRole.companySecretary,
+            UserRole.seniorStaff,
+            UserRole.staff,
+            UserRole.finance,
+          ].map<DropdownMenuItem<UserRole>>((UserRole role) {
             return DropdownMenuItem<UserRole>(
               value: role,
               child: Text(role.displayName.toUpperCase()),

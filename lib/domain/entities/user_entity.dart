@@ -1,8 +1,11 @@
 enum UserRole {
   admin,
-  finance,
-  founder, // Director / CEO
+  director,
+  companySecretary,
+  seniorStaff,
   staff,
+  finance,
+  founder, // Legacy alias for Director / CEO
 }
 
 extension UserRoleExtension on UserRole {
@@ -10,12 +13,57 @@ extension UserRoleExtension on UserRole {
     switch (this) {
       case UserRole.admin:
         return 'Admin';
-      case UserRole.finance:
-        return 'Finance';
+      case UserRole.director:
       case UserRole.founder:
-        return 'Director / CEO';
+        return 'Director';
+      case UserRole.companySecretary:
+        return 'Company Secretary';
+      case UserRole.seniorStaff:
+        return 'Senior Staff';
       case UserRole.staff:
         return 'Staff';
+      case UserRole.finance:
+        return 'Finance';
+    }
+  }
+
+  /// Check if the role is an executive/management role
+  bool get isManagement {
+    return this == UserRole.admin ||
+        this == UserRole.director ||
+        this == UserRole.founder ||
+        this == UserRole.companySecretary ||
+        this == UserRole.finance;
+  }
+
+  /// Whether this role can approve a leave request from an applicant with [applicantRole]
+  bool canApproveLeaveFor(UserRole applicantRole) {
+    switch (applicantRole) {
+      case UserRole.staff:
+        // Staff leave approved by Admin or Company Secretary (or Director)
+        return this == UserRole.admin ||
+            this == UserRole.companySecretary ||
+            this == UserRole.director ||
+            this == UserRole.founder;
+      case UserRole.seniorStaff:
+        // Senior Staff leave approved by Company Secretary (or Director/Admin)
+        return this == UserRole.companySecretary ||
+            this == UserRole.director ||
+            this == UserRole.founder ||
+            this == UserRole.admin;
+      case UserRole.companySecretary:
+        // Company Secretary leave approved by Director
+        return this == UserRole.director ||
+            this == UserRole.founder ||
+            this == UserRole.admin;
+      case UserRole.admin:
+      case UserRole.finance:
+      case UserRole.director:
+      case UserRole.founder:
+        // Management leaves approved by Director
+        return this == UserRole.director ||
+            this == UserRole.founder ||
+            this == UserRole.admin;
     }
   }
 }

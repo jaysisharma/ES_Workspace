@@ -303,28 +303,48 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     child: DropdownButton<UserRole>(
                       value: selectedRole,
                       isExpanded: true,
-                      items: UserRole.values.map((role) {
+                      items: [
+                        UserRole.admin,
+                        UserRole.director,
+                        UserRole.companySecretary,
+                        UserRole.seniorStaff,
+                        UserRole.staff,
+                        UserRole.finance,
+                      ].map((role) {
+                        final IconData icon;
+                        final Color color;
+                        switch (role) {
+                          case UserRole.admin:
+                            icon = Icons.admin_panel_settings_rounded;
+                            color = Colors.purple;
+                            break;
+                          case UserRole.director:
+                          case UserRole.founder:
+                            icon = Icons.stars_rounded;
+                            color = Colors.blue;
+                            break;
+                          case UserRole.companySecretary:
+                            icon = Icons.corporate_fare_rounded;
+                            color = Colors.indigo;
+                            break;
+                          case UserRole.seniorStaff:
+                            icon = Icons.verified_user_rounded;
+                            color = Colors.teal;
+                            break;
+                          case UserRole.finance:
+                            icon = Icons.account_balance_rounded;
+                            color = Colors.orange;
+                            break;
+                          case UserRole.staff:
+                            icon = Icons.badge_outlined;
+                            color = Colors.green;
+                            break;
+                        }
                         return DropdownMenuItem<UserRole>(
                           value: role,
                           child: Row(
                             children: [
-                              Icon(
-                                role == UserRole.admin
-                                    ? Icons.admin_panel_settings
-                                    : role == UserRole.founder
-                                    ? Icons.stars
-                                    : role == UserRole.finance
-                                    ? Icons.account_balance
-                                    : Icons.badge_outlined,
-                                size: 18,
-                                color: role == UserRole.admin
-                                    ? Colors.purple
-                                    : role == UserRole.founder
-                                    ? Colors.blue
-                                    : role == UserRole.finance
-                                    ? Colors.orange
-                                    : Colors.green,
-                              ),
+                              Icon(icon, size: 18, color: color),
                               const SizedBox(width: 8),
                               Text(role.displayName),
                             ],

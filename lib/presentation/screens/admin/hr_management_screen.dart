@@ -550,11 +550,14 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                 onChanged: (val) {
                   if (val != null) setState(() => _roleFilter = val);
                 },
-                items: const [
-                  DropdownMenuItem(value: 'all', child: Text('All Roles')),
-                  DropdownMenuItem(value: 'staff', child: Text('Staff')),
-                  DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                  DropdownMenuItem(value: 'founder', child: Text('Founder')),
+                items: [
+                  const DropdownMenuItem(value: 'all', child: Text('All Roles')),
+                  DropdownMenuItem(value: UserRole.admin.name, child: Text(UserRole.admin.displayName)),
+                  DropdownMenuItem(value: UserRole.director.name, child: Text(UserRole.director.displayName)),
+                  DropdownMenuItem(value: UserRole.companySecretary.name, child: Text(UserRole.companySecretary.displayName)),
+                  DropdownMenuItem(value: UserRole.seniorStaff.name, child: Text(UserRole.seniorStaff.displayName)),
+                  DropdownMenuItem(value: UserRole.staff.name, child: Text(UserRole.staff.displayName)),
+                  DropdownMenuItem(value: UserRole.finance.name, child: Text(UserRole.finance.displayName)),
                 ],
               ),
             ],
@@ -578,13 +581,28 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
 
                       final isMobile = MediaQuery.of(context).size.width < 600;
 
-                      final roleColor = u.role == UserRole.admin
-                          ? Colors.purple
-                          : u.role == UserRole.founder
-                          ? Colors.blue
-                          : u.role == UserRole.finance
-                          ? Colors.orange
-                          : Colors.green;
+                      final Color roleColor;
+                      switch (u.role) {
+                        case UserRole.admin:
+                          roleColor = Colors.purple;
+                          break;
+                        case UserRole.director:
+                        case UserRole.founder:
+                          roleColor = Colors.blue;
+                          break;
+                        case UserRole.companySecretary:
+                          roleColor = Colors.indigo;
+                          break;
+                        case UserRole.seniorStaff:
+                          roleColor = Colors.teal;
+                          break;
+                        case UserRole.finance:
+                          roleColor = Colors.orange;
+                          break;
+                        case UserRole.staff:
+                          roleColor = Colors.green;
+                          break;
+                      }
 
                       final roleBadge = Container(
                         padding: const EdgeInsets.symmetric(
@@ -1285,12 +1303,37 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    l.staffName,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        l.staffName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      if (l.applicantRole != null) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: colorScheme.primary.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            l.applicantRole!.displayName.toUpperCase(),
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: colorScheme.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                   Container(
                                     padding: const EdgeInsets.symmetric(

@@ -263,16 +263,23 @@ class _TeamManagementScreenState extends ConsumerState<TeamManagementScreen> {
     final isActive = user.isActive;
 
     final isSelf = currentUser?.id == user.id;
-    final isFounder = user.role == UserRole.founder;
+    final isFounder = user.role == UserRole.founder || user.role == UserRole.director;
     final canManage = !isSelf && !isFounder;
 
     Color roleColor;
     switch (user.role) {
+      case UserRole.director:
       case UserRole.founder:
         roleColor = const Color(0xFF0075db);
         break;
       case UserRole.admin:
         roleColor = const Color(0xFFa855f7);
+        break;
+      case UserRole.companySecretary:
+        roleColor = const Color(0xFF6366f1);
+        break;
+      case UserRole.seniorStaff:
+        roleColor = const Color(0xFF14b8a6);
         break;
       case UserRole.finance:
         roleColor = const Color(0xFFf59e0b);
@@ -520,28 +527,49 @@ class _TeamManagementScreenState extends ConsumerState<TeamManagementScreen> {
                     child: DropdownButton<UserRole>(
                       value: selectedRole,
                       isExpanded: true,
-                      items: UserRole.values.map((role) {
+                      items: [
+                        UserRole.admin,
+                        UserRole.director,
+                        UserRole.companySecretary,
+                        UserRole.seniorStaff,
+                        UserRole.staff,
+                        UserRole.finance,
+                      ].map((role) {
+                        IconData icon;
+                        Color color;
+                        switch (role) {
+                          case UserRole.admin:
+                            icon = Icons.admin_panel_settings_rounded;
+                            color = Colors.purple;
+                            break;
+                          case UserRole.director:
+                          case UserRole.founder:
+                            icon = Icons.stars_rounded;
+                            color = Colors.blue;
+                            break;
+                          case UserRole.companySecretary:
+                            icon = Icons.assignment_ind_rounded;
+                            color = const Color(0xFF6366f1);
+                            break;
+                          case UserRole.seniorStaff:
+                            icon = Icons.military_tech_rounded;
+                            color = Colors.teal;
+                            break;
+                          case UserRole.finance:
+                            icon = Icons.account_balance_rounded;
+                            color = Colors.orange;
+                            break;
+                          case UserRole.staff:
+                            icon = Icons.badge_outlined;
+                            color = Colors.green;
+                            break;
+                        }
+
                         return DropdownMenuItem<UserRole>(
                           value: role,
                           child: Row(
                             children: [
-                              Icon(
-                                role == UserRole.admin
-                                    ? Icons.admin_panel_settings
-                                    : role == UserRole.founder
-                                        ? Icons.stars
-                                        : role == UserRole.finance
-                                            ? Icons.account_balance
-                                            : Icons.badge_outlined,
-                                size: 18,
-                                color: role == UserRole.admin
-                                    ? Colors.purple
-                                    : role == UserRole.founder
-                                        ? Colors.blue
-                                        : role == UserRole.finance
-                                            ? Colors.orange
-                                            : Colors.green,
-                              ),
+                              Icon(icon, size: 18, color: color),
                               const SizedBox(width: 8),
                               Text(role.displayName),
                             ],

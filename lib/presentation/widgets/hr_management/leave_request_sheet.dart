@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 import 'package:order_app/core/calendar/nepali_calendar_engine.dart';
 import 'package:order_app/domain/entities/employee_profile_entity.dart';
 import 'package:order_app/domain/entities/leave_request_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/domain/entities/notification_entity.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/core/services/fcm_sender.dart';
@@ -358,10 +359,14 @@ void showLeaveRequestSheet({
                               : () async {
                                   setSheetState(() => isSubmitting = true);
                                   try {
+                                    final currentUser = ref.read(authNotifierProvider).user;
+                                    final applicantRole = currentUser?.role ?? UserRole.staff;
+
                                     final request = LeaveRequestEntity(
                                       id: const Uuid().v4(),
                                       staffId: userId,
                                       staffName: staffName,
+                                      applicantRole: applicantRole,
                                       startDate: startDate,
                                       endDate: endDate,
                                       leaveType: leaveType,
@@ -375,28 +380,60 @@ void showLeaveRequestSheet({
                                         )
                                         .submitLeave(request);
 
-                                    // Dispatch notification to Admins & Founders
+                                    // Hierarchical notification targets
+                                    List<String> fcmTopics;
+                                    String targetRole;
+                                    String targetLabel;
+
+                                    switch (applicantRole) {
+                                      case UserRole.staff:
+                                        fcmTopics = ['role_admin', 'role_company_secretary'];
+                                        targetRole = 'admin_company_secretary';
+                                        targetLabel = 'Admin & Company Secretary';
+                                        break;
+                                      case UserRole.seniorStaff:
+                                        fcmTopics = ['role_company_secretary'];
+                                        targetRole = 'company_secretary';
+                                        targetLabel = 'Company Secretary';
+                                        break;
+                                      case UserRole.companySecretary:
+                                        fcmTopics = ['role_director', 'role_founder'];
+                                        targetRole = 'director';
+                                        targetLabel = 'Director';
+                                        break;
+                                      case UserRole.finance:
+                                      case UserRole.admin:
+                                      case UserRole.director:
+                                      case UserRole.founder:
+                                        fcmTopics = ['role_director', 'role_founder', 'role_admin'];
+                                        targetRole = 'director';
+                                        targetLabel = 'Director';
+                                        break;
+                                    }
+
+                                    final notifId = const Uuid().v4();
                                     await ref
                                         .read(
                                           notificationNotifierProvider.notifier,
                                         )
                                         .addNotification(
                                           NotificationEntity(
-                                            id: const Uuid().v4(),
+                                            id: notifId,
                                             title:
-                                                'New Leave Request: $staffName',
+                                                'New Leave Request: $staffName (${applicantRole.displayName})',
                                             description:
-                                                '$staffName requested $leaveType from ${formatNepaliDate(startDate, 'dd MMM')} to ${formatNepaliDate(endDate, 'dd MMM')}.',
+                                                '$staffName (${applicantRole.displayName}) requested $leaveType from ${formatNepaliDate(startDate, 'dd MMM')} to ${formatNepaliDate(endDate, 'dd MMM')}.',
                                             timestamp: DateTime.now(),
                                             type: 'system',
-                                            targetRole: 'admin_founder',
+                                            targetRole: targetRole,
                                           ),
                                         );
 
                                     FcmSender.sendToTopics(
-                                      topics: ['role_admin', 'role_founder'],
+                                      topics: fcmTopics,
                                       title: 'New Leave Request: $staffName',
-                                      body: '$staffName requested $leaveType.',
+                                      body: '$staffName (${applicantRole.displayName}) requested $leaveType.',
+                                      notificationId: notifId,
                                     );
 
                                     if (context.mounted) {
@@ -404,9 +441,9 @@ void showLeaveRequestSheet({
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
-                                        const SnackBar(
+                                        SnackBar(
                                           content: Text(
-                                            'Leave request submitted to Admin!',
+                                            'Leave request submitted to $targetLabel!',
                                           ),
                                           backgroundColor: Colors.green,
                                         ),

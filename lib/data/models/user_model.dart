@@ -31,19 +31,28 @@ class UserModel extends UserEntity {
   }
 
   static UserRole _parseRole(String roleStr) {
-    switch (roleStr.toLowerCase()) {
+    final clean = roleStr
+        .toLowerCase()
+        .replaceAll(' ', '')
+        .replaceAll('_', '')
+        .replaceAll('-', '');
+    switch (clean) {
       case 'admin':
         return UserRole.admin;
+      case 'director':
+      case 'founder':
+      case 'ceo':
+        return UserRole.director;
+      case 'companysecretary':
+      case 'secretary':
+        return UserRole.companySecretary;
+      case 'seniorstaff':
+        return UserRole.seniorStaff;
       case 'finance':
         return UserRole.finance;
       case 'staff':
-        return UserRole.staff;
-      case 'founder':
-      case 'director':
-      case 'ceo':
-        return UserRole.founder;
       default:
-        return UserRole.staff; // Default fallback
+        return UserRole.staff;
     }
   }
 

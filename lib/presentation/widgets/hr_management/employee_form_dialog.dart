@@ -60,6 +60,8 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog>
   late TextEditingController _panNumberController;
   late TextEditingController _panPhotoController;
 
+  UserRole _selectedRole = UserRole.staff;
+
   bool _isSaving = false;
 
   @override
@@ -189,23 +191,15 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog>
         ),
       ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
+        OutlinedButton(
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: colorScheme.primary,
-            foregroundColor: Colors.white,
-          ),
           onPressed: _isSaving ? null : _saveProfile,
           child: _isSaving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : const Text('Save Employee File'),
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Save Employee Profile'),
         ),
       ],
     );
@@ -216,9 +210,38 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog>
       child: Column(
         children: [
           if (widget.isNewUser) ...[
-            _buildTextField('Account Email Address', _emailController, keyboardType: TextInputType.emailAddress),
+            _buildTextField('Email Address *', _emailController, keyboardType: TextInputType.emailAddress),
             const SizedBox(height: 10),
-            _buildTextField('Account Password', _passwordController, isPassword: true),
+            _buildTextField('Password *', _passwordController, isPassword: true),
+            const SizedBox(height: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('User Role', style: TextStyle(fontSize: 12, color: labelColor)),
+                const SizedBox(height: 4),
+                DropdownButtonFormField<UserRole>(
+                  value: _selectedRole,
+                  isDense: true,
+                  decoration: const InputDecoration(border: OutlineInputBorder()),
+                  items: [
+                    UserRole.admin,
+                    UserRole.director,
+                    UserRole.companySecretary,
+                    UserRole.seniorStaff,
+                    UserRole.staff,
+                    UserRole.finance,
+                  ].map((role) {
+                    return DropdownMenuItem(
+                      value: role,
+                      child: Text(role.displayName),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedRole = val);
+                  },
+                ),
+              ],
+            ),
             const SizedBox(height: 10),
           ],
           _buildTextField('Full Name', _nameController),
@@ -414,7 +437,7 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog>
           email: email,
           password: password,
           name: _nameController.text.trim(),
-          role: UserRole.staff,
+          role: _selectedRole,
           isActive: true,
         );
         finalUserId = createdUser.id;

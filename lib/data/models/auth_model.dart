@@ -21,18 +21,27 @@ class AuthModel extends AuthEntity {
   }
 
   static UserRole _parseRole(String? roleStr) {
-    if (roleStr == null) return UserRole.staff; // Default fallback
-    switch (roleStr.toLowerCase()) {
+    if (roleStr == null) return UserRole.staff;
+    final clean = roleStr
+        .toLowerCase()
+        .replaceAll(' ', '')
+        .replaceAll('_', '')
+        .replaceAll('-', '');
+    switch (clean) {
       case 'admin':
         return UserRole.admin;
+      case 'director':
+      case 'founder':
+      case 'ceo':
+        return UserRole.director;
+      case 'companysecretary':
+      case 'secretary':
+        return UserRole.companySecretary;
+      case 'seniorstaff':
+        return UserRole.seniorStaff;
       case 'finance':
         return UserRole.finance;
       case 'staff':
-        return UserRole.staff;
-      case 'founder':
-      case 'director':
-      case 'ceo':
-        return UserRole.founder;
       default:
         return UserRole.staff;
     }
