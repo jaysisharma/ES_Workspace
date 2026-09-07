@@ -306,29 +306,43 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                 // Month Nav Arrows
                 Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left_rounded, size: 22),
-                      tooltip: 'Previous Month',
-                      onPressed: _previousMonth,
-                      style: IconButton.styleFrom(
-                        backgroundColor: surfaceAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    Material(
+                      color: surfaceAccent,
+                      borderRadius: BorderRadius.circular(8),
+                      child: InkWell(
+                        onTap: _previousMonth,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Tooltip(
+                          message: 'Previous Month',
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.chevron_left_rounded,
+                              size: 22,
+                              color: textColor,
+                            ),
+                          ),
                         ),
-                        padding: const EdgeInsets.all(6),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right_rounded, size: 22),
-                      tooltip: 'Next Month',
-                      onPressed: _nextMonth,
-                      style: IconButton.styleFrom(
-                        backgroundColor: surfaceAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    const SizedBox(width: 6),
+                    Material(
+                      color: surfaceAccent,
+                      borderRadius: BorderRadius.circular(8),
+                      child: InkWell(
+                        onTap: _nextMonth,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Tooltip(
+                          message: 'Next Month',
+                          child: Padding(
+                            padding: const EdgeInsets.all(6),
+                            child: Icon(
+                              Icons.chevron_right_rounded,
+                              size: 22,
+                              color: textColor,
+                            ),
+                          ),
                         ),
-                        padding: const EdgeInsets.all(6),
                       ),
                     ),
                   ],
