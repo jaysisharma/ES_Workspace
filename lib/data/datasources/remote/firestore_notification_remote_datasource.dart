@@ -68,14 +68,31 @@ class FirestoreNotificationRemoteDataSource
 
   static List<String> _allowedTargetRoles(UserRole role) {
     switch (role) {
+      case UserRole.director:
       case UserRole.founder:
-        return ['admin_founder', 'founder', 'management', 'all'];
+        return ['director', 'admin_founder', 'founder', 'management', 'all'];
       case UserRole.admin:
-        return ['admin_founder', 'admin', 'founder', 'management', 'all'];
-      case UserRole.finance:
-        return ['finance', 'management', 'all'];
+        return [
+          'admin',
+          'admin_company_secretary',
+          'admin_founder',
+          'founder',
+          'management',
+          'all',
+        ];
+      case UserRole.companySecretary:
+        return [
+          'company_secretary',
+          'admin_company_secretary',
+          'management',
+          'all',
+        ];
+      case UserRole.seniorStaff:
+        return ['senior_staff', 'staff', 'all'];
       case UserRole.staff:
         return ['staff', 'all'];
+      case UserRole.finance:
+        return ['finance', 'management', 'all'];
     }
   }
 
