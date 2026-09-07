@@ -44,6 +44,8 @@ class AppDrawer extends ConsumerWidget {
                 ),
                 if (role == UserRole.admin ||
                     role == UserRole.founder ||
+                    role == UserRole.director ||
+                    role == UserRole.companySecretary ||
                     role == UserRole.finance) ...[
                   _DrawerTile(
                     icon: Icons.badge_outlined,
@@ -54,7 +56,10 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                 ],
-                if (role == UserRole.admin || role == UserRole.founder) ...[
+                if (role == UserRole.admin ||
+                    role == UserRole.founder ||
+                    role == UserRole.director ||
+                    role == UserRole.companySecretary) ...[
                   _DrawerTile(
                     icon: Icons.access_time_outlined,
                     label: 'Attendance & Logs',
@@ -64,7 +69,9 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                 ],
-                if (role == UserRole.admin) ...[
+                if (role == UserRole.admin ||
+                    role == UserRole.director ||
+                    role == UserRole.founder) ...[
                   _DrawerTile(
                     icon: Icons.inventory_2_outlined,
                     label: 'Inventory Management',
@@ -92,6 +99,8 @@ class AppDrawer extends ConsumerWidget {
                 ],
                 if (role == UserRole.admin ||
                     role == UserRole.founder ||
+                    role == UserRole.director ||
+                    role == UserRole.companySecretary ||
                     role == UserRole.finance) ...[
                   _DrawerTile(
                     icon: Icons.business_outlined,
@@ -126,7 +135,9 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                 ],
-                if (role == UserRole.founder) ...[
+                if (role == UserRole.founder ||
+                    role == UserRole.director ||
+                    role == UserRole.companySecretary) ...[
                   _DrawerTile(
                     icon: Icons.analytics_outlined,
                     label: 'Revenue Summary',
@@ -144,17 +155,14 @@ class AppDrawer extends ConsumerWidget {
                     context.pushPage(const SynologyCompanyPdfScreen());
                   },
                 ),
-                if (role == UserRole.admin ||
-                    role == UserRole.founder ||
-                    role == UserRole.staff)
-                  _DrawerTile(
-                    icon: Icons.calendar_today_outlined,
-                    label: 'Calendar',
-                    onTap: () {
-                      Navigator.pop(context);
-                      context.pushPage(const CalendarScreen());
-                    },
-                  ),
+                _DrawerTile(
+                  icon: Icons.calendar_today_outlined,
+                  label: 'Calendar',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.pushPage(const CalendarScreen());
+                  },
+                ),
                 const Divider(indent: 16, endIndent: 16),
                 _DrawerTile(
                   icon: Icons.settings_outlined,

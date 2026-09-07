@@ -6,9 +6,6 @@ class StaffShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: StaffDashboard(),
-    );
+    return const Scaffold(body: StaffDashboard());
   }
 }
-
