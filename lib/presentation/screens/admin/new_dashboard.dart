@@ -28,6 +28,8 @@ import 'package:order_app/presentation/screens/common/utility/settings_screen.da
 import 'package:order_app/presentation/screens/common/utility/notifications_screen.dart';
 import 'package:order_app/presentation/screens/admin/manual_tasks_screen.dart';
 
+import '../../../domain/entities/user_entity.dart';
+
 class NewDashboard extends ConsumerStatefulWidget {
   const NewDashboard({super.key});
 
