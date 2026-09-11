@@ -387,25 +387,26 @@ void showLeaveRequestSheet({
 
                                     switch (applicantRole) {
                                       case UserRole.staff:
-                                        fcmTopics = ['role_admin', 'role_company_secretary'];
+                                        fcmTopics = ['role_admin', 'role_super_admin', 'role_company_secretary'];
                                         targetRole = 'admin_company_secretary';
                                         targetLabel = 'Admin & Company Secretary';
                                         break;
                                       case UserRole.seniorStaff:
-                                        fcmTopics = ['role_company_secretary'];
+                                        fcmTopics = ['role_company_secretary', 'role_super_admin'];
                                         targetRole = 'company_secretary';
                                         targetLabel = 'Company Secretary';
                                         break;
                                       case UserRole.companySecretary:
-                                        fcmTopics = ['role_director', 'role_founder'];
+                                        fcmTopics = ['role_director', 'role_founder', 'role_super_admin'];
                                         targetRole = 'director';
                                         targetLabel = 'Director';
                                         break;
+                                      case UserRole.superAdmin:
                                       case UserRole.finance:
                                       case UserRole.admin:
                                       case UserRole.director:
                                       case UserRole.founder:
-                                        fcmTopics = ['role_director', 'role_founder', 'role_admin'];
+                                        fcmTopics = ['role_director', 'role_founder', 'role_super_admin', 'role_admin'];
                                         targetRole = 'director';
                                         targetLabel = 'Director';
                                         break;

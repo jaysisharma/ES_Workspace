@@ -224,6 +224,7 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog>
                   isDense: true,
                   decoration: const InputDecoration(border: OutlineInputBorder()),
                   items: [
+                    UserRole.superAdmin,
                     UserRole.admin,
                     UserRole.director,
                     UserRole.companySecretary,

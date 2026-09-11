@@ -28,6 +28,8 @@ class AuthModel extends AuthEntity {
         .replaceAll('_', '')
         .replaceAll('-', '');
     switch (clean) {
+      case 'superadmin':
+        return UserRole.superAdmin;
       case 'admin':
         return UserRole.admin;
       case 'director':

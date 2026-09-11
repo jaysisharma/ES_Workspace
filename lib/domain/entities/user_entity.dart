@@ -1,4 +1,5 @@
 enum UserRole {
+  superAdmin,
   admin,
   director,
   companySecretary,
@@ -11,6 +12,8 @@ enum UserRole {
 extension UserRoleExtension on UserRole {
   String get displayName {
     switch (this) {
+      case UserRole.superAdmin:
+        return 'Super Admin';
       case UserRole.admin:
         return 'Admin';
       case UserRole.director:
@@ -29,7 +32,8 @@ extension UserRoleExtension on UserRole {
 
   /// Check if the role is an executive/management role
   bool get isManagement {
-    return this == UserRole.admin ||
+    return this == UserRole.superAdmin ||
+        this == UserRole.admin ||
         this == UserRole.director ||
         this == UserRole.founder ||
         this == UserRole.companySecretary ||
@@ -40,30 +44,33 @@ extension UserRoleExtension on UserRole {
   bool canApproveLeaveFor(UserRole applicantRole) {
     switch (applicantRole) {
       case UserRole.staff:
-        // Staff leave approved by Admin or Company Secretary (or Director)
-        return this == UserRole.admin ||
+        // Staff leave approved by Super Admin, Admin, Company Secretary, or Director
+        return this == UserRole.superAdmin ||
+            this == UserRole.admin ||
             this == UserRole.companySecretary ||
             this == UserRole.director ||
             this == UserRole.founder;
       case UserRole.seniorStaff:
-        // Senior Staff leave approved by Company Secretary (or Director/Admin)
-        return this == UserRole.companySecretary ||
+        // Senior Staff leave approved by Company Secretary (or Director/Super Admin/Admin)
+        return this == UserRole.superAdmin ||
+            this == UserRole.companySecretary ||
             this == UserRole.director ||
             this == UserRole.founder ||
             this == UserRole.admin;
       case UserRole.companySecretary:
-        // Company Secretary leave approved by Director
-        return this == UserRole.director ||
-            this == UserRole.founder ||
-            this == UserRole.admin;
+        // Company Secretary leave approved by Director or Super Admin
+        return this == UserRole.superAdmin ||
+            this == UserRole.director ||
+            this == UserRole.founder;
+      case UserRole.superAdmin:
       case UserRole.admin:
       case UserRole.finance:
       case UserRole.director:
       case UserRole.founder:
-        // Management leaves approved by Director
-        return this == UserRole.director ||
-            this == UserRole.founder ||
-            this == UserRole.admin;
+        // Management leaves approved by Director or Super Admin
+        return this == UserRole.superAdmin ||
+            this == UserRole.director ||
+            this == UserRole.founder;
     }
   }
 }

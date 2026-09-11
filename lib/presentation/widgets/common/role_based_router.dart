@@ -22,6 +22,7 @@ class RoleBasedRouter extends ConsumerWidget {
 
     // Direct to respective dashboard based on role
     switch (authState.user!.role) {
+      case UserRole.superAdmin:
       case UserRole.admin:
         return const AdminShell();
       case UserRole.director:

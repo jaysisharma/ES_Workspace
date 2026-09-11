@@ -1053,6 +1053,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
               value: _selectedRole,
               isExpanded: true,
               items: [
+                UserRole.superAdmin,
                 UserRole.admin,
                 UserRole.director,
                 UserRole.companySecretary,
@@ -1063,6 +1064,10 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
                 IconData icon;
                 Color color;
                 switch (role) {
+                  case UserRole.superAdmin:
+                    icon = Icons.shield_rounded;
+                    color = const Color(0xFF7c3aed);
+                    break;
                   case UserRole.admin:
                     icon = Icons.admin_panel_settings_rounded;
                     color = Colors.purple;

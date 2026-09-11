@@ -284,7 +284,9 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                                             ),
                                           ),
                                           child: Text(
-                                            'ADMIN',
+                                            user?.role == UserRole.superAdmin
+                                                ? 'SUPER ADMIN'
+                                                : 'ADMIN',
                                             style: TextStyle(
                                               fontSize: 9,
                                               fontWeight: FontWeight.w800,
@@ -746,6 +748,9 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                         physics: const NeverScrollableScrollPhysics(),
                         childAspectRatio: childAspectRatio,
                         children: [
+                          final isSuperAdmin =
+                              user?.role == UserRole.superAdmin;
+
                           // Create New Order
                           _buildModuleCard(
                             title: 'Create Order',
@@ -763,21 +768,24 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                             ),
                           ),
 
-                          // HR & Employees
-                          _buildModuleCard(
-                            title: 'HR & Employees',
-                            subtitle: 'Manage team staff & leaves',
-                            icon: Icons.badge_rounded,
-                            accentColor: const Color(0xFF3b82f6),
-                            cardBgColor: cardBgColor,
-                            borderColor: borderColor,
-                            textMuted: textMuted,
-                            isMobile: isMobile,
-                            onTap: () => Navigator.push(
-                              context,
-                              SlidePageRoute(page: const HrManagementScreen()),
+                          // HR & Employees (Super Admin Only)
+                          if (isSuperAdmin)
+                            _buildModuleCard(
+                              title: 'HR & Employees',
+                              subtitle: 'Manage team staff & leaves',
+                              icon: Icons.badge_rounded,
+                              accentColor: const Color(0xFF3b82f6),
+                              cardBgColor: cardBgColor,
+                              borderColor: borderColor,
+                              textMuted: textMuted,
+                              isMobile: isMobile,
+                              onTap: () => Navigator.push(
+                                context,
+                                SlidePageRoute(
+                                  page: const HrManagementScreen(),
+                                ),
+                              ),
                             ),
-                          ),
 
                           // Assign Tasks
                           _buildModuleCard(
@@ -863,41 +871,43 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                             ),
                           ),
 
-                          // Financial Ledger
-                          _buildModuleCard(
-                            title: 'Financial Ledger',
-                            subtitle: 'Transactions & ledger book',
-                            icon: Icons.account_balance_wallet_rounded,
-                            accentColor: const Color(0xFF10b981),
-                            cardBgColor: cardBgColor,
-                            borderColor: borderColor,
-                            textMuted: textMuted,
-                            isMobile: isMobile,
-                            onTap: () => Navigator.push(
-                              context,
-                              SlidePageRoute(
-                                page: const FinancialLedgerScreen(),
+                          // Financial Ledger (Super Admin Only)
+                          if (isSuperAdmin)
+                            _buildModuleCard(
+                              title: 'Financial Ledger',
+                              subtitle: 'Transactions & ledger book',
+                              icon: Icons.account_balance_wallet_rounded,
+                              accentColor: const Color(0xFF10b981),
+                              cardBgColor: cardBgColor,
+                              borderColor: borderColor,
+                              textMuted: textMuted,
+                              isMobile: isMobile,
+                              onTap: () => Navigator.push(
+                                context,
+                                SlidePageRoute(
+                                  page: const FinancialLedgerScreen(),
+                                ),
                               ),
                             ),
-                          ),
 
-                          // Event Reports
-                          _buildModuleCard(
-                            title: 'Event Reports',
-                            subtitle: 'Event revenue & P&L reports',
-                            icon: Icons.summarize_rounded,
-                            accentColor: const Color(0xFFec4899),
-                            cardBgColor: cardBgColor,
-                            borderColor: borderColor,
-                            textMuted: textMuted,
-                            isMobile: isMobile,
-                            onTap: () => Navigator.push(
-                              context,
-                              SlidePageRoute(
-                                page: const EventFinancialReportScreen(),
+                          // Event Reports (Super Admin Only)
+                          if (isSuperAdmin)
+                            _buildModuleCard(
+                              title: 'Event Reports',
+                              subtitle: 'Event revenue & P&L reports',
+                              icon: Icons.summarize_rounded,
+                              accentColor: const Color(0xFFec4899),
+                              cardBgColor: cardBgColor,
+                              borderColor: borderColor,
+                              textMuted: textMuted,
+                              isMobile: isMobile,
+                              onTap: () => Navigator.push(
+                                context,
+                                SlidePageRoute(
+                                  page: const EventFinancialReportScreen(),
+                                ),
                               ),
                             ),
-                          ),
 
                           // Calendar & Schedule
                           _buildModuleCard(
@@ -915,7 +925,7 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                             ),
                           ),
 
-                          // Company Profile
+                          // Documents
                           _buildModuleCard(
                             title: 'Documents',
                             subtitle: 'Synology files & company doc',
@@ -933,57 +943,60 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                             ),
                           ),
 
-                          // Archived Orders
-                          _buildModuleCard(
-                            title: 'Archived Orders',
-                            subtitle: 'View & restore archived events',
-                            icon: Icons.inventory_2_rounded,
-                            accentColor: const Color(0xFF64748b),
-                            cardBgColor: cardBgColor,
-                            borderColor: borderColor,
-                            textMuted: textMuted,
-                            isMobile: isMobile,
-                            onTap: () => Navigator.push(
-                              context,
-                              SlidePageRoute(
-                                page: const ArchivedOrdersScreen(),
+                          // Archived Orders (Super Admin Only)
+                          if (isSuperAdmin)
+                            _buildModuleCard(
+                              title: 'Archived Orders',
+                              subtitle: 'View & restore archived events',
+                              icon: Icons.inventory_2_rounded,
+                              accentColor: const Color(0xFF64748b),
+                              cardBgColor: cardBgColor,
+                              borderColor: borderColor,
+                              textMuted: textMuted,
+                              isMobile: isMobile,
+                              onTap: () => Navigator.push(
+                                context,
+                                SlidePageRoute(
+                                  page: const ArchivedOrdersScreen(),
+                                ),
                               ),
                             ),
-                          ),
 
-                          // Bulk Delete Orders
-                          _buildModuleCard(
-                            title: 'Bulk Delete',
-                            subtitle: 'Purge orders till date or #',
-                            icon: Icons.delete_sweep_rounded,
-                            accentColor: const Color(0xFFef4444),
-                            cardBgColor: cardBgColor,
-                            borderColor: borderColor,
-                            textMuted: textMuted,
-                            isMobile: isMobile,
-                            onTap: () => Navigator.push(
-                              context,
-                              SlidePageRoute(
-                                page: const BulkDeleteOrdersScreen(),
+                          // Bulk Delete Orders (Super Admin Only)
+                          if (isSuperAdmin)
+                            _buildModuleCard(
+                              title: 'Bulk Delete',
+                              subtitle: 'Purge orders till date or #',
+                              icon: Icons.delete_sweep_rounded,
+                              accentColor: const Color(0xFFef4444),
+                              cardBgColor: cardBgColor,
+                              borderColor: borderColor,
+                              textMuted: textMuted,
+                              isMobile: isMobile,
+                              onTap: () => Navigator.push(
+                                context,
+                                SlidePageRoute(
+                                  page: const BulkDeleteOrdersScreen(),
+                                ),
                               ),
                             ),
-                          ),
 
-                          // System Settings
-                          _buildModuleCard(
-                            title: 'System Settings',
-                            subtitle: 'Preferences & configurations',
-                            icon: Icons.settings_rounded,
-                            accentColor: const Color(0xFF475569),
-                            cardBgColor: cardBgColor,
-                            borderColor: borderColor,
-                            textMuted: textMuted,
-                            isMobile: isMobile,
-                            onTap: () => Navigator.push(
-                              context,
-                              SlidePageRoute(page: const SettingsScreen()),
+                          // System Settings (Super Admin Only)
+                          if (isSuperAdmin)
+                            _buildModuleCard(
+                              title: 'System Settings',
+                              subtitle: 'Preferences & configurations',
+                              icon: Icons.settings_rounded,
+                              accentColor: const Color(0xFF475569),
+                              cardBgColor: cardBgColor,
+                              borderColor: borderColor,
+                              textMuted: textMuted,
+                              isMobile: isMobile,
+                              onTap: () => Navigator.push(
+                                context,
+                                SlidePageRoute(page: const SettingsScreen()),
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ],

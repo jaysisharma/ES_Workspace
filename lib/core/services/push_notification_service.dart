@@ -96,6 +96,7 @@ class PushNotificationService {
     try {
       // Unsubscribe from all role topics first (clean slate)
       await Future.wait([
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_super_admin'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_admin'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_founder'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_director'),
@@ -107,12 +108,14 @@ class PushNotificationService {
       ]);
 
       String cleanRole = role.toLowerCase().replaceAll(' ', '_').trim();
+      if (cleanRole == 'superadmin') cleanRole = 'super_admin';
       if (cleanRole == 'companysecretary') cleanRole = 'company_secretary';
       if (cleanRole == 'seniorstaff') cleanRole = 'senior_staff';
 
       await FirebaseMessaging.instance.subscribeToTopic('role_$cleanRole');
 
-      if (cleanRole == 'admin' ||
+      if (cleanRole == 'super_admin' ||
+          cleanRole == 'admin' ||
           cleanRole == 'founder' ||
           cleanRole == 'director' ||
           cleanRole == 'company_secretary' ||
@@ -136,6 +139,7 @@ class PushNotificationService {
     try {
       await Future.wait([
         FirebaseMessaging.instance.unsubscribeFromTopic('role_$role'),
+        FirebaseMessaging.instance.unsubscribeFromTopic('role_super_admin'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_admin'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_founder'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_director'),

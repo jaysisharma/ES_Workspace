@@ -626,6 +626,7 @@ class _AddUserScreenState extends ConsumerState<AddUserScreen> {
             }
           },
           items: [
+            UserRole.superAdmin,
             UserRole.admin,
             UserRole.director,
             UserRole.companySecretary,

@@ -42,7 +42,8 @@ class AppDrawer extends ConsumerWidget {
                     Navigator.pop(context);
                   },
                 ),
-                if (role == UserRole.admin ||
+                // HR & Employees (Super Admin, Director, CS, Finance)
+                if (role == UserRole.superAdmin ||
                     role == UserRole.founder ||
                     role == UserRole.director ||
                     role == UserRole.companySecretary ||
@@ -56,7 +57,10 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                 ],
-                if (role == UserRole.admin ||
+
+                // Attendance & Logs (Super Admin, Admin, Director, CS)
+                if (role == UserRole.superAdmin ||
+                    role == UserRole.admin ||
                     role == UserRole.founder ||
                     role == UserRole.director ||
                     role == UserRole.companySecretary) ...[
@@ -69,7 +73,9 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                 ],
-                if (role == UserRole.admin ||
+
+                // Inventory Management & Archived Orders (Super Admin, Director)
+                if (role == UserRole.superAdmin ||
                     role == UserRole.director ||
                     role == UserRole.founder) ...[
                   _DrawerTile(
@@ -80,6 +86,13 @@ class AppDrawer extends ConsumerWidget {
                       context.pushPage(const InventoryManagementScreen());
                     },
                   ),
+                ],
+
+                // Purchase Orders (Super Admin, Admin, Director)
+                if (role == UserRole.superAdmin ||
+                    role == UserRole.admin ||
+                    role == UserRole.director ||
+                    role == UserRole.founder) ...[
                   _DrawerTile(
                     icon: Icons.description_outlined,
                     label: 'Purchase Orders',
@@ -88,6 +101,12 @@ class AppDrawer extends ConsumerWidget {
                       context.pushPage(const PurchaseOrderListScreen());
                     },
                   ),
+                ],
+
+                // Archived Orders (Super Admin, Director)
+                if (role == UserRole.superAdmin ||
+                    role == UserRole.director ||
+                    role == UserRole.founder) ...[
                   _DrawerTile(
                     icon: Icons.inventory_2_outlined,
                     label: 'Archived Orders',
@@ -97,7 +116,10 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                 ],
-                if (role == UserRole.admin ||
+
+                // Vendors & Clients (Super Admin, Admin, Director, CS, Finance)
+                if (role == UserRole.superAdmin ||
+                    role == UserRole.admin ||
                     role == UserRole.founder ||
                     role == UserRole.director ||
                     role == UserRole.companySecretary ||
@@ -118,6 +140,14 @@ class AppDrawer extends ConsumerWidget {
                       context.pushPage(const ClientScreen());
                     },
                   ),
+                ],
+
+                // Event Reports & Financial Ledger (Super Admin, Director, CS, Finance)
+                if (role == UserRole.superAdmin ||
+                    role == UserRole.founder ||
+                    role == UserRole.director ||
+                    role == UserRole.companySecretary ||
+                    role == UserRole.finance) ...[
                   _DrawerTile(
                     icon: Icons.description_outlined,
                     label: 'Event Reports',
@@ -135,7 +165,10 @@ class AppDrawer extends ConsumerWidget {
                     },
                   ),
                 ],
-                if (role == UserRole.founder ||
+
+                // Revenue Summary (Founder, Director, CS, Super Admin)
+                if (role == UserRole.superAdmin ||
+                    role == UserRole.founder ||
                     role == UserRole.director ||
                     role == UserRole.companySecretary) ...[
                   _DrawerTile(

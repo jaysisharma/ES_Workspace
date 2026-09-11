@@ -263,11 +263,16 @@ class _TeamManagementScreenState extends ConsumerState<TeamManagementScreen> {
     final isActive = user.isActive;
 
     final isSelf = currentUser?.id == user.id;
-    final isFounder = user.role == UserRole.founder || user.role == UserRole.director;
+    final isFounder = user.role == UserRole.founder ||
+        user.role == UserRole.director ||
+        user.role == UserRole.superAdmin;
     final canManage = !isSelf && !isFounder;
 
     Color roleColor;
     switch (user.role) {
+      case UserRole.superAdmin:
+        roleColor = const Color(0xFF7c3aed);
+        break;
       case UserRole.director:
       case UserRole.founder:
         roleColor = const Color(0xFF0075db);
@@ -528,6 +533,7 @@ class _TeamManagementScreenState extends ConsumerState<TeamManagementScreen> {
                       value: selectedRole,
                       isExpanded: true,
                       items: [
+                        UserRole.superAdmin,
                         UserRole.admin,
                         UserRole.director,
                         UserRole.companySecretary,
@@ -538,6 +544,10 @@ class _TeamManagementScreenState extends ConsumerState<TeamManagementScreen> {
                         IconData icon;
                         Color color;
                         switch (role) {
+                          case UserRole.superAdmin:
+                            icon = Icons.shield_rounded;
+                            color = const Color(0xFF7c3aed);
+                            break;
                           case UserRole.admin:
                             icon = Icons.admin_panel_settings_rounded;
                             color = Colors.purple;

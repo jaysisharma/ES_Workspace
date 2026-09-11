@@ -552,6 +552,7 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                 },
                 items: [
                   const DropdownMenuItem(value: 'all', child: Text('All Roles')),
+                  DropdownMenuItem(value: UserRole.superAdmin.name, child: Text(UserRole.superAdmin.displayName)),
                   DropdownMenuItem(value: UserRole.admin.name, child: Text(UserRole.admin.displayName)),
                   DropdownMenuItem(value: UserRole.director.name, child: Text(UserRole.director.displayName)),
                   DropdownMenuItem(value: UserRole.companySecretary.name, child: Text(UserRole.companySecretary.displayName)),
@@ -583,6 +584,9 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
 
                       final Color roleColor;
                       switch (u.role) {
+                        case UserRole.superAdmin:
+                          roleColor = const Color(0xFF7c3aed);
+                          break;
                         case UserRole.admin:
                           roleColor = Colors.purple;
                           break;

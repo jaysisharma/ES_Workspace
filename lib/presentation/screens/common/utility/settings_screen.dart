@@ -40,6 +40,9 @@ class SettingsScreen extends ConsumerWidget {
 
     Color roleColor;
     switch (user?.role) {
+      case UserRole.superAdmin:
+        roleColor = const Color(0xFF7c3aed);
+        break;
       case UserRole.founder:
         roleColor = const Color(0xFF8b5cf6);
         break;
