@@ -684,6 +684,8 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
         final hPadding = isMobile ? 16.0 : 24.0;
         final vPadding = isMobile ? 14.0 : 20.0;
         final gridSpacing = isMobile ? 12.0 : 18.0;
+        final isSuperAdmin =
+            ref.watch(authNotifierProvider).user?.role == UserRole.superAdmin;
 
         return RefreshIndicator(
           color: primaryColor,
@@ -748,9 +750,6 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                         physics: const NeverScrollableScrollPhysics(),
                         childAspectRatio: childAspectRatio,
                         children: [
-                          final isSuperAdmin =
-                              user?.role == UserRole.superAdmin;
-
                           // Create New Order
                           _buildModuleCard(
                             title: 'Create Order',
