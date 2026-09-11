@@ -288,7 +288,8 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
     final ordersAsync = ref.watch(ordersStreamProvider);
 
     final authUser = ref.watch(authNotifierProvider).user;
-    final isAdmin = authUser?.role == UserRole.admin;
+    final isAdmin = authUser?.role == UserRole.admin ||
+        authUser?.role == UserRole.superAdmin;
 
     final isMobile = MediaQuery.of(context).size.width < 600;
 

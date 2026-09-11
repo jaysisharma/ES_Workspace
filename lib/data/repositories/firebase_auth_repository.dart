@@ -81,11 +81,13 @@ class FirebaseAuthRepository implements AuthRepository {
           debugPrint('✅ [AuthRepo] Recovered & linked Firestore profile to UID: ${user.uid}');
         } else {
           final targetEmail = user.email ?? email;
-          final defaultRole = targetEmail.toLowerCase().contains('finance')
-              ? UserRole.finance
-              : targetEmail.toLowerCase().contains('admin')
-                  ? UserRole.admin
-                  : UserRole.staff;
+          final defaultRole = targetEmail.toLowerCase().contains('superadmin')
+              ? UserRole.superAdmin
+              : targetEmail.toLowerCase().contains('finance')
+                  ? UserRole.finance
+                  : targetEmail.toLowerCase().contains('admin')
+                      ? UserRole.admin
+                      : UserRole.staff;
           role = defaultRole;
           await _firestore.collection('users').doc(user.uid).set({
             'id': user.uid,
@@ -135,8 +137,8 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<void> _saveSessionToLocal(AuthEntity auth) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (auth.role == UserRole.admin) {
-        // Admin: wipe any old session so they are never auto-resumed
+      if (auth.role == UserRole.admin || auth.role == UserRole.superAdmin) {
+        // Admin / Super Admin: wipe any old session so they are never auto-resumed
         await prefs.remove('user_session_v1');
         debugPrint(
           '🔒 [AuthRepo] Admin session NOT persisted (auto-logout on app close)',
@@ -220,11 +222,13 @@ class FirebaseAuthRepository implements AuthRepository {
             }, SetOptions(merge: true));
             debugPrint('✅ [AuthRepo REST API] Recovered & linked Firestore profile to UID: $uid');
           } else {
-            final defaultRole = userEmail.toLowerCase().contains('finance')
-                ? UserRole.finance
-                : userEmail.toLowerCase().contains('admin')
-                    ? UserRole.admin
-                    : UserRole.staff;
+            final defaultRole = userEmail.toLowerCase().contains('superadmin')
+                ? UserRole.superAdmin
+                : userEmail.toLowerCase().contains('finance')
+                    ? UserRole.finance
+                    : userEmail.toLowerCase().contains('admin')
+                        ? UserRole.admin
+                        : UserRole.staff;
             role = defaultRole;
             await _firestore.collection('users').doc(uid).set({
               'id': uid,
@@ -352,7 +356,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
           // Admin sessions should never be restored from local storage.
           // If somehow an admin session slipped in, discard it.
-          if (role == UserRole.admin) {
+          if (role == UserRole.admin || role == UserRole.superAdmin) {
             debugPrint(
               '🔒 [AuthRepo] Discarding stale admin local session — admin must re-login.',
             );
@@ -392,7 +396,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
       // Admin: sign out of Firebase Auth immediately so the next cold start
       // will NOT find a cached Firebase token. This enforces the auto-logout.
-      if (role == UserRole.admin && firebaseUser != null) {
+      if ((role == UserRole.admin || role == UserRole.superAdmin) && firebaseUser != null) {
         try {
           await _firebaseAuth.signOut();
           debugPrint(
@@ -462,17 +466,28 @@ class FirebaseAuthRepository implements AuthRepository {
 
   UserRole _parseRole(String? roleStr) {
     if (roleStr == null) return UserRole.staff;
-    switch (roleStr.toLowerCase()) {
+    final clean = roleStr
+        .toLowerCase()
+        .replaceAll(' ', '')
+        .replaceAll('_', '')
+        .replaceAll('-', '');
+    switch (clean) {
+      case 'superadmin':
+        return UserRole.superAdmin;
       case 'admin':
         return UserRole.admin;
+      case 'director':
+      case 'founder':
+      case 'ceo':
+        return UserRole.director;
+      case 'companysecretary':
+      case 'secretary':
+        return UserRole.companySecretary;
+      case 'seniorstaff':
+        return UserRole.seniorStaff;
       case 'finance':
         return UserRole.finance;
       case 'staff':
-        return UserRole.staff;
-      case 'founder':
-      case 'director':
-      case 'ceo':
-        return UserRole.founder;
       default:
         return UserRole.staff;
     }

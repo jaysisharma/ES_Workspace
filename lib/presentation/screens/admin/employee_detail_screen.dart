@@ -807,7 +807,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     final borderColor = colorScheme.outline.withValues(alpha: 0.2);
 
     final loggedInUser = ref.watch(authNotifierProvider).user;
-    final isAdmin = loggedInUser?.role == UserRole.admin;
+    final isAdmin = loggedInUser?.role == UserRole.admin ||
+        loggedInUser?.role == UserRole.superAdmin;
 
     final usersStream = ref.watch(usersStreamProvider);
     final currentUser = usersStream.maybeWhen(

@@ -982,22 +982,21 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                               ),
                             ),
 
-                          // System Settings (Super Admin Only)
-                          if (isSuperAdmin)
-                            _buildModuleCard(
-                              title: 'System Settings',
-                              subtitle: 'Preferences & configurations',
-                              icon: Icons.settings_rounded,
-                              accentColor: const Color(0xFF475569),
-                              cardBgColor: cardBgColor,
-                              borderColor: borderColor,
-                              textMuted: textMuted,
-                              isMobile: isMobile,
-                              onTap: () => Navigator.push(
-                                context,
-                                SlidePageRoute(page: const SettingsScreen()),
-                              ),
+                          // System Settings
+                          _buildModuleCard(
+                            title: 'System Settings',
+                            subtitle: 'Preferences & configurations',
+                            icon: Icons.settings_rounded,
+                            accentColor: const Color(0xFF475569),
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const SettingsScreen()),
                             ),
+                          ),
                         ],
                       ),
                     ],

@@ -22,7 +22,8 @@ class SettingsScreen extends ConsumerWidget {
     final user = authState.user;
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final isAdmin = user?.role == UserRole.admin;
+    final isSuperAdmin = user?.role == UserRole.superAdmin;
+    final isAdmin = isSuperAdmin || user?.role == UserRole.admin;
 
     // Design Tokens
     final bgColor = isDarkMode ? const Color(0xFF0b1319) : const Color(0xFFf8fafc);
@@ -209,7 +210,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  if (isAdmin) ...[
+                  if (isSuperAdmin) ...[
                     _buildNavTile(
                       icon: Icons.people_alt_rounded,
                       iconColor: const Color(0xFF0075db),
@@ -224,6 +225,8 @@ class SettingsScreen extends ConsumerWidget {
                       dividerColor: dividerColor,
                       isLast: false,
                     ),
+                  ],
+                  if (isAdmin) ...[
                     _buildNavTile(
                       icon: Icons.business_rounded,
                       iconColor: const Color(0xFF6366f1),
