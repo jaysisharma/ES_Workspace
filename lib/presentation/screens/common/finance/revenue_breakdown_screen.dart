@@ -279,10 +279,7 @@ class _RevenueBreakdownScreenState
 
     final authState = ref.watch(authNotifierProvider);
     final user = authState.user;
-    final canEditAdvance = user == null ||
-        user.role == UserRole.admin ||
-        user.role == UserRole.finance ||
-        user.role == UserRole.founder;
+    final canEditAdvance = user == null || user.role.canManageOrderFinances;
 
     return Scaffold(
       backgroundColor: bgColor,

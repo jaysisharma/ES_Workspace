@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
+import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:order_app/domain/entities/event_entity.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
+import 'package:order_app/domain/entities/user_entity.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/providers/order_providers.dart';
+import 'package:order_app/presentation/screens/common/orders/order_details_screen.dart';
 
 /// A simple read-only detail page for calendar items.
 /// Shown when tapping an event or order in the calendar — no admin actions.
@@ -46,7 +50,7 @@ class CalendarEventDetailScreen extends ConsumerWidget {
     final title = isEvent ? event!.title : order!.eventName;
     final location = isEvent ? event!.location : order!.venue;
     final status = isEvent ? event!.status : _orderStatusLabel(order!.status);
-    final role = isEvent ? event!.role : 'Order';
+    final role = isEvent ? (event!.role.toLowerCase() == 'lead tech' || event!.role.isEmpty ? 'Event' : event!.role) : (order?.orderType.toLowerCase() == 'rental' ? 'Rental' : 'Order');
 
     // Date range — for events, use the linked order's dates if available
     final DateTime startDate = isEvent
@@ -84,6 +88,10 @@ class CalendarEventDetailScreen extends ConsumerWidget {
 
     final String? notes = isEvent ? linkedOrder?.notes : order!.notes;
 
+    final targetOrder = linkedOrder ?? order;
+    final userRole = ref.watch(authNotifierProvider).user?.role;
+    final canEdit = userRole?.canEditOrder ?? false;
+
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
@@ -101,6 +109,21 @@ class CalendarEventDetailScreen extends ConsumerWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
+        actions: [
+          if (targetOrder != null && canEdit)
+            IconButton(
+              icon: Icon(Icons.edit_outlined, color: primaryColor),
+              tooltip: 'Edit Event Order',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  SlidePageRoute(
+                    page: OrderDetailsScreen(order: targetOrder),
+                  ),
+                );
+              },
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

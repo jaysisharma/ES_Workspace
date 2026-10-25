@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -17,21 +19,41 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = true;
 
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  final isMobile = !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
+  if (isMobile) {
+    try {
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      debugPrint('FCM background handler error: $e');
+    }
+  }
 
   try {
     OrderPdfService.preloadAssets();
-
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-
-    await PushNotificationService.initialize();
   } catch (e) {
-    debugPrint('Critical initialization error: $e');
+    debugPrint('OrderPdfService preload error: $e');
   }
 
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      ).timeout(const Duration(seconds: 4));
+    }
+  } catch (e) {
+    debugPrint('Firebase initializeApp error: $e');
+  }
+
+  // Mount UI immediately so the macOS / mobile window is never left black
   runApp(const ProviderScope(child: MyApp()));
+
+  // Initialize push notification services asynchronously in background
+  unawaited(PushNotificationService.initialize().catchError((e) {
+    debugPrint('PushNotificationService initialize error: $e');
+  }));
 }
 
 class MyApp extends ConsumerWidget {

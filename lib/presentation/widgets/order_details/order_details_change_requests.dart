@@ -36,7 +36,7 @@ class OrderDetailsChangeRequestsWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final requestState = ref.watch(changeRequestNotifierProvider);
     final userRole = ref.watch(authNotifierProvider).user?.role;
-    final isAdminOrFounder = userRole == UserRole.admin || userRole == UserRole.founder;
+    final isAdminOrFounder = userRole?.canEditOrder ?? false;
 
     final defaultWellColor = Theme.of(context).brightness == Brightness.dark
         ? Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.1)

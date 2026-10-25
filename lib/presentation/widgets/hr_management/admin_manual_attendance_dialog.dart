@@ -361,7 +361,7 @@ class _AdminManualAttendanceDialogState
       );
 
       await ref
-          .read(attendanceRepositoryProvider)
+          .read(attendanceNotifierProvider.notifier)
           .checkIn(attendanceRecord);
 
       ref.invalidate(todayAttendanceStreamProvider);

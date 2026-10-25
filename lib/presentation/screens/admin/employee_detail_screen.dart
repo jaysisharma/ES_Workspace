@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:order_app/core/calendar/nepali_calendar_engine.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/core/utils/share_helper.dart';
 import 'package:order_app/core/services/employee_pdf_service.dart';
+import 'package:order_app/core/services/location_tracking_service.dart';
 import 'package:order_app/core/utils/currency_formatter.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/domain/entities/employee_profile_entity.dart';
@@ -1277,8 +1279,26 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               const Divider(height: 20),
               _buildDetailRow('Full Name', profile.name, labelColor, textColor),
               _buildDetailRow(
+                'Department',
+                profile.department.isNotEmpty ? profile.department : 'General',
+                labelColor,
+                textColor,
+              ),
+              _buildDetailRow(
+                'Designation',
+                profile.designation.isNotEmpty ? profile.designation : 'Staff Member',
+                labelColor,
+                textColor,
+              ),
+              _buildDetailRow(
                 'Login Email Address',
-                currentUser.email.isNotEmpty ? currentUser.email : 'N/A',
+                currentUser.email.isNotEmpty ? currentUser.email : (profile.email.isNotEmpty ? profile.email : 'N/A'),
+                labelColor,
+                textColor,
+              ),
+              _buildDetailRow(
+                'Contact Number',
+                profile.contactNumber.isNotEmpty ? profile.contactNumber : 'N/A',
                 labelColor,
                 textColor,
               ),
@@ -1289,9 +1309,21 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 textColor,
               ),
               _buildDetailRow(
-                'Date of Birth',
+                'Gender',
+                profile.gender.isNotEmpty ? profile.gender : 'N/A',
+                labelColor,
+                textColor,
+              ),
+              _buildDetailRow(
+                'Marital Status',
+                profile.maritalStatus.isNotEmpty ? profile.maritalStatus : 'Single',
+                labelColor,
+                textColor,
+              ),
+              _buildDetailRow(
+                'Date of Birth (BS)',
                 profile.dob != null
-                    ? formatNepaliDate(profile.dob!, 'dd MMM yyyy')
+                    ? formatNepaliDate(profile.dob!, 'dd MMM yyyy (BS)')
                     : 'N/A',
                 labelColor,
                 textColor,
@@ -1304,7 +1336,13 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               ),
               _buildDetailRow(
                 'Permanent Address',
-                profile.address.isNotEmpty ? profile.address : 'N/A',
+                profile.effectivePermanentAddress.isNotEmpty ? profile.effectivePermanentAddress : 'N/A',
+                labelColor,
+                textColor,
+              ),
+              _buildDetailRow(
+                'Temporary Address',
+                profile.temporaryAddress.isNotEmpty ? profile.temporaryAddress : 'N/A',
                 labelColor,
                 textColor,
               ),
@@ -1314,6 +1352,22 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const Divider(height: 20),
+              _buildDetailRow(
+                'Grandfather\'s Name',
+                profile.grandfatherName.isNotEmpty
+                    ? profile.grandfatherName
+                    : 'N/A',
+                labelColor,
+                textColor,
+              ),
+              _buildDetailRow(
+                'Grandmother\'s Name',
+                profile.grandmotherName.isNotEmpty
+                    ? profile.grandmotherName
+                    : 'N/A',
+                labelColor,
+                textColor,
+              ),
               _buildDetailRow(
                 'Father\'s Name',
                 profile.fatherName.isNotEmpty ? profile.fatherName : 'N/A',
@@ -1327,13 +1381,111 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 textColor,
               ),
               _buildDetailRow(
-                'Grandfather\'s Name',
-                profile.grandfatherName.isNotEmpty
-                    ? profile.grandfatherName
-                    : 'N/A',
+                'Spouse\'s Name',
+                profile.spouseName.isNotEmpty ? profile.spouseName : 'N/A',
                 labelColor,
                 textColor,
               ),
+              const SizedBox(height: 20),
+              const Text(
+                'Last Login & Location Activity',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const Divider(height: 20),
+              _buildDetailRow(
+                'Last Login Time',
+                currentUser.lastLoginAt != null
+                    ? '${DateFormat('yyyy-MM-dd • hh:mm a').format(currentUser.lastLoginAt!)} (${formatNepaliDate(currentUser.lastLoginAt!, 'yyyy MMMM dd')})'
+                    : 'No login recorded yet',
+                labelColor,
+                textColor,
+              ),
+              _buildDetailRow(
+                'Detected Location',
+                currentUser.lastLoginLocation ?? 'Location not available',
+                labelColor,
+                textColor,
+              ),
+              if (currentUser.lastLoginLatitude != null && currentUser.lastLoginLongitude != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 140,
+                        child: Text(
+                          'Map Coordinates',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: labelColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Text(
+                              '${currentUser.lastLoginLatitude!.toStringAsFixed(4)}, ${currentUser.lastLoginLongitude!.toStringAsFixed(4)}',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: () {
+                                LocationTrackingService.openMap(
+                                  currentUser.lastLoginLatitude!,
+                                  currentUser.lastLoginLongitude!,
+                                );
+                              },
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0075db).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFF0075db).withValues(alpha: 0.3)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.map_rounded, size: 12, color: Color(0xFF0075db)),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'View Map',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF0075db),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              _buildDetailRow(
+                'Device / Platform',
+                currentUser.lastLoginDevice ?? 'Unknown',
+                labelColor,
+                textColor,
+              ),
+              if (currentUser.lastLoginIp != null && currentUser.lastLoginIp!.isNotEmpty)
+                _buildDetailRow(
+                  'IP Address',
+                  currentUser.lastLoginIp!,
+                  labelColor,
+                  textColor,
+                ),
             ],
           ),
         ),
@@ -1597,6 +1749,9 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             context,
             title: 'Citizenship Card',
             cardNumber: profile.citizenshipNumber,
+            subtitle: profile.citizenshipIssueDate != null
+                ? 'Issue Date: ${formatNepaliDate(profile.citizenshipIssueDate!, 'dd MMM yyyy (BS)')}'
+                : null,
             photoUrl1: profile.citizenshipPhotoFrontUrl,
             photoUrl1Title: 'Citizenship Front',
             photoUrl2: profile.citizenshipPhotoBackUrl,
@@ -1627,6 +1782,15 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             labelColor: labelColor,
             textColor: textColor,
           ),
+          const SizedBox(height: 12),
+          _buildDocumentCard(
+            context,
+            title: 'CIT (Citizen Investment Trust)',
+            cardNumber: profile.citNumber,
+            borderColor: borderColor,
+            labelColor: labelColor,
+            textColor: textColor,
+          ),
         ],
       ),
     );
@@ -1636,6 +1800,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     BuildContext context, {
     required String title,
     required String cardNumber,
+    String? subtitle,
     String? photoUrl1,
     String? photoUrl1Title,
     String? photoUrl2,
@@ -1659,13 +1824,28 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
-                    ),
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: labelColor,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 const SizedBox(width: 8),

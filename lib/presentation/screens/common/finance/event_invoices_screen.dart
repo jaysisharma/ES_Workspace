@@ -686,7 +686,7 @@ class _EventInvoicesScreenState extends ConsumerState<EventInvoicesScreen>
           activityIcon = Icons.payments_outlined;
           activityColor = Colors.teal;
         } else {
-          activityText = 'Proforma Invoice Active • Awaiting Payment';
+          activityText = 'Tax Invoice Active • Awaiting Payment';
           activityIcon = Icons.hourglass_top_rounded;
           activityColor = Colors.orange;
         }
@@ -1082,7 +1082,7 @@ class _EventInvoicesScreenState extends ConsumerState<EventInvoicesScreen>
     required Color primaryColor,
   }) {
     final invNo = InvoiceSequenceService.generateSuggestedInvoiceNumber(
-      isProforma: true,
+      isProforma: false,
       orderId: order.id,
       date: order.eventDate,
     );
@@ -1418,7 +1418,7 @@ class _InvoiceCustomizerModalState
   late DateTime _invoiceDate;
 
   // Toggle & Option States
-  VatOption _vatOption = VatOption.noVat;
+  VatOption _vatOption = VatOption.vat13;
   bool _enableManagementCharge = false;
   bool _isMgtPercent = true;
   bool _enableDiscount = false;
@@ -1431,12 +1431,12 @@ class _InvoiceCustomizerModalState
     super.initState();
 
     final order = widget.order;
-    _vatOption = order.vatRate > 0.0001
-        ? VatOption.vat13
-        : VatOption.noVat;
+    _vatOption = (order.vatRate > 0 && (order.vatRate - 0.13).abs() > 0.001)
+        ? VatOption.custom
+        : VatOption.vat13;
 
     final defaultInvNo = InvoiceSequenceService.generateSuggestedInvoiceNumber(
-      isProforma: _vatOption == VatOption.noVat,
+      isProforma: false,
       orderId: order.id,
       date: order.eventDate,
     );
@@ -1505,10 +1505,9 @@ class _InvoiceCustomizerModalState
   void _onVatOptionChanged(VatOption option) {
     setState(() {
       _vatOption = option;
-      final isProforma = option == VatOption.noVat;
       _invNumberCtrl.text =
           InvoiceSequenceService.generateSuggestedInvoiceNumber(
-        isProforma: isProforma,
+        isProforma: false,
         orderId: widget.order.id,
         date: _invoiceDate,
       );
@@ -1553,14 +1552,12 @@ class _InvoiceCustomizerModalState
 
     final taxableAmount = (subtotal - discountAmount + mgtAmount).clamp(0.0, double.infinity);
 
-    double vatRate = 0.0;
-    if (_vatOption == VatOption.vat13) {
-      vatRate = 0.13;
-    } else if (_vatOption == VatOption.custom) {
+    double vatRate = 0.13;
+    if (_vatOption == VatOption.custom) {
       final customRate = double.tryParse(_customVatCtrl.text.trim()) ?? 0.0;
       vatRate = (customRate / 100).clamp(0.0, 1.0);
     } else {
-      vatRate = 0.0; // Before VAT / Non-VAT
+      vatRate = 0.13;
     }
 
     final vatAmount = taxableAmount * vatRate;
@@ -1600,9 +1597,7 @@ class _InvoiceCustomizerModalState
 
       final breakdown = _calculateBreakdown(orderItems, orderRevenue);
 
-      final isProforma = _vatOption == VatOption.noVat;
-      final selectedInvoiceType =
-          isProforma ? 'PROFORMA INVOICE' : 'TAX INVOICE';
+      const selectedInvoiceType = 'TAX INVOICE';
 
       final parsedDiscountRate =
           _enableDiscount && _isDiscountPercent
@@ -1652,7 +1647,7 @@ class _InvoiceCustomizerModalState
       final invNo = _invNumberCtrl.text.trim();
       final fileName =
           '${invNo}_${widget.order.eventName.replaceAll(' ', '_')}.pdf';
-      final subjectTitle = isProforma ? 'Proforma Invoice' : 'Tax Invoice';
+      const subjectTitle = 'Tax Invoice';
 
       if (isPreview) {
         await Navigator.push(
@@ -1915,11 +1910,9 @@ class _InvoiceCustomizerModalState
                   children: [
                     const CircularProgressIndicator(),
                     const SizedBox(height: 16),
-                    Text(
-                      _vatOption == VatOption.noVat
-                          ? 'Generating Proforma Invoice...'
-                          : 'Generating Tax Invoice...',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    const Text(
+                      'Generating Tax Invoice...',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -1951,9 +1944,7 @@ class _InvoiceCustomizerModalState
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _vatOption == VatOption.noVat
-                                    ? 'Proforma Invoice Configuration'
-                                    : 'Tax Invoice Configuration',
+                                'Tax Invoice Configuration',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -1985,9 +1976,9 @@ class _InvoiceCustomizerModalState
                   Expanded(
                     child: ListView(
                       children: [
-                        // VAT Option Choice Chips (Before VAT vs After VAT)
+                        // VAT Option Choice Chips
                         Text(
-                          'INVOICE TYPE & VAT OPTION',
+                          'VAT OPTION',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
@@ -2002,24 +1993,8 @@ class _InvoiceCustomizerModalState
                               child: ChoiceChip(
                                 label: const Center(
                                   child: Text(
-                                    'BEFORE VAT (PROFORMA)',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5),
-                                  ),
-                                ),
-                                selected: _vatOption == VatOption.noVat,
-                                selectedColor: primaryColor.withValues(alpha: 0.15),
-                                onSelected: (selected) {
-                                  if (selected) _onVatOptionChanged(VatOption.noVat);
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: ChoiceChip(
-                                label: const Center(
-                                  child: Text(
-                                    'AFTER VAT (13% TAX INV)',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5),
+                                    '13% TAX INVOICE',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                                   ),
                                 ),
                                 selected: _vatOption == VatOption.vat13,
@@ -2035,7 +2010,7 @@ class _InvoiceCustomizerModalState
                                 label: const Center(
                                   child: Text(
                                     'CUSTOM VAT %',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10.5),
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                                   ),
                                 ),
                                 selected: _vatOption == VatOption.custom,
@@ -2079,9 +2054,7 @@ class _InvoiceCustomizerModalState
                                   fontWeight: FontWeight.bold,
                                 ),
                                 decoration: InputDecoration(
-                                  labelText: _vatOption == VatOption.noVat
-                                      ? 'Proforma Number *'
-                                      : 'Invoice Number *',
+                                  labelText: 'Invoice Number *',
                                   isDense: true,
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -2105,7 +2078,7 @@ class _InvoiceCustomizerModalState
                                       _invoiceDate = picked;
                                       _invNumberCtrl.text =
                                           InvoiceSequenceService.generateSuggestedInvoiceNumber(
-                                        isProforma: _vatOption == VatOption.noVat,
+                                        isProforma: false,
                                         orderId: widget.order.id,
                                         date: picked,
                                       );
@@ -2457,15 +2430,11 @@ class _InvoiceCustomizerModalState
                                     ),
                                   ),
                                   Text(
-                                    _vatOption == VatOption.noVat
-                                        ? 'Non-VAT (Before VAT)'
-                                        : '${(breakdown.vatRate * 100).toStringAsFixed(0)}% VAT Applied',
-                                    style: TextStyle(
+                                    '${(breakdown.vatRate * 100).toStringAsFixed(0)}% VAT Applied',
+                                    style: const TextStyle(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.bold,
-                                      color: _vatOption == VatOption.noVat
-                                          ? const Color(0xFF64748b)
-                                          : const Color(0xFF10b981),
+                                      color: Color(0xFF10b981),
                                     ),
                                   ),
                                 ],

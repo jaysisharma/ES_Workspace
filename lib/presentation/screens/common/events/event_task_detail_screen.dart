@@ -186,7 +186,7 @@ class _EventTaskDetailScreenState extends ConsumerState<EventTaskDetailScreen> {
     );
 
     final userRole = ref.watch(authNotifierProvider).user?.role;
-    final isAdmin = userRole == UserRole.admin || userRole == UserRole.founder;
+    final isAdmin = userRole?.canEditOrder ?? false;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -665,10 +665,7 @@ class _EventTaskDetailScreenState extends ConsumerState<EventTaskDetailScreen> {
                           style: TextStyle(color: labelColor, fontSize: 11),
                         ),
                         if (request.status == ChangeStatus.pending &&
-                            (ref.watch(authNotifierProvider).user?.role ==
-                                    UserRole.admin ||
-                                ref.watch(authNotifierProvider).user?.role ==
-                                    UserRole.founder)) ...[
+                            (ref.watch(authNotifierProvider).user?.role?.canEditOrder ?? false)) ...[
                           const SizedBox(height: 12),
                           Row(
                             children: [

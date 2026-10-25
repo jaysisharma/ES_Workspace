@@ -795,7 +795,7 @@ class _FinanceDashboardState extends ConsumerState<FinanceDashboard> {
                     // 1. Invoices & Billing
                     _buildModuleCard(
                       title: 'Invoices & Billing',
-                      subtitle: 'Proforma invoices & billing',
+                      subtitle: 'Tax invoices & billing',
                       icon: Icons.receipt_long_rounded,
                       accentColor: const Color(0xFF0075db), // Primary Blue
                       cardBgColor: cardBgColor,

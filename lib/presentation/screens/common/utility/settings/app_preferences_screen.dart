@@ -18,8 +18,7 @@ class AppPreferencesScreen extends ConsumerWidget {
     final authState = ref.watch(authNotifierProvider);
     final stripState = ref.watch(dashboardStripNotifierProvider);
     final isAdminOrFounder =
-        authState.user?.role == UserRole.admin ||
-        authState.user?.role == UserRole.founder;
+        authState.user?.role?.isAdminOrHigher ?? false;
 
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = const Color(0xFF0075db);

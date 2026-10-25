@@ -46,8 +46,8 @@ class OrderDetailsAppBarWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userRole = ref.watch(authNotifierProvider).user?.role;
-    final isAdminOrFounder = userRole == UserRole.admin || userRole == UserRole.founder;
-    final canManageFinances = isAdminOrFounder || userRole == UserRole.finance;
+    final isAdminOrFounder = userRole?.canEditOrder ?? false;
+    final canManageFinances = userRole?.canManageOrderFinances ?? false;
 
     Future<void> handleToggleArchive() async {
       final isCurrentlyArchived = order.isArchived;

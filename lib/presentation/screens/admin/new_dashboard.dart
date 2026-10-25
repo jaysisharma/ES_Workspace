@@ -15,6 +15,7 @@ import 'package:order_app/presentation/widgets/dashboard/this_week_events_strip.
 import 'package:order_app/presentation/screens/common/orders/create_order_screen.dart';
 import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
 import 'package:order_app/presentation/screens/admin/admin_attendance_dashboard.dart';
+import 'package:order_app/presentation/screens/admin/live_locations_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/vendor_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/client_screen.dart';
 import 'package:order_app/presentation/screens/common/orders/purchase_order_list_screen.dart';
@@ -784,6 +785,25 @@ class _NewDashboardState extends ConsumerState<NewDashboard> {
                                 context,
                                 SlidePageRoute(
                                   page: const HrManagementScreen(),
+                                ),
+                              ),
+                            ),
+
+                          // Live Staff Locations (Super Admin Only)
+                          if (isSuperAdmin)
+                            _buildModuleCard(
+                              title: 'Live Locations',
+                              subtitle: 'Real-time staff map',
+                              icon: Icons.my_location_rounded,
+                              accentColor: const Color(0xFF16a34a),
+                              cardBgColor: cardBgColor,
+                              borderColor: borderColor,
+                              textMuted: textMuted,
+                              isMobile: isMobile,
+                              onTap: () => Navigator.push(
+                                context,
+                                SlidePageRoute(
+                                  page: const LiveLocationsScreen(),
                                 ),
                               ),
                             ),

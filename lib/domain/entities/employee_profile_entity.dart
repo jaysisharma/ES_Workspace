@@ -4,12 +4,20 @@ class EmployeeProfileEntity {
   final String email;
   final String name;
   final String designation;
+  final String department;
   final DateTime? dob;
   final String fatherName;
   final String motherName;
   final String grandfatherName;
+  final String grandmotherName;
+  final String spouseName;
   final String address;
+  final String permanentAddress;
+  final String temporaryAddress;
+  final String gender;
   final String bloodGroup;
+  final String maritalStatus;
+  final String contactNumber;
   final DateTime officeJoinDate;
   final DateTime? officeLeavingDate;
   final double basicSalary;
@@ -26,12 +34,14 @@ class EmployeeProfileEntity {
   final double netPayableSalary;
   final String? photoUrl;
   final String citizenshipNumber;
+  final DateTime? citizenshipIssueDate;
   final String? citizenshipPhotoFrontUrl;
   final String? citizenshipPhotoBackUrl;
   final String ninNumber;
   final String? ninPhotoUrl;
   final String panNumber;
   final String? panPhotoUrl;
+  final String citNumber;
   final DateTime createdAt;
   final DateTime updatedAt;
   final Map<String, int> allowedLeaves;
@@ -51,12 +61,20 @@ class EmployeeProfileEntity {
     this.email = '',
     required this.name,
     this.designation = 'Staff Member',
+    this.department = '',
     this.dob,
     this.fatherName = '',
     this.motherName = '',
     this.grandfatherName = '',
+    this.grandmotherName = '',
+    this.spouseName = '',
     this.address = '',
+    this.permanentAddress = '',
+    this.temporaryAddress = '',
+    this.gender = 'N/A',
     this.bloodGroup = 'N/A',
+    this.maritalStatus = 'Single',
+    this.contactNumber = '',
     required this.officeJoinDate,
     this.officeLeavingDate,
     this.basicSalary = 0.0,
@@ -73,16 +91,23 @@ class EmployeeProfileEntity {
     this.netPayableSalary = 0.0,
     this.photoUrl,
     this.citizenshipNumber = '',
+    this.citizenshipIssueDate,
     this.citizenshipPhotoFrontUrl,
     this.citizenshipPhotoBackUrl,
     this.ninNumber = '',
     this.ninPhotoUrl,
     this.panNumber = '',
     this.panPhotoUrl,
+    this.citNumber = '',
     required this.createdAt,
     required this.updatedAt,
     this.allowedLeaves = const {},
   });
+
+  String get effectivePermanentAddress =>
+      permanentAddress.isNotEmpty ? permanentAddress : address;
+
+  String get nidNumber => ninNumber;
 
   Map<String, int> get effectiveAllowedLeaves {
     final Map<String, int> result = Map.from(defaultAllowedLeaves);
@@ -112,12 +137,20 @@ class EmployeeProfileEntity {
     String? email,
     String? name,
     String? designation,
+    String? department,
     DateTime? dob,
     String? fatherName,
     String? motherName,
     String? grandfatherName,
+    String? grandmotherName,
+    String? spouseName,
     String? address,
+    String? permanentAddress,
+    String? temporaryAddress,
+    String? gender,
     String? bloodGroup,
+    String? maritalStatus,
+    String? contactNumber,
     DateTime? officeJoinDate,
     DateTime? officeLeavingDate,
     double? basicSalary,
@@ -134,12 +167,14 @@ class EmployeeProfileEntity {
     double? netPayableSalary,
     String? photoUrl,
     String? citizenshipNumber,
+    DateTime? citizenshipIssueDate,
     String? citizenshipPhotoFrontUrl,
     String? citizenshipPhotoBackUrl,
     String? ninNumber,
     String? ninPhotoUrl,
     String? panNumber,
     String? panPhotoUrl,
+    String? citNumber,
     DateTime? createdAt,
     DateTime? updatedAt,
     Map<String, int>? allowedLeaves,
@@ -150,12 +185,20 @@ class EmployeeProfileEntity {
       email: email ?? this.email,
       name: name ?? this.name,
       designation: designation ?? this.designation,
+      department: department ?? this.department,
       dob: dob ?? this.dob,
       fatherName: fatherName ?? this.fatherName,
       motherName: motherName ?? this.motherName,
       grandfatherName: grandfatherName ?? this.grandfatherName,
+      grandmotherName: grandmotherName ?? this.grandmotherName,
+      spouseName: spouseName ?? this.spouseName,
       address: address ?? this.address,
+      permanentAddress: permanentAddress ?? this.permanentAddress,
+      temporaryAddress: temporaryAddress ?? this.temporaryAddress,
+      gender: gender ?? this.gender,
       bloodGroup: bloodGroup ?? this.bloodGroup,
+      maritalStatus: maritalStatus ?? this.maritalStatus,
+      contactNumber: contactNumber ?? this.contactNumber,
       officeJoinDate: officeJoinDate ?? this.officeJoinDate,
       officeLeavingDate: officeLeavingDate ?? this.officeLeavingDate,
       basicSalary: basicSalary ?? this.basicSalary,
@@ -173,6 +216,7 @@ class EmployeeProfileEntity {
       netPayableSalary: netPayableSalary ?? this.netPayableSalary,
       photoUrl: photoUrl ?? this.photoUrl,
       citizenshipNumber: citizenshipNumber ?? this.citizenshipNumber,
+      citizenshipIssueDate: citizenshipIssueDate ?? this.citizenshipIssueDate,
       citizenshipPhotoFrontUrl:
           citizenshipPhotoFrontUrl ?? this.citizenshipPhotoFrontUrl,
       citizenshipPhotoBackUrl:
@@ -181,6 +225,7 @@ class EmployeeProfileEntity {
       ninPhotoUrl: ninPhotoUrl ?? this.ninPhotoUrl,
       panNumber: panNumber ?? this.panNumber,
       panPhotoUrl: panPhotoUrl ?? this.panPhotoUrl,
+      citNumber: citNumber ?? this.citNumber,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       allowedLeaves: allowedLeaves ?? this.allowedLeaves,

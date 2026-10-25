@@ -20,15 +20,6 @@ class ExcelExportHelper {
     String? title,
     ExportCategory? category,
   }) async {
-    // Sanitize filename to remove special characters like &, %, $, #, spaces, etc.
-    final rawName = filename.endsWith('.xlsx')
-        ? filename.substring(0, filename.length - 5)
-        : filename;
-    final cleanName = rawName
-        .replaceAll(RegExp(r'[^a-zA-Z0-9_.-]'), '_')
-        .replaceAll(RegExp(r'_+'), '_');
-    final sanitizedFilename = '$cleanName.xlsx';
-
     try {
       final excel = Excel.createExcel();
       final sheet = excel[sheetName];
@@ -182,7 +173,46 @@ class ExcelExportHelper {
         sheet.setColumnWidth(colIndex, (maxLen + 4).toDouble().clamp(12.0, 40.0));
       }
 
-      // Generate file bytes
+      return await saveAndShareWorkbook(
+        context: context,
+        excel: excel,
+        filename: filename,
+        category: category,
+      );
+    } catch (e, st) {
+      debugPrint('ExcelExportHelper: Error exporting Excel ($filename): $e\n$st');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to generate Excel: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Saves an [Excel] workbook object directly to disk and shares/opens it.
+  /// Ideal for multi-sheet workbooks or custom pre-styled workbooks.
+  static Future<void> saveAndShareWorkbook({
+    required BuildContext context,
+    required Excel excel,
+    required String filename,
+    ExportCategory? category,
+  }) async {
+    // Sanitize filename to remove special characters like &, %, $, #, spaces, etc.
+    final rawName = filename.endsWith('.xlsx')
+        ? filename.substring(0, filename.length - 5)
+        : filename;
+    final cleanName = rawName
+        .replaceAll(RegExp(r'[^a-zA-Z0-9_.-]'), '_')
+        .replaceAll(RegExp(r'_+'), '_');
+    final sanitizedFilename = '$cleanName.xlsx';
+
+    try {
       final fileBytes = excel.save();
       if (fileBytes == null) {
         throw Exception('Failed to generate Excel bytes');
@@ -207,7 +237,6 @@ class ExcelExportHelper {
       }
 
       if (!kIsWeb) {
-        // Resolve target directory using ExportDirectoryService (supports custom destination folder & auto-arranged category subfolders)
         final effectiveCategory = category ?? ExportDirectoryService.deduceCategory(filename);
         final targetDir = await ExportDirectoryService.resolveExportDirectory(
           category: effectiveCategory,
@@ -260,7 +289,6 @@ class ExcelExportHelper {
           }
 
           if (!opened) {
-            // Desktop fallback: allow user to pick location to save file instead of calling Share.shareXFiles
             final outputPath = await FilePicker.platform.saveFile(
               dialogTitle: 'Save Excel Spreadsheet',
               fileName: sanitizedFilename,
@@ -274,7 +302,6 @@ class ExcelExportHelper {
             }
           }
         } else {
-          // Mobile platforms (iOS, Android) - trigger share sheet to allow "Save to Files" (download)
           await Share.shareXFiles(
             [XFile(file.path, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')],
             text: sanitizedFilename,

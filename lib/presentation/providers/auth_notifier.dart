@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/domain/entities/auth_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/core/services/push_notification_service.dart';
+import 'package:order_app/core/services/location_tracking_service.dart';
+import 'package:order_app/core/services/live_location_service.dart';
 import 'auth_provider.dart';
 
 class AuthState {
@@ -43,6 +45,10 @@ class AuthNotifier extends Notifier<AuthState> {
       debugPrint('🔄 [AuthNotifier] Session check result: ${user != null ? "Logged in as ${user.email} (${user.role})" : "No active session"}');
       state = state.copyWith(isLoading: false, user: user);
       if (user != null) {
+        // Record login location, then start live sharing, in the background
+        LocationTrackingService.recordLogin(user)
+            .then((_) => LiveLocationService.start(user));
+
         await Future.wait([
           PushNotificationService.subscribeToTopics(
             userId: user.uid,
@@ -70,6 +76,10 @@ class AuthNotifier extends Notifier<AuthState> {
       debugPrint('✅ [AuthNotifier] Login successful! User UID: ${user?.uid}, Role: ${user?.role}');
       state = state.copyWith(isLoading: false, user: user);
       if (user != null) {
+        // Record login location, then start live sharing, in the background
+        LocationTrackingService.recordLogin(user)
+            .then((_) => LiveLocationService.start(user));
+
         await Future.wait([
           // Subscribe to FCM topics (for terminated-state notifications)
           PushNotificationService.subscribeToTopics(
@@ -106,6 +116,9 @@ class AuthNotifier extends Notifier<AuthState> {
   Future<void> logout() async {
     state = state.copyWith(isLoading: true);
     final currentUser = state.user;
+
+    // Stop live location sharing while still authenticated
+    await LiveLocationService.stop();
 
     // 1. Safely stop notification listeners & unsubscribe topics in background without blocking
     try {
@@ -152,6 +165,7 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       final currentUser = state.user;
       if (currentUser != null) {
+        await LiveLocationService.stop();
         await Future.wait([
           PushNotificationService.stopListening(),
           PushNotificationService.unsubscribeFromTopics(

@@ -15,6 +15,7 @@ import 'package:order_app/core/services/synology_storage_service.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/screens/admin/employee_detail_screen.dart';
 import 'package:order_app/presentation/widgets/calendar/nepali_date_picker_dialog.dart';
+import 'package:order_app/presentation/widgets/calendar/nepali_date_form_field.dart';
 
 class AddEmployeeScreen extends ConsumerStatefulWidget {
   final String userId;
@@ -49,10 +50,18 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
   late UserRole _selectedRole;
   late TextEditingController _nameController;
   late TextEditingController _designationController;
+  late TextEditingController _departmentController;
+  late TextEditingController _contactNumberController;
   late TextEditingController _fatherNameController;
   late TextEditingController _motherNameController;
   late TextEditingController _grandfatherNameController;
+  late TextEditingController _grandmotherNameController;
+  late TextEditingController _spouseNameController;
   late TextEditingController _addressController;
+  late TextEditingController _permanentAddressController;
+  late TextEditingController _temporaryAddressController;
+  String _gender = 'Male';
+  String _maritalStatus = 'Single';
   String _bloodGroup = 'A+';
 
   DateTime? _dob;
@@ -73,12 +82,14 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
 
   late TextEditingController _photoUrlController;
   late TextEditingController _citizenshipNumberController;
+  DateTime? _citizenshipIssueDate;
   late TextEditingController _citizenshipFrontController;
   late TextEditingController _citizenshipBackController;
   late TextEditingController _ninNumberController;
   late TextEditingController _ninPhotoController;
   late TextEditingController _panNumberController;
   late TextEditingController _panPhotoController;
+  late TextEditingController _citNumberController;
 
   bool _isSaving = false;
   late Map<String, TextEditingController> _leaveAllocationsControllers;
@@ -100,17 +111,29 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     _designationController = TextEditingController(
       text: p?.designation ?? 'Event Specialist',
     );
+    _departmentController = TextEditingController(text: p?.department ?? '');
+    _contactNumberController = TextEditingController(text: p?.contactNumber ?? '');
     _fatherNameController = TextEditingController(text: p?.fatherName ?? '');
     _motherNameController = TextEditingController(text: p?.motherName ?? '');
     _grandfatherNameController = TextEditingController(
       text: p?.grandfatherName ?? '',
     );
-    _addressController = TextEditingController(text: p?.address ?? '');
+    _grandmotherNameController = TextEditingController(
+      text: p?.grandmotherName ?? '',
+    );
+    _spouseNameController = TextEditingController(text: p?.spouseName ?? '');
+    final permAddr = p?.effectivePermanentAddress ?? (p?.address ?? '');
+    _addressController = TextEditingController(text: permAddr);
+    _permanentAddressController = TextEditingController(text: permAddr);
+    _temporaryAddressController = TextEditingController(text: p?.temporaryAddress ?? '');
+    _gender = (p?.gender.isNotEmpty == true && p!.gender != 'N/A') ? p.gender : 'Male';
+    _maritalStatus = (p?.maritalStatus.isNotEmpty == true) ? p!.maritalStatus : 'Single';
     _bloodGroup = (p?.bloodGroup.isNotEmpty == true) ? p!.bloodGroup : 'A+';
 
     _dob = p?.dob;
     _officeJoinDate = p?.officeJoinDate ?? DateTime.now();
     _officeLeavingDate = p?.officeLeavingDate;
+    _citizenshipIssueDate = p?.citizenshipIssueDate;
 
     _basicSalaryController = TextEditingController(
       text: (p?.basicSalary != null && p!.basicSalary > 0) ? p.basicSalary.toStringAsFixed(0) : '0',
@@ -166,6 +189,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     _ninPhotoController = TextEditingController(text: p?.ninPhotoUrl ?? '');
     _panNumberController = TextEditingController(text: p?.panNumber ?? '');
     _panPhotoController = TextEditingController(text: p?.panPhotoUrl ?? '');
+    _citNumberController = TextEditingController(text: p?.citNumber ?? '');
 
     final initialLeaves = p?.allowedLeaves ?? {};
     _leaveAllocationsControllers = {};
@@ -207,10 +231,16 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     _passwordController.dispose();
     _nameController.dispose();
     _designationController.dispose();
+    _departmentController.dispose();
+    _contactNumberController.dispose();
     _fatherNameController.dispose();
     _motherNameController.dispose();
     _grandfatherNameController.dispose();
+    _grandmotherNameController.dispose();
+    _spouseNameController.dispose();
     _addressController.dispose();
+    _permanentAddressController.dispose();
+    _temporaryAddressController.dispose();
     _basicSalaryController.dispose();
     _fuelAllowanceController.dispose();
     _communicationAllowanceController.dispose();
@@ -230,6 +260,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     _ninPhotoController.dispose();
     _panNumberController.dispose();
     _panPhotoController.dispose();
+    _citNumberController.dispose();
     for (final c in _leaveAllocationsControllers.values) {
       c.dispose();
     }
@@ -403,39 +434,32 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
           const SizedBox(height: 12),
           _buildTextField('Full Name', _nameController),
           const SizedBox(height: 12),
-          _buildTextField('Designation / Role', _designationController),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTextField('Designation / Role', _designationController),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTextField('Department', _departmentController),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildTextField(
+            'Contact Number',
+            _contactNumberController,
+            keyboardType: TextInputType.phone,
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Date of Birth (BS Calendar)',
-                      style: TextStyle(fontSize: 12, color: labelColor),
-                    ),
-                    const SizedBox(height: 4),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.calendar_month, size: 16),
-                      label: Text(
-                        _dob != null
-                            ? formatNepaliDate(_dob!, 'dd MMM yyyy (BS)')
-                            : 'Select DOB (BS Calendar)',
-                      ),
-                      onPressed: () async {
-                        final picked = await NepaliDatePickerDialog.show(
-                          context: context,
-                          title: 'Select Date of Birth (Nepali BS)',
-                          initialStart: _dob ?? DateTime(1995, 1, 1),
-                          allowRange: false,
-                        );
-                        if (picked != null && picked['start'] != null) {
-                          setState(() => _dob = picked['start']!);
-                        }
-                      },
-                    ),
-                  ],
+                child: NepaliDateFormField(
+                  label: 'Date of Birth (BS Calendar)',
+                  initialDate: _dob,
+                  onDateChanged: (d) => setState(() => _dob = d),
+                  prefixIcon: Icons.calendar_month,
                 ),
               ),
               const SizedBox(width: 16),
@@ -449,7 +473,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
                     ),
                     const SizedBox(height: 4),
                     DropdownButtonFormField<String>(
-                      initialValue: _bloodGroup,
+                      value: _bloodGroup,
                       isDense: true,
                       isExpanded: true,
                       decoration: const InputDecoration(
@@ -481,6 +505,64 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Gender',
+                      style: TextStyle(fontSize: 12, color: labelColor),
+                    ),
+                    const SizedBox(height: 4),
+                    DropdownButtonFormField<String>(
+                      value: _gender,
+                      isDense: true,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
+                      items: ['Male', 'Female', 'Other']
+                          .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _gender = val);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Marital Status',
+                      style: TextStyle(fontSize: 12, color: labelColor),
+                    ),
+                    const SizedBox(height: 4),
+                    DropdownButtonFormField<String>(
+                      value: _maritalStatus,
+                      isDense: true,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
+                      items: ['Single', 'Married', 'Divorced', 'Widowed']
+                          .map((m) => DropdownMenuItem(value: m, child: Text(m)))
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) setState(() => _maritalStatus = val);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const Divider(height: 32),
           Text(
             'Family Background Details',
@@ -491,13 +573,36 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
             ),
           ),
           const SizedBox(height: 12),
-          _buildTextField('Father\'s Name', _fatherNameController),
+          Row(
+            children: [
+              Expanded(child: _buildTextField('Grandfather\'s Name', _grandfatherNameController)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildTextField('Grandmother\'s Name', _grandmotherNameController)),
+            ],
+          ),
           const SizedBox(height: 12),
-          _buildTextField('Mother\'s Name', _motherNameController),
+          Row(
+            children: [
+              Expanded(child: _buildTextField('Father\'s Name', _fatherNameController)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildTextField('Mother\'s Name', _motherNameController)),
+            ],
+          ),
           const SizedBox(height: 12),
-          _buildTextField('Grandfather\'s Name', _grandfatherNameController),
+          _buildTextField('Spouse\'s Name (if married)', _spouseNameController),
+          const Divider(height: 32),
+          Text(
+            'Address & Residence Details',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: colorScheme.primary,
+            ),
+          ),
           const SizedBox(height: 12),
-          _buildTextField('Permanent Address', _addressController, maxLines: 2),
+          _buildTextField('Permanent Address', _permanentAddressController, maxLines: 2),
+          const SizedBox(height: 12),
+          _buildTextField('Temporary Address', _temporaryAddressController, maxLines: 2),
         ],
       ),
     );
@@ -520,67 +625,23 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
           Row(
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Office Join Date (BS Calendar)',
-                      style: TextStyle(fontSize: 12, color: labelColor),
-                    ),
-                    const SizedBox(height: 4),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.work_history, size: 16),
-                      label: Text(
-                        formatNepaliDate(_officeJoinDate, 'dd MMM yyyy (BS)'),
-                      ),
-                      onPressed: () async {
-                        final picked = await NepaliDatePickerDialog.show(
-                          context: context,
-                          title: 'Select Office Join Date (Nepali BS)',
-                          initialStart: _officeJoinDate,
-                          allowRange: false,
-                        );
-                        if (picked != null && picked['start'] != null) {
-                          setState(() => _officeJoinDate = picked['start']!);
-                        }
-                      },
-                    ),
-                  ],
+                child: NepaliDateFormField(
+                  label: 'Office Join Date (BS Calendar)',
+                  initialDate: _officeJoinDate,
+                  onDateChanged: (d) {
+                    if (d != null) setState(() => _officeJoinDate = d);
+                  },
+                  prefixIcon: Icons.work_history,
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Office Leaving Date (BS Calendar)',
-                      style: TextStyle(fontSize: 12, color: labelColor),
-                    ),
-                    const SizedBox(height: 4),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.output, size: 16),
-                      label: Text(
-                        _officeLeavingDate != null
-                            ? formatNepaliDate(
-                                _officeLeavingDate!,
-                                'dd MMM yyyy (BS)',
-                              )
-                            : 'Active Employee',
-                      ),
-                      onPressed: () async {
-                        final picked = await NepaliDatePickerDialog.show(
-                          context: context,
-                          title: 'Select Office Leaving Date (Nepali BS)',
-                          initialStart: _officeLeavingDate ?? DateTime.now(),
-                          allowRange: false,
-                        );
-                        if (picked != null && picked['start'] != null) {
-                          setState(() => _officeLeavingDate = picked['start']!);
-                        }
-                      },
-                    ),
-                  ],
+                child: NepaliDateFormField(
+                  label: 'Office Leaving Date (BS Calendar)',
+                  initialDate: _officeLeavingDate,
+                  hintText: 'Leave empty if active (BS)',
+                  onDateChanged: (d) => setState(() => _officeLeavingDate = d),
+                  prefixIcon: Icons.output,
                 ),
               ),
             ],
@@ -782,6 +843,13 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
             _citizenshipNumberController,
           ),
           const SizedBox(height: 10),
+          NepaliDateFormField(
+            label: 'Citizenship Date of Issue (BS Calendar)',
+            initialDate: _citizenshipIssueDate,
+            onDateChanged: (d) => setState(() => _citizenshipIssueDate = d),
+            prefixIcon: Icons.event,
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
@@ -805,11 +873,11 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
           ),
           const SizedBox(height: 16),
 
-          // 3. NIN Card
-          _buildTextField('NIN (National ID) Number', _ninNumberController),
+          // 3. NID (National ID) Card
+          _buildTextField('NID (National ID) Number', _ninNumberController),
           const SizedBox(height: 10),
           _buildImageUploadCard(
-            title: 'NIN (National ID) Card Photo',
+            title: 'NID (National ID) Card Photo',
             controller: _ninPhotoController,
             colorScheme: colorScheme,
             labelColor: labelColor,
@@ -825,6 +893,10 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
             colorScheme: colorScheme,
             labelColor: labelColor,
           ),
+          const SizedBox(height: 16),
+
+          // 5. CIT (Citizen Investment Trust)
+          _buildTextField('CIT (Citizen Investment Trust) Number', _citNumberController),
         ],
       ),
     );
@@ -1154,12 +1226,20 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
             : (widget.userEmail ?? (widget.initialProfile?.email ?? '')),
         name: _nameController.text.trim(),
         designation: _designationController.text.trim(),
+        department: _departmentController.text.trim(),
         dob: _dob,
         fatherName: _fatherNameController.text.trim(),
         motherName: _motherNameController.text.trim(),
         grandfatherName: _grandfatherNameController.text.trim(),
-        address: _addressController.text.trim(),
+        grandmotherName: _grandmotherNameController.text.trim(),
+        spouseName: _spouseNameController.text.trim(),
+        address: _permanentAddressController.text.trim(),
+        permanentAddress: _permanentAddressController.text.trim(),
+        temporaryAddress: _temporaryAddressController.text.trim(),
+        gender: _gender,
         bloodGroup: _bloodGroup,
+        maritalStatus: _maritalStatus,
+        contactNumber: _contactNumberController.text.trim(),
         officeJoinDate: _officeJoinDate,
         officeLeavingDate: _officeLeavingDate,
         basicSalary: double.tryParse(_basicSalaryController.text) ?? (widget.initialProfile?.basicSalary ?? 0.0),
@@ -1180,12 +1260,14 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
             double.tryParse(_netPayableSalaryController.text) ?? (widget.initialProfile?.netPayableSalary ?? 0.0),
         photoUrl: _photoUrlController.text.trim(),
         citizenshipNumber: _citizenshipNumberController.text.trim(),
+        citizenshipIssueDate: _citizenshipIssueDate,
         citizenshipPhotoFrontUrl: _citizenshipFrontController.text.trim(),
         citizenshipPhotoBackUrl: _citizenshipBackController.text.trim(),
         ninNumber: _ninNumberController.text.trim(),
         ninPhotoUrl: _ninPhotoController.text.trim(),
         panNumber: _panNumberController.text.trim(),
         panPhotoUrl: _panPhotoController.text.trim(),
+        citNumber: _citNumberController.text.trim(),
         createdAt: widget.initialProfile?.createdAt ?? DateTime.now(),
         updatedAt: DateTime.now(),
         allowedLeaves: widget.isStaffSelfEdit

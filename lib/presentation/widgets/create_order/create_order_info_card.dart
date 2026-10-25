@@ -18,6 +18,8 @@ class CreateOrderInfoCardWidget extends StatelessWidget {
   final double vatRate;
   final VoidCallback onSelectEventDate;
   final VoidCallback onSelectSetupDate;
+  final VoidCallback? onManualEditEventDate;
+  final VoidCallback? onManualEditSetupDate;
   final ValueChanged<String?> onCategorySelected;
   final ValueChanged<String> onOrderTypeChanged;
   final ValueChanged<double> onVatRateSelected;
@@ -44,6 +46,8 @@ class CreateOrderInfoCardWidget extends StatelessWidget {
     required this.vatRate,
     required this.onSelectEventDate,
     required this.onSelectSetupDate,
+    this.onManualEditEventDate,
+    this.onManualEditSetupDate,
     required this.onCategorySelected,
     required this.onOrderTypeChanged,
     required this.onVatRateSelected,
@@ -190,6 +194,7 @@ class CreateOrderInfoCardWidget extends StatelessWidget {
             textColor: textColor,
             labelColor: labelColor,
             onTap: onSelectEventDate,
+            onManualEdit: onManualEditEventDate,
           ),
           const SizedBox(height: 16),
 
@@ -202,6 +207,7 @@ class CreateOrderInfoCardWidget extends StatelessWidget {
             textColor: textColor,
             labelColor: labelColor,
             onTap: onSelectSetupDate,
+            onManualEdit: onManualEditSetupDate,
           ),
           const SizedBox(height: 16),
 

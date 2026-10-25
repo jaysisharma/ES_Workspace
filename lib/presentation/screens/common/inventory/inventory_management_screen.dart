@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:order_app/core/services/inventory_excel_export_service.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:order_app/domain/entities/inventory_entity.dart';
 import 'package:order_app/presentation/providers/inventory_provider.dart';
@@ -18,7 +19,7 @@ class _InventoryManagementScreenState
     extends ConsumerState<InventoryManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
 
-  final List<String> _categories = [
+  final List<String> _defaultCategories = [
     'ALL',
     'Sound',
     'Lighting',
@@ -46,9 +47,18 @@ class _InventoryManagementScreenState
     final allItems = inventoryState.items;
     final filteredItems = inventoryState.filteredItems;
 
+    // Dynamically aggregate categories including manually added ones
+    final Set<String> categorySet = {'ALL', ..._defaultCategories.where((c) => c != 'ALL')};
+    for (final itm in allItems) {
+      final c = itm.category.trim();
+      if (c.isNotEmpty) categorySet.add(c);
+    }
+    final categories = categorySet.toList();
+
     final totalItemsCount = allItems.length;
-    final totalUnits = allItems.fold<int>(0, (sum, i) => sum + i.totalQuantity);
+    final totalUnits = allItems.fold<int>(0, (sum, i) => sum + i.quantity);
     final availUnits = allItems.fold<int>(0, (sum, i) => sum + i.availableQuantity);
+    final totalValuation = allItems.fold<double>(0.0, (sum, i) => sum + i.total);
     final lowStockCount = allItems.where((i) => i.isLowStock || i.status == 'Low Stock').length;
     final outOfStockCount = allItems.where((i) => i.isOutOfStock || i.status == 'Out of Stock').length;
 
@@ -60,6 +70,73 @@ class _InventoryManagementScreenState
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
+          // Excel Export Menu
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.table_view_outlined),
+            tooltip: 'Export to Excel (Item / Category-wise)',
+            onSelected: (action) async {
+              if (allItems.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('No inventory items to export')),
+                );
+                return;
+              }
+
+              if (action == 'all') {
+                await InventoryExcelExportService.exportAllInventory(
+                  context: context,
+                  items: allItems,
+                  currencySymbol: currencySymbol,
+                );
+              } else if (action == 'category_wise') {
+                await InventoryExcelExportService.exportCategoryWiseWorkbook(
+                  context: context,
+                  items: allItems,
+                  currencySymbol: currencySymbol,
+                );
+              } else if (action == 'current_category') {
+                await InventoryExcelExportService.exportCategoryInventory(
+                  context: context,
+                  items: filteredItems,
+                  category: inventoryState.selectedCategory,
+                  currencySymbol: currencySymbol,
+                );
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'all',
+                child: Row(
+                  children: [
+                    Icon(Icons.inventory_2_outlined, size: 18),
+                    SizedBox(width: 10),
+                    Text('Export All Items (Single Sheet)'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'category_wise',
+                child: Row(
+                  children: [
+                    Icon(Icons.folder_special_outlined, size: 18),
+                    SizedBox(width: 10),
+                    Text('Export Category-Wise (Multi-Sheet Workbook)'),
+                  ],
+                ),
+              ),
+              if (inventoryState.selectedCategory.toUpperCase() != 'ALL')
+                PopupMenuItem(
+                  value: 'current_category',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.filter_list, size: 18),
+                      const SizedBox(width: 10),
+                      Text('Export "${inventoryState.selectedCategory}" Category'),
+                    ],
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Inventory',
@@ -75,7 +152,7 @@ class _InventoryManagementScreenState
         },
         child: Column(
           children: [
-            // Search Bar & Filter Row
+            // Search Bar
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Container(
@@ -91,7 +168,7 @@ class _InventoryManagementScreenState
                     ref.read(inventoryNotifierProvider.notifier).setSearchQuery(val);
                   },
                   decoration: InputDecoration(
-                    hintText: 'Search equipment by name, SKU, or location...',
+                    hintText: 'Search by item no, name, specification, category...',
                     hintStyle: TextStyle(fontSize: 13, color: colorScheme.onSurfaceVariant),
                     prefixIcon: Icon(Icons.search_rounded, color: colorScheme.primary, size: 20),
                     suffixIcon: _searchController.text.isNotEmpty
@@ -110,13 +187,13 @@ class _InventoryManagementScreenState
               ),
             ),
 
-            // Category Chips
+            // Dynamic Category Filter Chips
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               physics: const BouncingScrollPhysics(),
               child: Row(
-                children: _categories.map((cat) {
+                children: categories.map((cat) {
                   final isSelected = inventoryState.selectedCategory == cat;
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
@@ -147,7 +224,7 @@ class _InventoryManagementScreenState
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(10),
@@ -158,11 +235,16 @@ class _InventoryManagementScreenState
                   children: [
                     _buildMetricCol('Items', totalItemsCount.toString(), Icons.inventory_2, colorScheme.primary),
                     _buildMetricDivider(colorScheme),
-                    _buildMetricCol('In Stock', '$availUnits / $totalUnits', Icons.check_circle_outline, Colors.green),
+                    _buildMetricCol('Units', '$availUnits / $totalUnits', Icons.layers_outlined, Colors.indigo),
                     _buildMetricDivider(colorScheme),
-                    _buildMetricCol('Low Stock', lowStockCount.toString(), Icons.warning_amber_rounded, Colors.orange),
+                    _buildMetricCol(
+                      'Valuation',
+                      '$currencySymbol ${_formatCompactNumber(totalValuation)}',
+                      Icons.account_balance_wallet_outlined,
+                      Colors.teal,
+                    ),
                     _buildMetricDivider(colorScheme),
-                    _buildMetricCol('Out of Stock', outOfStockCount.toString(), Icons.remove_circle_outline, Colors.red),
+                    _buildMetricCol('Low/Out', '$lowStockCount / $outOfStockCount', Icons.warning_amber_rounded, Colors.orange),
                   ],
                 ),
               ),
@@ -187,7 +269,7 @@ class _InventoryManagementScreenState
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Click + button below to add your equipment or stock',
+                                'Click + button below to add equipment or stock',
                                 style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 12),
                               ),
                             ],
@@ -229,7 +311,7 @@ class _InventoryManagementScreenState
           children: [
             Icon(icon, size: 14, color: color),
             const SizedBox(width: 4),
-            Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: color)),
+            Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color)),
           ],
         ),
         const SizedBox(height: 2),
@@ -266,7 +348,7 @@ class _InventoryManagementScreenState
       statusIcon = Icons.check_circle_outline;
     }
 
-    final double availRatio = item.totalQuantity > 0 ? (item.availableQuantity / item.totalQuantity).clamp(0.0, 1.0) : 0.0;
+    final double availRatio = item.quantity > 0 ? (item.availableQuantity / item.quantity).clamp(0.0, 1.0) : 0.0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -286,7 +368,7 @@ class _InventoryManagementScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row
+          // Top Row: Category Icon, Item No, Category Tag & Status Badge
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -318,18 +400,38 @@ class _InventoryManagementScreenState
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        if (item.sku.isNotEmpty) ...[
-                          Text(
-                            'SKU: ${item.sku}',
-                            style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                        if (item.itemNo.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '#${item.itemNo}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          Text('•', style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                         ],
-                        Text(
-                          item.category,
-                          style: TextStyle(fontSize: 11, color: colorScheme.primary, fontWeight: FontWeight.w600),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            item.category,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.primary,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -363,9 +465,54 @@ class _InventoryManagementScreenState
             ],
           ),
 
-          const SizedBox(height: 12),
+          // Specification if provided
+          if (item.specification.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                'Spec: ${item.specification}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
 
-          // Stock Quantity Progress Bar
+          const SizedBox(height: 10),
+
+          // Pricing & Quantity Grid: Quantity | Rate | Total
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colorScheme.outline.withValues(alpha: 0.15)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildPriceMetric('QUANTITY', '${item.quantity} units', colorScheme.onSurface),
+                Container(height: 20, width: 1, color: colorScheme.outline.withValues(alpha: 0.2)),
+                _buildPriceMetric('RATE', '$currencySymbol ${item.rate.toStringAsFixed(0)}', colorScheme.onSurface),
+                Container(height: 20, width: 1, color: colorScheme.outline.withValues(alpha: 0.2)),
+                _buildPriceMetric('TOTAL', '$currencySymbol ${item.total.toStringAsFixed(0)}', colorScheme.primary, isBold: true),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
+          // Stock Availability Progress Bar
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -373,9 +520,9 @@ class _InventoryManagementScreenState
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Available Stock: ${item.availableQuantity} of ${item.totalQuantity} units',
+                    'Available Stock: ${item.availableQuantity} of ${item.quantity} units',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: colorScheme.onSurface,
                     ),
@@ -386,12 +533,12 @@ class _InventoryManagementScreenState
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: availRatio,
-                  minHeight: 6,
+                  minHeight: 5,
                   backgroundColor: colorScheme.surfaceContainerHighest,
                   valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                 ),
@@ -399,38 +546,28 @@ class _InventoryManagementScreenState
             ],
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
-          // Footer info & Stock Adjustment Buttons
+          // Footer info (Location) & Stock Adjustment / Actions
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  if (item.rentalRatePerDay > 0)
-                    Text(
-                      '$currencySymbol ${item.rentalRatePerDay.toStringAsFixed(0)} / day',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colorScheme.secondary),
-                    ),
-                  Row(
-                    children: [
-                      Icon(Icons.location_on_outlined, size: 12, color: colorScheme.onSurfaceVariant),
-                      const SizedBox(width: 2),
-                      Text(
-                        item.location,
-                        style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
-                      ),
-                    ],
+                  Icon(Icons.location_on_outlined, size: 12, color: colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 4),
+                  Text(
+                    item.location.isNotEmpty ? item.location : 'Warehouse',
+                    style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
               Row(
                 children: [
-                  // Minus Button
                   IconButton.filledTonal(
                     visualDensity: VisualDensity.compact,
                     icon: const Icon(Icons.remove, size: 16),
+                    tooltip: 'Decrease Available Stock',
                     onPressed: item.availableQuantity > 0
                         ? () {
                             ref.read(inventoryNotifierProvider.notifier).adjustStock(item.id, -1);
@@ -438,10 +575,10 @@ class _InventoryManagementScreenState
                         : null,
                   ),
                   const SizedBox(width: 4),
-                  // Plus Button
                   IconButton.filledTonal(
                     visualDensity: VisualDensity.compact,
                     icon: const Icon(Icons.add, size: 16),
+                    tooltip: 'Increase Available Stock',
                     onPressed: () {
                       ref.read(inventoryNotifierProvider.notifier).adjustStock(item.id, 1);
                     },
@@ -477,8 +614,14 @@ class _InventoryManagementScreenState
                       }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 18), SizedBox(width: 8), Text('Edit Item')])),
-                      const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 18), SizedBox(width: 8), Text('Delete', style: TextStyle(color: Colors.red))])),
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(children: [Icon(Icons.edit, size: 18), SizedBox(width: 8), Text('Edit Item')]),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 18), SizedBox(width: 8), Text('Delete', style: TextStyle(color: Colors.red))]),
+                      ),
                     ],
                   ),
                 ],
@@ -488,6 +631,36 @@ class _InventoryManagementScreenState
         ],
       ),
     );
+  }
+
+  Widget _buildPriceMetric(String title, String value, Color textColor, {bool isBold = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.grey, letterSpacing: 0.5),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
+            color: textColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatCompactNumber(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}M';
+    } else if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(1)}k';
+    }
+    return value.toStringAsFixed(0);
   }
 
   IconData _getCategoryIcon(String category) {

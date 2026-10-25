@@ -32,7 +32,7 @@ class InvoiceSequenceService {
   /// Generates a standardized, clean default invoice number
   /// e.g. "INV-81/82-001" or "PI-81/82-001"
   static String generateSuggestedInvoiceNumber({
-    bool isProforma = true,
+    bool isProforma = false,
     required String orderId,
     int? sequenceIndex,
     DateTime? date,

@@ -3,32 +3,41 @@ import 'package:flutter/foundation.dart';
 @immutable
 class InventoryItemEntity {
   final String id;
-  final String name;
-  final String sku;
+  final String itemNo;
   final String category;
-  final int totalQuantity;
+  final String name;
+  final String specification;
+  final int quantity;
   final int availableQuantity;
-  final double rentalRatePerDay;
+  final double rate;
   final String status; // Available, Low Stock, Out of Stock, Maintenance
   final String location;
-  final String description;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
   const InventoryItemEntity({
     required this.id,
     required this.name,
-    this.sku = '',
+    this.itemNo = '',
     this.category = 'General',
-    this.totalQuantity = 0,
+    this.specification = '',
+    this.quantity = 0,
     this.availableQuantity = 0,
-    this.rentalRatePerDay = 0.0,
+    this.rate = 0.0,
     this.status = 'Available',
     this.location = 'Warehouse',
-    this.description = '',
     this.createdAt,
     this.updatedAt,
   });
+
+  /// Total calculated as Quantity * Rate
+  double get total => quantity * rate;
+
+  // Backward compatibility getters
+  String get sku => itemNo;
+  String get description => specification;
+  int get totalQuantity => quantity;
+  double get rentalRatePerDay => rate;
 
   bool get isLowStock => availableQuantity > 0 && availableQuantity <= 3;
   bool get isOutOfStock => availableQuantity <= 0;
@@ -36,28 +45,37 @@ class InventoryItemEntity {
   InventoryItemEntity copyWith({
     String? id,
     String? name,
+    String? itemNo,
     String? sku,
     String? category,
+    String? specification,
+    String? description,
+    int? quantity,
     int? totalQuantity,
     int? availableQuantity,
+    double? rate,
     double? rentalRatePerDay,
     String? status,
     String? location,
-    String? description,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
+    final effectiveItemNo = itemNo ?? sku ?? this.itemNo;
+    final effectiveSpec = specification ?? description ?? this.specification;
+    final effectiveQty = quantity ?? totalQuantity ?? this.quantity;
+    final effectiveRate = rate ?? rentalRatePerDay ?? this.rate;
+
     return InventoryItemEntity(
       id: id ?? this.id,
       name: name ?? this.name,
-      sku: sku ?? this.sku,
+      itemNo: effectiveItemNo,
       category: category ?? this.category,
-      totalQuantity: totalQuantity ?? this.totalQuantity,
+      specification: effectiveSpec,
+      quantity: effectiveQty,
       availableQuantity: availableQuantity ?? this.availableQuantity,
-      rentalRatePerDay: rentalRatePerDay ?? this.rentalRatePerDay,
+      rate: effectiveRate,
       status: status ?? this.status,
       location: location ?? this.location,
-      description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

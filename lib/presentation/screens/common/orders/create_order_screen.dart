@@ -123,7 +123,11 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
     super.dispose();
   }
 
-  Future<void> _selectDate(BuildContext context, bool isSetup) async {
+  Future<void> _selectDate(
+    BuildContext context,
+    bool isSetup, {
+    bool initialManualMode = false,
+  }) async {
     final title = isSetup
         ? 'Select Setup Date (Nepali BS)'
         : 'Select Event Date (Nepali BS)';
@@ -136,6 +140,7 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
       initialStart: initialStart,
       initialEnd: initialEnd,
       allowRange: true,
+      initialManualMode: initialManualMode,
     );
 
     if (picked != null && picked['start'] != null) {
@@ -252,6 +257,10 @@ class _CreateOrderScreenState extends ConsumerState<CreateOrderScreen> {
               vatRate: _vatRate,
               onSelectEventDate: () => _selectDate(context, false),
               onSelectSetupDate: () => _selectDate(context, true),
+              onManualEditEventDate: () =>
+                  _selectDate(context, false, initialManualMode: true),
+              onManualEditSetupDate: () =>
+                  _selectDate(context, true, initialManualMode: true),
               onCategorySelected: (cat) =>
                   setState(() => _selectedCategory = cat),
               onOrderTypeChanged: (type) => setState(() => _orderType = type),

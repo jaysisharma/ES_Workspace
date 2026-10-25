@@ -15,6 +15,7 @@ import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
 import 'package:order_app/presentation/screens/staff/staff_attendance_screen.dart';
 import 'package:order_app/presentation/screens/staff/tasks_screen.dart';
 import 'package:order_app/presentation/screens/admin/manual_tasks_screen.dart';
+import 'package:order_app/presentation/screens/admin/admin_attendance_dashboard.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -148,7 +149,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     // 2. Leave / HR related notification
     if (titleLower.contains('leave') || descLower.contains('leave')) {
       if (!mounted) return;
-      if (userRole == UserRole.admin || userRole == UserRole.founder) {
+      if (userRole?.isAdminOrHigher ?? false) {
         Navigator.push(
           context,
           SlidePageRoute(page: const HrManagementScreen()),
@@ -172,10 +173,34 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           SlidePageRoute(page: const TasksScreen()),
         );
         return;
-      } else if (userRole == UserRole.admin || userRole == UserRole.founder) {
+      } else if (userRole?.isAdminOrHigher ?? false) {
         Navigator.push(
           context,
           SlidePageRoute(page: const ManualTasksScreen()),
+        );
+        return;
+      }
+    }
+
+    // 4. Attendance (check-in / check-out) related notification
+    if (n.type == 'attendance' ||
+        titleLower.contains('check-in') ||
+        titleLower.contains('check-out') ||
+        titleLower.contains('checked in') ||
+        titleLower.contains('checked out') ||
+        descLower.contains('clocked in') ||
+        descLower.contains('clocked out')) {
+      if (!mounted) return;
+      if (userRole?.isAdminOrHigher ?? false) {
+        Navigator.push(
+          context,
+          SlidePageRoute(page: const AdminAttendanceDashboard()),
+        );
+        return;
+      } else {
+        Navigator.push(
+          context,
+          SlidePageRoute(page: const StaffAttendanceScreen()),
         );
         return;
       }
@@ -582,6 +607,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         icon = Icons.local_shipping_outlined;
         iconBg = purpleColor.withValues(alpha: 0.1);
         iconColor = purpleColor;
+        break;
+      case 'attendance':
+        icon = Icons.access_time_filled_rounded;
+        iconBg = const Color(0xFF0d9488).withValues(alpha: 0.1);
+        iconColor = const Color(0xFF0d9488);
         break;
       default:
         icon = Icons.notifications_none_outlined;

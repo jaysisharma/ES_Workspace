@@ -516,7 +516,7 @@ class OrderPdfService {
     required OrderEntity order,
     required List<OrderItemEntity> items,
     List<ExpenseEntity> additionalRevenue = const [],
-    String invoiceType = 'PROFORMA INVOICE', // Proforma Invoice
+    String invoiceType = 'TAX INVOICE', // Tax Invoice
     String companyName = 'Event Solution Pvt Ltd',
     String companyAddress = 'Jwagal - 10, Lalitpur',
     String companyPhone = 'Ph: 01-5268535, 01-5268103',

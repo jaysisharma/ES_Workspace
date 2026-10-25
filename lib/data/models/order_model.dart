@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:order_app/core/calendar/bs_calendar_service.dart';
 import 'package:order_app/domain/entities/order_entity.dart';
 
 class OrderModel extends OrderEntity {
@@ -50,10 +51,22 @@ class OrderModel extends OrderEntity {
     return OrderModel(
       id: json['id']?.toString() ?? '',
       eventName: json['eventName']?.toString() ?? '',
-      eventDate: _parseDateTime(json['eventDate']),
-      eventEndDate: _parseNullableDateTime(json['eventEndDate']),
-      setupDate: _parseDateTime(json['setupDate']),
-      setupEndDate: _parseNullableDateTime(json['setupEndDate']),
+      eventDate: _parseDateTime(
+        json['eventDate'] ?? json['eventDateTimestamp'] ?? json['eventDateIso'],
+      ),
+      eventEndDate: _parseNullableDateTime(
+        json['eventEndDate'] ??
+            json['eventEndDateTimestamp'] ??
+            json['eventEndDateIso'],
+      ),
+      setupDate: _parseDateTime(
+        json['setupDate'] ?? json['setupDateTimestamp'] ?? json['setupDateIso'],
+      ),
+      setupEndDate: _parseNullableDateTime(
+        json['setupEndDate'] ??
+            json['setupEndDateTimestamp'] ??
+            json['setupEndDateIso'],
+      ),
       venue: json['venue']?.toString() ?? '',
       contactPerson: json['contactPerson']?.toString() ?? '',
       contactNumber: json['contactNumber']?.toString() ?? '',
@@ -94,10 +107,23 @@ class OrderModel extends OrderEntity {
     return {
       'id': id,
       'eventName': eventName,
-      'eventDate': eventDate.toIso8601String(),
-      'eventEndDate': eventEndDate?.toIso8601String(),
-      'setupDate': setupDate.toIso8601String(),
-      'setupEndDate': setupEndDate?.toIso8601String(),
+      // Canonical machine-readable date: Firestore Timestamp
+      'eventDate': Timestamp.fromDate(eventDate),
+      'eventEndDate':
+          eventEndDate != null ? Timestamp.fromDate(eventEndDate!) : null,
+      'setupDate': Timestamp.fromDate(setupDate),
+      'setupEndDate':
+          setupEndDate != null ? Timestamp.fromDate(setupEndDate!) : null,
+      // Backward-compatible ISO strings
+      'eventDateIso': eventDate.toIso8601String(),
+      'eventEndDateIso': eventEndDate?.toIso8601String(),
+      'setupDateIso': setupDate.toIso8601String(),
+      'setupEndDateIso': setupEndDate?.toIso8601String(),
+      // Derived read-only BS representations
+      'eventDateBs': eventDateBs,
+      'eventEndDateBs': eventEndDateBs,
+      'setupDateBs': setupDateBs,
+      'setupEndDateBs': setupEndDateBs,
       'venue': venue,
       'contactPerson': contactPerson,
       'contactNumber': contactNumber,
@@ -156,32 +182,16 @@ class OrderModel extends OrderEntity {
     return OrderStatus.draft; // Default
   }
 
-  // DRY helper for DateTime parsing
+  // DRY helper for canonical DateTime parsing
   static DateTime _parseDateTime(dynamic value) {
     if (value == null) return DateTime.now();
-    if (value is DateTime) return value;
-    if (value is Timestamp) return value.toDate();
-    if (value is String) {
-      return DateTime.tryParse(value) ?? DateTime.now();
-    }
-    if (value is int) {
-      return DateTime.fromMillisecondsSinceEpoch(value);
-    }
-    return DateTime.now();
+    return BsCalendarService.parseToCanonicalAd(value);
   }
 
   static DateTime? _parseNullableDateTime(dynamic value) {
     if (value == null) return null;
-    if (value is DateTime) return value;
-    if (value is Timestamp) return value.toDate();
-    if (value is String) {
-      if (value.trim().isEmpty) return null;
-      return DateTime.tryParse(value);
-    }
-    if (value is int) {
-      return DateTime.fromMillisecondsSinceEpoch(value);
-    }
-    return null;
+    if (value is String && value.trim().isEmpty) return null;
+    return BsCalendarService.parseToCanonicalAd(value);
   }
 
   factory OrderModel.fromEntity(OrderEntity entity) {

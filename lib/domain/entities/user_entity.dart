@@ -40,6 +40,20 @@ extension UserRoleExtension on UserRole {
         this == UserRole.finance;
   }
 
+  /// Whether this role has full administrative permissions (Super Admin, Admin, Director, Founder)
+  bool get isAdminOrHigher {
+    return this == UserRole.superAdmin ||
+        this == UserRole.admin ||
+        this == UserRole.director ||
+        this == UserRole.founder;
+  }
+
+  /// Whether this role can edit orders and event details
+  bool get canEditOrder => isAdminOrHigher;
+
+  /// Whether this role can manage financial aspects of orders
+  bool get canManageOrderFinances => canEditOrder || this == UserRole.finance;
+
   /// Whether this role can approve a leave request from an applicant with [applicantRole]
   bool canApproveLeaveFor(UserRole applicantRole) {
     switch (applicantRole) {
@@ -81,6 +95,12 @@ class UserEntity {
   final String email;
   final UserRole role;
   final bool isActive;
+  final DateTime? lastLoginAt;
+  final String? lastLoginLocation;
+  final double? lastLoginLatitude;
+  final double? lastLoginLongitude;
+  final String? lastLoginDevice;
+  final String? lastLoginIp;
 
   const UserEntity({
     required this.id,
@@ -88,6 +108,12 @@ class UserEntity {
     required this.email,
     required this.role,
     this.isActive = true,
+    this.lastLoginAt,
+    this.lastLoginLocation,
+    this.lastLoginLatitude,
+    this.lastLoginLongitude,
+    this.lastLoginDevice,
+    this.lastLoginIp,
   });
 
   UserEntity copyWith({
@@ -96,6 +122,12 @@ class UserEntity {
     String? email,
     UserRole? role,
     bool? isActive,
+    DateTime? lastLoginAt,
+    String? lastLoginLocation,
+    double? lastLoginLatitude,
+    double? lastLoginLongitude,
+    String? lastLoginDevice,
+    String? lastLoginIp,
   }) {
     return UserEntity(
       id: id ?? this.id,
@@ -103,6 +135,12 @@ class UserEntity {
       email: email ?? this.email,
       role: role ?? this.role,
       isActive: isActive ?? this.isActive,
+      lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      lastLoginLocation: lastLoginLocation ?? this.lastLoginLocation,
+      lastLoginLatitude: lastLoginLatitude ?? this.lastLoginLatitude,
+      lastLoginLongitude: lastLoginLongitude ?? this.lastLoginLongitude,
+      lastLoginDevice: lastLoginDevice ?? this.lastLoginDevice,
+      lastLoginIp: lastLoginIp ?? this.lastLoginIp,
     );
   }
 
@@ -115,7 +153,9 @@ class UserEntity {
         other.name == name &&
         other.email == email &&
         other.role == role &&
-        other.isActive == isActive;
+        other.isActive == isActive &&
+        other.lastLoginAt == lastLoginAt &&
+        other.lastLoginLocation == lastLoginLocation;
   }
 
   @override
@@ -124,6 +164,8 @@ class UserEntity {
         name.hashCode ^
         email.hashCode ^
         role.hashCode ^
-        isActive.hashCode;
+        isActive.hashCode ^
+        (lastLoginAt?.hashCode ?? 0) ^
+        (lastLoginLocation?.hashCode ?? 0);
   }
 }

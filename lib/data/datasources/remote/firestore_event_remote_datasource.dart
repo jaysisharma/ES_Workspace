@@ -76,7 +76,7 @@ class FirestoreEventRemoteDataSource {
           title: order.eventName,
           date: order.eventDate,
           location: order.venue,
-          role: 'Lead Tech',
+          role: 'Event',
           status: status,
           completion: completion,
           isArchived: order.isArchived,

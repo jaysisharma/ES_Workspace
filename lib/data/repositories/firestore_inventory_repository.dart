@@ -92,17 +92,23 @@ class FirestoreInventoryRepository implements InventoryRepository {
 
   InventoryItemEntity _fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
+    final rawItemNo = data['itemNo'] as String? ?? data['sku'] as String? ?? '';
+    final rawSpec = data['specification'] as String? ?? data['description'] as String? ?? '';
+    final rawQty = (data['quantity'] as num?)?.toInt() ?? (data['totalQuantity'] as num?)?.toInt() ?? 0;
+    final rawAvail = (data['availableQuantity'] as num?)?.toInt() ?? rawQty;
+    final rawRate = (data['rate'] as num?)?.toDouble() ?? (data['rentalRatePerDay'] as num?)?.toDouble() ?? 0.0;
+
     return InventoryItemEntity(
       id: doc.id,
       name: data['name'] as String? ?? '',
-      sku: data['sku'] as String? ?? '',
+      itemNo: rawItemNo,
       category: data['category'] as String? ?? 'General',
-      totalQuantity: (data['totalQuantity'] as num?)?.toInt() ?? 0,
-      availableQuantity: (data['availableQuantity'] as num?)?.toInt() ?? 0,
-      rentalRatePerDay: (data['rentalRatePerDay'] as num?)?.toDouble() ?? 0.0,
+      specification: rawSpec,
+      quantity: rawQty,
+      availableQuantity: rawAvail,
+      rate: rawRate,
       status: data['status'] as String? ?? 'Available',
       location: data['location'] as String? ?? 'Warehouse',
-      description: data['description'] as String? ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       updatedAt: (data['updatedAt'] as Timestamp?)?.toDate(),
     );
@@ -117,15 +123,20 @@ class _InventoryJson {
 
   Map<String, dynamic> toMap(String id) => {
         'id': id,
+        'itemNo': item.itemNo,
+        'sku': item.itemNo, // backward compatibility
         'name': item.name,
-        'sku': item.sku,
         'category': item.category,
-        'totalQuantity': item.totalQuantity,
+        'specification': item.specification,
+        'description': item.specification, // backward compatibility
+        'quantity': item.quantity,
+        'totalQuantity': item.quantity, // backward compatibility
         'availableQuantity': item.availableQuantity,
-        'rentalRatePerDay': item.rentalRatePerDay,
+        'rate': item.rate,
+        'rentalRatePerDay': item.rate, // backward compatibility
+        'total': item.total,
         'status': item.status,
         'location': item.location,
-        'description': item.description,
         'createdAt': item.createdAt != null
             ? Timestamp.fromDate(item.createdAt!)
             : FieldValue.serverTimestamp(),

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 
 class UserModel extends UserEntity {
@@ -7,16 +8,35 @@ class UserModel extends UserEntity {
     required super.email,
     required super.role,
     super.isActive = true,
+    super.lastLoginAt,
+    super.lastLoginLocation,
+    super.lastLoginLatitude,
+    super.lastLoginLongitude,
+    super.lastLoginDevice,
+    super.lastLoginIp,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json, {String? docId}) {
     final email = json['email'] as String? ?? 'unknown@eventflow.pro';
+    DateTime? parsedLastLogin;
+    if (json['lastLoginAt'] is Timestamp) {
+      parsedLastLogin = (json['lastLoginAt'] as Timestamp).toDate();
+    } else if (json['lastLoginAt'] is String) {
+      parsedLastLogin = DateTime.tryParse(json['lastLoginAt']);
+    }
+
     return UserModel(
       id: json['id'] as String? ?? docId ?? 'unknown',
       name: json['name'] as String? ?? email.split('@').first,
       email: email,
       role: _parseRole(json['role'] as String? ?? 'staff'),
       isActive: json['isActive'] as bool? ?? true,
+      lastLoginAt: parsedLastLogin,
+      lastLoginLocation: json['lastLoginLocation'] as String?,
+      lastLoginLatitude: (json['lastLoginLatitude'] as num?)?.toDouble(),
+      lastLoginLongitude: (json['lastLoginLongitude'] as num?)?.toDouble(),
+      lastLoginDevice: json['lastLoginDevice'] as String?,
+      lastLoginIp: json['lastLoginIp'] as String?,
     );
   }
 
@@ -27,6 +47,12 @@ class UserModel extends UserEntity {
       'email': email,
       'role': role.name,
       'isActive': isActive,
+      'lastLoginAt': lastLoginAt != null ? Timestamp.fromDate(lastLoginAt!) : null,
+      'lastLoginLocation': lastLoginLocation,
+      'lastLoginLatitude': lastLoginLatitude,
+      'lastLoginLongitude': lastLoginLongitude,
+      'lastLoginDevice': lastLoginDevice,
+      'lastLoginIp': lastLoginIp,
     };
   }
 
@@ -66,6 +92,12 @@ class UserModel extends UserEntity {
       email: entity.email,
       role: entity.role,
       isActive: entity.isActive,
+      lastLoginAt: entity.lastLoginAt,
+      lastLoginLocation: entity.lastLoginLocation,
+      lastLoginLatitude: entity.lastLoginLatitude,
+      lastLoginLongitude: entity.lastLoginLongitude,
+      lastLoginDevice: entity.lastLoginDevice,
+      lastLoginIp: entity.lastLoginIp,
     );
   }
 }

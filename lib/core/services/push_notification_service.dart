@@ -29,17 +29,26 @@ class PushNotificationService {
   static DateTime? _listeningSince;
   static String? _listeningUserId;
 
+  static bool get isMobile =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
   /// Call once at app start — sets up local notification channel and permissions.
   static Future<void> initialize() async {
-    try {
-      // Request permission (covers iOS + Android 13+)
-      await FirebaseMessaging.instance.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-    } catch (e) {
-      debugPrint('PushNotificationService: Permission request skipped/failed: $e');
+    if (isMobile) {
+      try {
+        // Request permission (covers iOS + Android 13+)
+        await FirebaseMessaging.instance
+            .requestPermission(
+              alert: true,
+              badge: true,
+              sound: true,
+            )
+            .timeout(const Duration(seconds: 3));
+      } catch (e) {
+        debugPrint('PushNotificationService: Permission request skipped/failed: $e');
+      }
     }
 
     try {
@@ -49,13 +58,15 @@ class PushNotificationService {
         requestBadgePermission: true,
         requestSoundPermission: true,
       );
-      await _localNotifications.initialize(
-        InitializationSettings(
-          android: androidInit,
-          iOS: darwinInit,
-          macOS: darwinInit,
-        ),
-      );
+      await _localNotifications
+          .initialize(
+            const InitializationSettings(
+              android: androidInit,
+              iOS: darwinInit,
+              macOS: darwinInit,
+            ),
+          )
+          .timeout(const Duration(seconds: 3));
 
       await _localNotifications
           .resolvePlatformSpecificImplementation<
@@ -70,18 +81,20 @@ class PushNotificationService {
             ),
           );
 
-      // Show a local notification for FCM messages received in foreground with deduplication
-      FirebaseMessaging.onMessage.listen((message) {
-        final n = message.notification;
-        if (n != null) {
-          final notifId = message.data['notificationId'] ?? message.messageId;
-          showLocalNotification(
-            title: n.title ?? '',
-            body: n.body ?? '',
-            notificationId: notifId,
-          );
-        }
-      });
+      if (isMobile) {
+        // Show a local notification for FCM messages received in foreground with deduplication
+        FirebaseMessaging.onMessage.listen((message) {
+          final n = message.notification;
+          if (n != null) {
+            final notifId = message.data['notificationId'] ?? message.messageId;
+            showLocalNotification(
+              title: n.title ?? '',
+              body: n.body ?? '',
+              notificationId: notifId,
+            );
+          }
+        });
+      }
     } catch (e) {
       debugPrint('PushNotificationService local notifications init skipped/failed: $e');
     }
@@ -93,6 +106,7 @@ class PushNotificationService {
     required String userId,
     required String role,
   }) async {
+    if (!isMobile) return;
     try {
       // Unsubscribe from all role topics first (clean slate)
       await Future.wait([
@@ -125,7 +139,10 @@ class PushNotificationService {
 
       // Subscribe to personal topic for user-specific notifications
       await FirebaseMessaging.instance.subscribeToTopic('user_$userId');
-      debugPrint('🔔 [PushNotificationService] Subscribed to role_$cleanRole and user_$userId');
+
+      // Subscribe to all_users broadcast topic
+      await FirebaseMessaging.instance.subscribeToTopic('all_users');
+      debugPrint('🔔 [PushNotificationService] Subscribed to role_$cleanRole, user_$userId, and all_users');
     } catch (e) {
       debugPrint('PushNotificationService topic subscription skipped/failed: $e');
     }
@@ -136,8 +153,10 @@ class PushNotificationService {
     required String userId,
     required String role,
   }) async {
+    if (!isMobile) return;
     try {
       await Future.wait([
+        FirebaseMessaging.instance.unsubscribeFromTopic('all_users'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_$role'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_super_admin'),
         FirebaseMessaging.instance.unsubscribeFromTopic('role_admin'),

@@ -14,6 +14,9 @@ class NepaliCalendarView extends StatefulWidget {
   final Set<DateTime> eventDates;
   final Map<DateTime, int>? eventCounts;
   final Map<DateTime, int>? orderCounts;
+  final Set<int>? eventDays;
+  final Map<int, int>? eventCountsByDay;
+  final Map<int, int>? orderCountsByDay;
   final bool isRangePicker;
   final bool showDualAdDates;
 
@@ -28,8 +31,11 @@ class NepaliCalendarView extends StatefulWidget {
     this.eventDates = const {},
     this.eventCounts,
     this.orderCounts,
+    this.eventDays,
+    this.eventCountsByDay,
+    this.orderCountsByDay,
     this.isRangePicker = false,
-    this.showDualAdDates = true,
+    this.showDualAdDates = false,
   });
 
   @override
@@ -178,16 +184,6 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
     final monthNameNp = NepaliCalendarEngine.getMonthNameNepali(_displayMonth);
     final yearNpDigits = NepaliCalendarEngine.toNepaliDigits(_displayYear);
 
-    // Gregorian (AD) reference for the first and last day of this BS month
-    final firstDayAd = NepaliCalendarEngine.bsToAd(
-      NepaliDateTime(_displayYear, _displayMonth, 1),
-    );
-    final lastDayAd = NepaliCalendarEngine.bsToAd(
-      NepaliDateTime(_displayYear, _displayMonth, totalDaysInMonth),
-    );
-    final adMonthSummary =
-        '${_monthAbbr(firstDayAd.month)} ${firstDayAd.year} - ${_monthAbbr(lastDayAd.month)} ${lastDayAd.year}';
-
     final today = NepaliCalendarEngine.now();
 
     return Container(
@@ -206,7 +202,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Calendar Top Navigation Header ──────────────────────────────
+          // ── Calendar Top Navigation Header (Pure BS) ─────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
@@ -221,56 +217,39 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                         horizontal: 8,
                         vertical: 6,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '$monthNameEn $_displayYear',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w800,
-                                    fontFamily: 'Manrope',
-                                    color: textColor,
-                                    letterSpacing: -0.3,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '($monthNameNp $yearNpDigits)',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: textMuted,
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                Icon(
-                                  Icons.arrow_drop_down_rounded,
-                                  size: 20,
-                                  color: textMuted,
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (widget.showDualAdDates)
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Text(
-                              adMonthSummary,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              '$monthNameNp $yearNpDigits',
                               style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: textMuted.withValues(alpha: 0.8),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                fontFamily: 'Manrope',
+                                color: textColor,
+                                letterSpacing: -0.3,
                               ),
                             ),
-                        ],
+                            const SizedBox(width: 6),
+                            Text(
+                              '($monthNameEn $_displayYear BS)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: textMuted,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(
+                              Icons.arrow_drop_down_rounded,
+                              size: 20,
+                              color: textMuted,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -529,25 +508,25 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
           }
         }
 
-        // Count indicators
+        // Count indicators (support both BS dayNumber direct lookup & legacy midnight)
         final cleanAdMidnight = DateTime(
           currentAdDate.year,
           currentAdDate.month,
           currentAdDate.day,
         );
-        final hasEvents = widget.eventDates.contains(cleanAdMidnight);
-        final eventCount =
-            widget.eventCounts?[cleanAdMidnight] ?? (hasEvents ? 1 : 0);
-        final orderCount = widget.orderCounts?[cleanAdMidnight] ?? 0;
+        final eventCount = widget.eventCountsByDay?[dayNumber] ??
+            (widget.eventDays?.contains(dayNumber) == true ? 1 : null) ??
+            widget.eventCounts?[cleanAdMidnight] ??
+            (widget.eventDates.contains(cleanAdMidnight) ? 1 : 0);
+        final orderCount = widget.orderCountsByDay?[dayNumber] ??
+            widget.orderCounts?[cleanAdMidnight] ?? 0;
 
-        final now = DateTime.now();
-        final todayMidnight = DateTime(now.year, now.month, now.day);
-        final isPast = cleanAdMidnight.isBefore(todayMidnight);
+        // BS-native past calculation
+        final isPast = currentBsDate.isBefore(NepaliDateTime(today.year, today.month, today.day));
 
         return _buildDayCell(
           dayNumber: dayNumber,
           currentBsDate: currentBsDate,
-          currentAdDate: currentAdDate,
           isSaturday: isSaturday,
           holiday: holiday,
           isToday: isToday,
@@ -571,7 +550,6 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
   Widget _buildDayCell({
     required int dayNumber,
     required NepaliDateTime currentBsDate,
-    required DateTime currentAdDate,
     required bool isSaturday,
     required NepaliHolidayInfo? holiday,
     required bool isToday,
@@ -589,10 +567,6 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
     required bool isDarkMode,
   }) {
     final npDigit = NepaliCalendarEngine.toNepaliDigits(dayNumber);
-    final adDay = currentAdDate.day;
-
-    // Only ongoing (today) and upcoming (future) events receive colored fills & borders
-    final activeEventCount = isPast ? 0 : eventCount;
 
     BoxDecoration cellDecoration;
     Color cellTextColor;
@@ -616,14 +590,14 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
         borderRadius: BorderRadius.circular(6),
       );
       cellTextColor = primaryColor;
-    } else if (activeEventCount == 1) {
-      // SINGLE EVENT DAY (Ongoing/Upcoming): Soft Emerald fill & Emerald border
+    } else if (eventCount == 1) {
+      // SINGLE EVENT DAY: Soft Emerald fill & Emerald border (past events shown slightly softer)
       final singleEventBg = isDarkMode
-          ? const Color(0xFF064e3b).withValues(alpha: 0.45)
-          : const Color(0xFFecfdf5);
+          ? const Color(0xFF064e3b).withValues(alpha: isPast ? 0.3 : 0.45)
+          : (isPast ? const Color(0xFFf0fdf4).withValues(alpha: 0.8) : const Color(0xFFecfdf5));
       final singleEventBorder = isDarkMode
-          ? const Color(0xFF10b981).withValues(alpha: 0.6)
-          : const Color(0xFFa7f3d0);
+          ? const Color(0xFF10b981).withValues(alpha: isPast ? 0.4 : 0.6)
+          : (isPast ? const Color(0xFFa7f3d0).withValues(alpha: 0.7) : const Color(0xFFa7f3d0));
       cellDecoration = BoxDecoration(
         color: singleEventBg,
         borderRadius: BorderRadius.circular(8),
@@ -632,14 +606,14 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
       cellTextColor = isDarkMode
           ? const Color(0xFF6ee7b7)
           : const Color(0xFF047857);
-    } else if (activeEventCount > 1) {
-      // MULTIPLE EVENTS DAY (Ongoing/Upcoming): Distinct Vibrant Purple fill & Purple border
+    } else if (eventCount > 1) {
+      // MULTIPLE EVENTS DAY: Distinct Vibrant Purple fill & Purple border
       final multiEventBg = isDarkMode
-          ? const Color(0xFF4c1d95).withValues(alpha: 0.55)
-          : const Color(0xFFf3e8ff);
+          ? const Color(0xFF4c1d95).withValues(alpha: isPast ? 0.35 : 0.55)
+          : (isPast ? const Color(0xFFfaf5ff).withValues(alpha: 0.8) : const Color(0xFFf3e8ff));
       final multiEventBorder = isDarkMode
-          ? const Color(0xFFA855F7).withValues(alpha: 0.7)
-          : const Color(0xFFd8b4fe);
+          ? const Color(0xFFA855F7).withValues(alpha: isPast ? 0.45 : 0.7)
+          : (isPast ? const Color(0xFFd8b4fe).withValues(alpha: 0.7) : const Color(0xFFd8b4fe));
       cellDecoration = BoxDecoration(
         color: multiEventBg,
         borderRadius: BorderRadius.circular(8),
@@ -667,7 +641,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
     return Tooltip(
       message: holiday != null
           ? '${holiday.nameEnglish}\n(${holiday.nameNepali})'
-          : '$dayNumber ${NepaliCalendarEngine.getMonthNameEnglish(currentBsDate.month)} ${currentBsDate.year}'
+          : '$dayNumber ${NepaliCalendarEngine.getMonthNameEnglish(currentBsDate.month)} ${currentBsDate.year} BS'
                 '${eventCount > 0 ? '\n• $eventCount Event${eventCount > 1 ? 's' : ''}' : ''}',
       child: Material(
         color: Colors.transparent,
@@ -679,70 +653,44 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
             decoration: cellDecoration,
             padding: EdgeInsets.symmetric(
               horizontal: isMobile ? 3.0 : 4.0,
-              vertical: isMobile ? 1.5 : 2.0,
+              vertical: isMobile ? 2.0 : 3.0,
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Top Row: BS Day (Big) & AD Gregorian Reference
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$dayNumber',
-                      style: TextStyle(
-                        fontSize: isMobile ? 14.0 : 16.5,
-                        height: 1.0,
-                        fontWeight:
-                            (isSelected ||
-                                isRangeStart ||
-                                isRangeEnd ||
-                                isToday ||
-                                eventCount > 0)
-                            ? FontWeight.w900
-                            : FontWeight.w800,
-                        color: cellTextColor,
-                        fontFamily: 'Manrope',
-                      ),
-                    ),
-                    if (widget.showDualAdDates)
-                      Text(
-                        '$adDay',
-                        style: TextStyle(
-                          fontSize: isMobile ? 8.5 : 9.5,
-                          height: 1.0,
-                          fontWeight: FontWeight.w600,
-                          color: (isSelected || isRangeStart || isRangeEnd)
-                              ? Colors.white.withValues(alpha: 0.75)
-                              : (activeEventCount == 1
-                                    ? (isDarkMode
-                                          ? const Color(0xFFa7f3d0)
-                                          : const Color(0xFF047857))
-                                    : (activeEventCount > 1
-                                          ? (isDarkMode
-                                                ? const Color(0xFFd8b4fe)
-                                                : const Color(0xFF6b21a8))
-                                          : textMuted.withValues(alpha: 0.7))),
-                        ),
-                      ),
-                  ],
+                // Top: BS Day Number
+                Text(
+                  '$dayNumber',
+                  style: TextStyle(
+                    fontSize: isMobile ? 14.0 : 16.5,
+                    height: 1.0,
+                    fontWeight:
+                        (isSelected ||
+                            isRangeStart ||
+                            isRangeEnd ||
+                            isToday ||
+                            eventCount > 0)
+                        ? FontWeight.w900
+                        : FontWeight.w800,
+                    color: cellTextColor,
+                    fontFamily: 'Manrope',
+                  ),
                 ),
 
                 // Center: Devanagari sub-digit
                 Text(
                   npDigit,
                   style: TextStyle(
-                    fontSize: isMobile ? 8.5 : 9.5,
+                    fontSize: isMobile ? 9.0 : 10.0,
                     height: 1.0,
                     fontWeight: FontWeight.w600,
                     color: (isSelected || isRangeStart || isRangeEnd)
                         ? Colors.white.withValues(alpha: 0.9)
-                        : (activeEventCount == 1
+                        : (eventCount == 1
                               ? (isDarkMode
                                     ? const Color(0xFFa7f3d0)
                                     : const Color(0xFF047857))
-                              : (activeEventCount > 1
+                              : (eventCount > 1
                                     ? (isDarkMode
                                           ? const Color(0xFFd8b4fe)
                                           : const Color(0xFF6b21a8))
@@ -767,7 +715,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                           shape: BoxShape.circle,
                         ),
                       ),
-                    if (activeEventCount == 1)
+                    if (eventCount == 1)
                       Container(
                         width: 4.5,
                         height: 4.5,
@@ -779,7 +727,7 @@ class _NepaliCalendarViewState extends State<NepaliCalendarView> {
                           shape: BoxShape.circle,
                         ),
                       )
-                    else if (activeEventCount > 1)
+                    else if (eventCount > 1)
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 2.5,

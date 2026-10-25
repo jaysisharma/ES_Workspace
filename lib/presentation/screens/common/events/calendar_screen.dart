@@ -12,6 +12,7 @@ import 'package:order_app/domain/entities/order_entity.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/screens/common/events/calendar_event_detail_screen.dart';
 import 'package:order_app/presentation/screens/common/orders/create_order_screen.dart';
+import 'package:order_app/core/calendar/nepali_calendar_engine.dart';
 import 'package:order_app/presentation/widgets/calendar/nepali_calendar_view.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
@@ -41,9 +42,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final eventsAsync = ref.watch(eventsStreamProvider);
     final ordersAsync = ref.watch(ordersStreamProvider);
     final authState = ref.watch(authNotifierProvider);
-    final isAdminOrFounder =
-        authState.user?.role == UserRole.admin ||
-        authState.user?.role == UserRole.founder;
+    final isAdminOrFounder = authState.user?.role.canEditOrder ?? false;
 
     final selectedNepali = safeDateTimeToNepali(_selectedDate);
 
@@ -65,20 +64,40 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       return e;
     }).toList();
 
-    // Filtered unified events for the timeline — filter by Nepali month/year
+    // Filtered unified events for the timeline — filter by Nepali month/year with multi-day range support
+    final totalDaysInCurrentMonth = NepaliCalendarEngine.daysInMonth(
+      selectedNepali.year,
+      selectedNepali.month,
+    );
+    final monthStart = NepaliDateTime(selectedNepali.year, selectedNepali.month, 1);
+    final monthEnd = NepaliDateTime(selectedNepali.year, selectedNepali.month, totalDaysInCurrentMonth);
+
     final monthEvents = resolvedEvents.where((e) {
       if (e.isArchived) return false;
-      final np = safeDateTimeToNepali(e.date);
-      return np.year == selectedNepali.year &&
-          np.month == selectedNepali.month;
+      final startNp = safeDateTimeToNepali(e.date);
+      final linkedOrder = orderMap[e.orderId];
+      final rawEndNp = linkedOrder?.eventEndDate != null
+          ? safeDateTimeToNepali(linkedOrder!.eventEndDate!)
+          : startNp;
+      final endNp = rawEndNp.isBefore(startNp) ? startNp : rawEndNp;
+      final startDayOnly = NepaliDateTime(startNp.year, startNp.month, startNp.day);
+      final endDayOnly = NepaliDateTime(endNp.year, endNp.month, endNp.day);
+
+      return !endDayOnly.isBefore(monthStart) && !startDayOnly.isAfter(monthEnd);
     }).toList();
 
     final monthOrders = allOrders.where((o) {
       if (o.isArchived) return false;
-      final np = safeDateTimeToNepali(o.eventDate);
-      return np.year == selectedNepali.year &&
-          np.month == selectedNepali.month &&
-          o.status != OrderStatus.draft;
+      if (o.status == OrderStatus.draft) return false;
+      final startNp = safeDateTimeToNepali(o.eventDate);
+      final rawEndNp = o.eventEndDate != null
+          ? safeDateTimeToNepali(o.eventEndDate!)
+          : startNp;
+      final endNp = rawEndNp.isBefore(startNp) ? startNp : rawEndNp;
+      final startDayOnly = NepaliDateTime(startNp.year, startNp.month, startNp.day);
+      final endDayOnly = NepaliDateTime(endNp.year, endNp.month, endNp.day);
+
+      return !endDayOnly.isBefore(monthStart) && !startDayOnly.isAfter(monthEnd);
     }).toList();
 
     // Orders that already have a linked event should not appear separately
@@ -87,37 +106,78 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       (o) => !eventOrderIds.contains(o.id),
     ).toList();
 
-    // Dots match exactly what appears in the unified list
-    final eventDates = monthEvents
-        .map((e) => DateTime(e.date.year, e.date.month, e.date.day))
-        .toSet();
-    final orderDates = ordersWithoutEvent
-        .map(
-          (o) => DateTime(o.eventDate.year, o.eventDate.month, o.eventDate.day),
-        )
-        .toSet();
-    final allScheduledDates = {...eventDates, ...orderDates};
+    // Calculate direct Bikram Sambat day counts (1..totalDays)
+    final eventCountsByDay = <int, int>{};
+    final orderCountsByDay = <int, int>{};
 
-    final eventCounts = <DateTime, int>{};
-    for (final e in monthEvents) {
-      final d = DateTime(e.date.year, e.date.month, e.date.day);
-      eventCounts[d] = (eventCounts[d] ?? 0) + 1;
+    for (int day = 1; day <= totalDaysInCurrentMonth; day++) {
+      final currentDayNp = NepaliDateTime(selectedNepali.year, selectedNepali.month, day);
+
+      int eventCount = 0;
+      for (final e in monthEvents) {
+        final startNp = safeDateTimeToNepali(e.date);
+        final linkedOrder = orderMap[e.orderId];
+        final rawEndNp = linkedOrder?.eventEndDate != null
+            ? safeDateTimeToNepali(linkedOrder!.eventEndDate!)
+            : startNp;
+        final endNp = rawEndNp.isBefore(startNp) ? startNp : rawEndNp;
+        final startDayOnly = NepaliDateTime(startNp.year, startNp.month, startNp.day);
+        final endDayOnly = NepaliDateTime(endNp.year, endNp.month, endNp.day);
+
+        if (!currentDayNp.isBefore(startDayOnly) && !currentDayNp.isAfter(endDayOnly)) {
+          eventCount++;
+        }
+      }
+      if (eventCount > 0) {
+        eventCountsByDay[day] = eventCount;
+      }
+
+      int orderCount = 0;
+      for (final o in ordersWithoutEvent) {
+        final startNp = safeDateTimeToNepali(o.eventDate);
+        final rawEndNp = o.eventEndDate != null
+            ? safeDateTimeToNepali(o.eventEndDate!)
+            : startNp;
+        final endNp = rawEndNp.isBefore(startNp) ? startNp : rawEndNp;
+        final startDayOnly = NepaliDateTime(startNp.year, startNp.month, startNp.day);
+        final endDayOnly = NepaliDateTime(endNp.year, endNp.month, endNp.day);
+
+        if (!currentDayNp.isBefore(startDayOnly) && !currentDayNp.isAfter(endDayOnly)) {
+          orderCount++;
+        }
+      }
+      if (orderCount > 0) {
+        orderCountsByDay[day] = orderCount;
+      }
     }
 
-    final orderCounts = <DateTime, int>{};
-    for (final o in ordersWithoutEvent) {
-      final d = DateTime(o.eventDate.year, o.eventDate.month, o.eventDate.day);
-      orderCounts[d] = (orderCounts[d] ?? 0) + 1;
-    }
-    final selectedNepaliDay = selectedNepali.day;
-    final dayEvents = monthEvents
-        .where((e) => safeDateTimeToNepali(e.date).day == selectedNepaliDay)
-        .toList();
-    final dayOrders = ordersWithoutEvent
-        .where(
-          (o) => safeDateTimeToNepali(o.eventDate).day == selectedNepaliDay,
-        )
-        .toList();
+    final selectedDayNp = NepaliDateTime(
+      selectedNepali.year,
+      selectedNepali.month,
+      selectedNepali.day,
+    );
+    final dayEvents = monthEvents.where((e) {
+      final startNp = safeDateTimeToNepali(e.date);
+      final linkedOrder = orderMap[e.orderId];
+      final rawEndNp = linkedOrder?.eventEndDate != null
+          ? safeDateTimeToNepali(linkedOrder!.eventEndDate!)
+          : startNp;
+      final endNp = rawEndNp.isBefore(startNp) ? startNp : rawEndNp;
+      final startDayOnly = NepaliDateTime(startNp.year, startNp.month, startNp.day);
+      final endDayOnly = NepaliDateTime(endNp.year, endNp.month, endNp.day);
+      return !selectedDayNp.isBefore(startDayOnly) && !selectedDayNp.isAfter(endDayOnly);
+    }).toList();
+
+    final dayOrders = ordersWithoutEvent.where((o) {
+      final startNp = safeDateTimeToNepali(o.eventDate);
+      final rawEndNp = o.eventEndDate != null
+          ? safeDateTimeToNepali(o.eventEndDate!)
+          : startNp;
+      final endNp = rawEndNp.isBefore(startNp) ? startNp : rawEndNp;
+      final startDayOnly = NepaliDateTime(startNp.year, startNp.month, startNp.day);
+      final endDayOnly = NepaliDateTime(endNp.year, endNp.month, endNp.day);
+      return !selectedDayNp.isBefore(startDayOnly) && !selectedDayNp.isAfter(endDayOnly);
+    }).toList();
 
     // Decide which list to show based on filtering state
     final displayEvents = _isDayFiltered ? dayEvents : monthEvents.toList();
@@ -167,170 +227,79 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    if (Navigator.canPop(context))
-                      IconButton(
-                        icon: Icon(Icons.arrow_back, color: textColor),
-                        onPressed: () => Navigator.pop(context),
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 32,
-                          minHeight: 32,
-                        ),
-                      )
-                    else if (MediaQuery.of(context).size.width < 768)
-                      Builder(
-                        builder: (context) => IconButton(
-                          icon: Icon(Icons.menu_rounded, color: textColor),
-                          onPressed: () => Scaffold.of(context).openDrawer(),
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                        ),
-                      ),
-                    Flexible(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              Icons.chevron_left,
-                              color: textColor,
-                              size: 20,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                final np = safeDateTimeToNepali(_selectedDate);
-                                final newMonth = np.month == 1
-                                    ? 12
-                                    : np.month - 1;
-                                final newYear = np.month == 1
-                                    ? np.year - 1
-                                    : np.year;
-                                _selectedDate = safeNepaliToDateTime(NepaliDateTime(
-                                  newYear,
-                                  newMonth,
-                                  1,
-                                ));
-                                _isDayFiltered = false;
-                              });
-                            },
-                            visualDensity: VisualDensity.compact,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 28,
-                              minHeight: 28,
-                            ),
-                          ),
-                          Flexible(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                formatNepaliDate(_selectedDate, 'MMMM yyyy'),
-                                style: TextStyle(
-                                  fontSize: isCompact ? 14 : 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: textColor,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(
-                              Icons.chevron_right,
-                              color: textColor,
-                              size: 20,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                final np = safeDateTimeToNepali(_selectedDate);
-                                final newMonth = np.month == 12
-                                    ? 1
-                                    : np.month + 1;
-                                final newYear = np.month == 12
-                                    ? np.year + 1
-                                    : np.year;
-                                _selectedDate = safeNepaliToDateTime(NepaliDateTime(
-                                  newYear,
-                                  newMonth,
-                                  1,
-                                ));
-                                _isDayFiltered = false;
-                              });
-                            },
-                            visualDensity: VisualDensity.compact,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 28,
-                              minHeight: 28,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.today,
-                            color: primaryColor,
-                            size: 20,
+                        if (Navigator.canPop(context))
+                          IconButton(
+                            icon: Icon(Icons.arrow_back, color: textColor),
+                            onPressed: () => Navigator.pop(context),
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                          )
+                        else if (MediaQuery.of(context).size.width < 768)
+                          Builder(
+                            builder: (context) => IconButton(
+                              icon: Icon(Icons.menu_rounded, color: textColor),
+                              onPressed: () => Scaffold.of(context).openDrawer(),
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
+                            ),
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _selectedDate = DateTime.now();
-                              _isDayFiltered = true; // Focus on today
-                            });
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (!mounted) return;
-                              final targetCtx = _eventsListKey.currentContext;
-                              if (targetCtx != null && targetCtx.mounted) {
-                                final ro = targetCtx.findRenderObject();
-                                if (ro != null && ro.attached) {
-                                  Scrollable.ensureVisible(
-                                    targetCtx,
-                                    duration: const Duration(milliseconds: 400),
-                                    curve: Curves.easeInOut,
-                                  );
-                                }
-                              }
-                            });
-                          },
-                          tooltip: 'Today',
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            _isCalendarExpanded
-                                ? Icons.keyboard_arrow_up
-                                : Icons.keyboard_arrow_down,
-                            color: primaryColor,
-                            size: 20,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isCalendarExpanded = !_isCalendarExpanded;
-                            });
-                          },
-                          tooltip: _isCalendarExpanded ? 'Collapse' : 'Expand',
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Event Calendar',
+                              style: TextStyle(
+                                fontSize: isCompact ? 16 : 18,
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            Text(
+                              formatNepaliDate(_selectedDate, 'MMMM yyyy'),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: primaryColor,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        _isCalendarExpanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
+                        color: primaryColor,
+                        size: 22,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isCalendarExpanded = !_isCalendarExpanded;
+                        });
+                      },
+                      tooltip: _isCalendarExpanded ? 'Collapse Calendar' : 'Expand Calendar',
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 36,
+                        minHeight: 36,
+                      ),
                     ),
                   ],
                 );
@@ -352,9 +321,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ),
                 child: NepaliCalendarView(
                   selectedDate: selectedNepali,
-                  eventDates: allScheduledDates,
-                  eventCounts: eventCounts,
-                  orderCounts: orderCounts,
+                  eventCountsByDay: eventCountsByDay,
+                  orderCountsByDay: orderCountsByDay,
                   onMonthChanged: (newNepaliDate) {
                     setState(() {
                       _selectedDate = safeNepaliToDateTime(newNepaliDate);
@@ -363,7 +331,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   },
                   onDateSelected: (nepaliDate) {
                     final targetDate = safeNepaliToDateTime(nepaliDate);
-                    final targetNepaliDay = nepaliDate.day;
 
                     // If user taps the already-selected day, toggle back to full month view
                     if (_isDayFiltered &&
@@ -374,44 +341,25 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       return;
                     }
 
-                    final hasEvents = monthEvents.any(
-                      (e) =>
-                          safeDateTimeToNepali(e.date).day == targetNepaliDay,
-                    );
-                    final hasOrders = ordersWithoutEvent.any(
-                      (o) =>
-                          safeDateTimeToNepali(o.eventDate).day ==
-                          targetNepaliDay,
-                    );
-
                     setState(() {
                       _selectedDate = targetDate;
                       _isDayFiltered = true;
                     });
 
-                    if (hasEvents || hasOrders) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (!mounted) return;
-                        final targetCtx = _eventsListKey.currentContext;
-                        if (targetCtx != null && targetCtx.mounted) {
-                          final ro = targetCtx.findRenderObject();
-                          if (ro != null && ro.attached) {
-                            Scrollable.ensureVisible(
-                              targetCtx,
-                              duration: const Duration(milliseconds: 400),
-                              curve: Curves.easeInOut,
-                            );
-                          }
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!mounted) return;
+                      final targetCtx = _eventsListKey.currentContext;
+                      if (targetCtx != null && targetCtx.mounted) {
+                        final ro = targetCtx.findRenderObject();
+                        if (ro != null && ro.attached) {
+                          Scrollable.ensureVisible(
+                            targetCtx,
+                            duration: const Duration(milliseconds: 400),
+                            curve: Curves.easeInOut,
+                          );
                         }
-                      });
-                    } else if (isAdminOrFounder) {
-                      Navigator.push(
-                        context,
-                        SlidePageRoute(
-                          page: CreateOrderScreen(initialDate: targetDate),
-                        ),
-                      );
-                    }
+                      }
+                    });
                   },
                 ),
               ),
@@ -791,7 +739,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                                   BorderRadius.circular(8),
                                             ),
                                             child: Text(
-                                              isEvent ? data.role : 'ORDER',
+                                              isEvent ? 'EVENT' : (data is OrderEntity && data.orderType.toLowerCase() == 'rental' ? 'RENTAL' : 'ORDER'),
                                               style: TextStyle(
                                                 fontSize: 10,
                                                 fontWeight: FontWeight.bold,

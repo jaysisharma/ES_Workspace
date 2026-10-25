@@ -93,8 +93,7 @@ class OrderDetailsBottomActionsWidget extends ConsumerWidget {
       final allDone = totalItems > 0 && completedItems == totalItems;
 
       final authState = ref.watch(authNotifierProvider);
-      final isAdmin = authState.user?.role == UserRole.admin ||
-          authState.user?.role == UserRole.founder;
+      final isAdmin = authState.user?.role?.canEditOrder ?? false;
 
       final canComplete = allDone || isAdmin;
 

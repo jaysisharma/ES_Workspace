@@ -38,7 +38,7 @@ class OrderDetailsFinancialSummaryWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAdminOrFounder = userRole == UserRole.admin || userRole == UserRole.founder || userRole == UserRole.finance;
+    final isAdminOrFounder = userRole?.canManageOrderFinances ?? false;
 
     return Container(
       padding: const EdgeInsets.all(20),

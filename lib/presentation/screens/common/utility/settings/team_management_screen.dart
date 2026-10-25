@@ -371,6 +371,32 @@ class _TeamManagementScreenState extends ConsumerState<TeamManagementScreen> {
                     email,
                     style: TextStyle(color: labelColor, fontSize: 11),
                   ),
+                  if (user.lastLoginLocation != null && user.lastLoginLocation!.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.location_on_rounded,
+                          size: 11,
+                          color: user.lastLoginLatitude != null
+                              ? const Color(0xFF10b981)
+                              : labelColor,
+                        ),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(
+                            user.lastLoginLocation!,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: labelColor.withValues(alpha: 0.9),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

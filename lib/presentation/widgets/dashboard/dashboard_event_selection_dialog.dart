@@ -545,16 +545,65 @@ class _DashboardEventSelectionDialogState
                       final notifier = ref.read(
                         dashboardStripNotifierProvider.notifier,
                       );
+                      final currentStripState = ref.read(
+                        dashboardStripNotifierProvider,
+                      );
+                      final oldIds = Set<String>.from(
+                        currentStripState.selectedEventIds,
+                      );
+                      final newlyAddedIds = _selectedIds
+                          .where((id) => !oldIds.contains(id))
+                          .toList();
+
                       await notifier.setSelectedEvents(_selectedIds);
+
+                      // If new events were added to the strip, notify all users!
+                      if (newlyAddedIds.isNotEmpty) {
+                        final newlyAddedEvents = <EventEntity>[];
+                        for (final id in newlyAddedIds) {
+                          EventEntity? match;
+                          for (final e in activeEvents) {
+                            if (e.id == id ||
+                                e.orderId == id ||
+                                'ord_evt_${e.orderId}' == id) {
+                              match = e;
+                              break;
+                            }
+                          }
+                          if (match == null) {
+                            for (final e in orderEvents) {
+                              if (e.id == id ||
+                                  e.orderId == id ||
+                                  'ord_evt_${e.orderId}' == id) {
+                                match = e;
+                                break;
+                              }
+                            }
+                          }
+                          if (match != null) {
+                            newlyAddedEvents.add(match);
+                          }
+                        }
+
+                        if (newlyAddedEvents.isNotEmpty) {
+                          await DashboardStripNotifier
+                              .notifyAllUsersOfStripEvents(
+                            ref: ref,
+                            newlyAddedEvents: newlyAddedEvents,
+                          );
+                        }
+                      }
+
                       if (context.mounted) {
                         Navigator.pop(context);
+                        final message = newlyAddedIds.isNotEmpty
+                            ? 'Dashboard strip updated & all users notified (${newlyAddedIds.length} new event${newlyAddedIds.length > 1 ? 's' : ''})'
+                            : 'Dashboard strip updated (${_selectedIds.length} events selected)';
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                              'Dashboard strip updated (${_selectedIds.length} events selected)',
-                            ),
+                            content: Text(message),
                             behavior: SnackBarBehavior.floating,
-                            duration: const Duration(seconds: 2),
+                            duration: const Duration(seconds: 3),
                           ),
                         );
                       }

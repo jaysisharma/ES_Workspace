@@ -9,6 +9,7 @@ enum ExportCategory {
   finance('Finance'),
   employees('Employees'),
   passes('Passes'),
+  inventory('Inventory'),
   general('General');
 
   final String folderName;
@@ -126,6 +127,9 @@ class ExportDirectoryService {
         lower.contains('salary') ||
         lower.contains('payroll')) {
       return ExportCategory.finance;
+    }
+    if (lower.contains('inventory') || lower.contains('stock') || lower.contains('equipment')) {
+      return ExportCategory.inventory;
     }
     if (lower.contains('order') || lower.contains('item')) {
       return ExportCategory.orders;

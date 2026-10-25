@@ -167,7 +167,7 @@ class _OrderDetailsScreenState extends ConsumerState<OrderDetailsScreen> {
     final currencyLabel = settings.currency.split(' ').first;
 
     final currentUserRole = ref.watch(authNotifierProvider).user?.role;
-    final isCanAssign = currentUserRole == UserRole.admin || currentUserRole == UserRole.founder;
+    final isCanAssign = currentUserRole?.canEditOrder ?? false;
 
     // Well colors (Boosted for vibrancy)
     final statusWellColor = statusColor.withValues(alpha: 0.12);

@@ -30,8 +30,7 @@ class OrderDetailsHeaderWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userRole = ref.watch(authNotifierProvider).user?.role;
-    final isAdminOrFounder =
-        userRole == UserRole.admin || userRole == UserRole.founder;
+    final isAdminOrFounder = userRole?.canEditOrder ?? false;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(

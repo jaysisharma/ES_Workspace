@@ -259,7 +259,10 @@ class EmployeePdfService {
             _buildInfoGrid([
               _GridItem('Employee Name', profile.name),
               _GridItem('Designation', profile.designation.isNotEmpty ? profile.designation : 'Staff Member'),
-              _GridItem('Date of Joining', joiningDateStr),
+              _GridItem('Department', profile.department.isNotEmpty ? profile.department : 'General'),
+              _GridItem('Date of Joining (BS)', joiningDateStr),
+              _GridItem('Email Address', profile.email.isNotEmpty ? profile.email : (user?.email ?? 'N/A')),
+              _GridItem('Contact Number', profile.contactNumber.isNotEmpty ? profile.contactNumber : 'N/A'),
               _GridItem('Employment Status', leavingDateStr),
             ]),
             pw.SizedBox(height: 14),
@@ -268,12 +271,17 @@ class EmployeePdfService {
             _buildSectionTitle('2. PERSONAL & FAMILY INFORMATION'),
             pw.SizedBox(height: 6),
             _buildInfoGrid([
-              _GridItem('Date of Birth (DOB)', dobStr),
+              _GridItem('Date of Birth (BS)', dobStr),
+              _GridItem('Gender', profile.gender.isNotEmpty ? profile.gender : 'N/A'),
+              _GridItem('Marital Status', profile.maritalStatus.isNotEmpty ? profile.maritalStatus : 'Single'),
               _GridItem('Blood Group', profile.bloodGroup.isNotEmpty ? profile.bloodGroup : 'N/A'),
+              _GridItem('Permanent Address', profile.effectivePermanentAddress.isNotEmpty ? profile.effectivePermanentAddress : 'N/A'),
+              _GridItem('Temporary Address', profile.temporaryAddress.isNotEmpty ? profile.temporaryAddress : 'N/A'),
+              _GridItem('Grandfather\'s Name', profile.grandfatherName.isNotEmpty ? profile.grandfatherName : 'N/A'),
+              _GridItem('Grandmother\'s Name', profile.grandmotherName.isNotEmpty ? profile.grandmotherName : 'N/A'),
               _GridItem('Father\'s Name', profile.fatherName.isNotEmpty ? profile.fatherName : 'N/A'),
               _GridItem('Mother\'s Name', profile.motherName.isNotEmpty ? profile.motherName : 'N/A'),
-              _GridItem('Grandfather\'s Name', profile.grandfatherName.isNotEmpty ? profile.grandfatherName : 'N/A'),
-              _GridItem('Permanent Address', profile.address.isNotEmpty ? profile.address : 'N/A'),
+              _GridItem('Spouse\'s Name', profile.spouseName.isNotEmpty ? profile.spouseName : 'N/A'),
             ]),
             pw.SizedBox(height: 14),
 
@@ -282,8 +290,15 @@ class EmployeePdfService {
             pw.SizedBox(height: 6),
             _buildInfoGrid([
               _GridItem('Citizenship Number', profile.citizenshipNumber.isNotEmpty ? profile.citizenshipNumber : 'N/A'),
+              _GridItem(
+                'Date of Issue (BS)',
+                profile.citizenshipIssueDate != null
+                    ? formatNepaliDate(profile.citizenshipIssueDate!, 'yyyy-MM-dd')
+                    : 'N/A',
+              ),
+              _GridItem('National Identity (NID)', profile.nidNumber.isNotEmpty ? profile.nidNumber : 'N/A'),
               _GridItem('PAN Card Number', profile.panNumber.isNotEmpty ? profile.panNumber : 'N/A'),
-              _GridItem('National Identity (NIN)', profile.ninNumber.isNotEmpty ? profile.ninNumber : 'N/A'),
+              _GridItem('CIT Number', profile.citNumber.isNotEmpty ? profile.citNumber : 'N/A'),
             ]),
             pw.SizedBox(height: 14),
 

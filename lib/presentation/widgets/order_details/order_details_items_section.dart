@@ -46,7 +46,7 @@ class OrderDetailsItemsSectionWidget extends ConsumerWidget {
     final totalItems = itemState.items.length;
     final completion = totalItems > 0 ? completedItems / totalItems : 0.0;
     final userRole = ref.watch(authNotifierProvider).user?.role;
-    final isAdminOrFounder = userRole == UserRole.admin || userRole == UserRole.founder;
+    final isAdminOrFounder = userRole?.canEditOrder ?? false;
 
     return Container(
       padding: const EdgeInsets.all(20),

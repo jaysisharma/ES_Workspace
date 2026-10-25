@@ -91,6 +91,7 @@ class CreateOrderFormHelpers {
     required Color textColor,
     required Color labelColor,
     required VoidCallback onTap,
+    VoidCallback? onManualEdit,
   }) {
     final borderColor = Theme.of(context).colorScheme.outline;
     final surfaceColor = Theme.of(context).colorScheme.surface;
@@ -109,15 +110,25 @@ class CreateOrderFormHelpers {
           children: [
             Icon(icon, color: labelColor, size: 20),
             const SizedBox(width: 12),
-            Text(
-              dateText,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+            Expanded(
+              child: Text(
+                dateText,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Spacer(),
+            if (onManualEdit != null)
+              IconButton(
+                icon: Icon(Icons.edit_note_rounded, color: labelColor, size: 20),
+                tooltip: 'Type date manually',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: onManualEdit,
+              ),
             Icon(Icons.arrow_drop_down, color: labelColor),
           ],
         ),

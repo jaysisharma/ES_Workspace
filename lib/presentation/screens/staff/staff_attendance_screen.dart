@@ -594,6 +594,7 @@ class _StaffAttendanceScreenState extends ConsumerState<StaffAttendanceScreen> {
                             .checkOut(
                               attendanceId: activeRecord.id,
                               checkOutTime: now,
+                              staffName: activeRecord.staffName,
                               latitude: _currentPosition?.latitude,
                               longitude: _currentPosition?.longitude,
                               address: _streetAddress,

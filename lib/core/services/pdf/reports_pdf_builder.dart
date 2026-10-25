@@ -418,7 +418,7 @@ class ReportsPdfBuilder {
     required Uint8List logoBytes,
     required pw.Font font,
     required pw.Font boldFont,
-    String invoiceType = 'PROFORMA INVOICE', // Proforma Invoice
+    String invoiceType = 'TAX INVOICE', // Tax Invoice
     String companyName = 'Event Solution Pvt Ltd',
     String companyAddress = 'Jwagal - 10, Lalitpur',
     String companyPhone = 'Ph: 01-5268535, 01-5268103',

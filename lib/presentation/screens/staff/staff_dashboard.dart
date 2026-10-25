@@ -38,7 +38,7 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
   bool _isProfileComplete(EmployeeProfileEntity? profile) {
     if (profile == null) return false;
     final hasName = profile.name.trim().isNotEmpty;
-    final hasAddress = profile.address.trim().isNotEmpty;
+    final hasAddress = profile.effectivePermanentAddress.trim().isNotEmpty;
     final hasBloodGroup =
         profile.bloodGroup.trim().isNotEmpty && profile.bloodGroup != 'N/A';
     final hasFatherOrMother =
@@ -92,8 +92,8 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
         : (email.isNotEmpty ? email.split('@').first : 'Staff');
 
     final missingList = <String>[];
-    if (profile == null || profile.address.trim().isEmpty)
-      missingList.add('🏠 Address');
+    if (profile == null || profile.effectivePermanentAddress.trim().isEmpty)
+      missingList.add('🏠 Permanent Address');
     if (profile == null ||
         profile.bloodGroup.trim().isEmpty ||
         profile.bloodGroup == 'N/A')
@@ -108,7 +108,7 @@ class _StaffDashboardState extends ConsumerState<StaffDashboard> {
         (profile.citizenshipNumber.trim().isEmpty &&
             profile.panNumber.trim().isEmpty &&
             profile.ninNumber.trim().isEmpty))
-      missingList.add('🆔 Citizenship / PAN');
+      missingList.add('🆔 Citizenship / PAN / NID');
     if (profile == null ||
         profile.photoUrl == null ||
         profile.photoUrl!.trim().isEmpty)

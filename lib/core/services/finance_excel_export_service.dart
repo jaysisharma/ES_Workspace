@@ -18,7 +18,7 @@ class FinanceExcelExportService {
 
     final headers = [
       'S.N.',
-      'Proforma Invoice Number',
+      'Invoice Number',
       'Event Name',
       'Client Name',
       'Event Date (BS)',
@@ -56,7 +56,7 @@ class FinanceExcelExportService {
       final isPartial = order.advanceReceived > 0 && due > 0;
       final statusStr = isPaid ? 'PAID IN FULL' : (isPartial ? 'PARTIAL PAYMENT' : 'UNPAID / DUE');
 
-      final invNo = 'PI-${order.id.length > 8 ? order.id.substring(0, 8).toUpperCase() : order.id.toUpperCase()}';
+      final invNo = 'INV-${order.id.length > 8 ? order.id.substring(0, 8).toUpperCase() : order.id.toUpperCase()}';
       final clientName = order.client.isNotEmpty
           ? order.client
           : (order.contactPerson.isNotEmpty

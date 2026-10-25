@@ -1,3 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:order_app/core/calendar/bs_calendar_service.dart';
+
 enum OrderStatus { draft, confirmed, inProgress, completed, locked }
 
 class OrderLogEntity {
@@ -167,6 +170,26 @@ class OrderEntity {
       orderType: orderType ?? this.orderType,
     );
   }
+
+  /// Canonical BS representation derived strictly from canonical [eventDate].
+  String get eventDateBs =>
+      BsCalendarService.formatBs(eventDate, pattern: 'yyyy-MM-dd');
+  String? get eventEndDateBs => eventEndDate != null
+      ? BsCalendarService.formatBs(eventEndDate!, pattern: 'yyyy-MM-dd')
+      : null;
+  String get setupDateBs =>
+      BsCalendarService.formatBs(setupDate, pattern: 'yyyy-MM-dd');
+  String? get setupEndDateBs => setupEndDate != null
+      ? BsCalendarService.formatBs(setupEndDate!, pattern: 'yyyy-MM-dd')
+      : null;
+
+  /// Canonical Firestore Timestamp representation of [eventDate].
+  Timestamp get eventDateTimestamp => Timestamp.fromDate(eventDate);
+  Timestamp? get eventEndDateTimestamp =>
+      eventEndDate != null ? Timestamp.fromDate(eventEndDate!) : null;
+  Timestamp get setupDateTimestamp => Timestamp.fromDate(setupDate);
+  Timestamp? get setupEndDateTimestamp =>
+      setupEndDate != null ? Timestamp.fromDate(setupEndDate!) : null;
 
   double get totalWithVat => totalAmount * (1 + vatRate);
 

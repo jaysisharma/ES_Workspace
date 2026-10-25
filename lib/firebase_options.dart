@@ -49,11 +49,11 @@ class DefaultFirebaseOptions {
   );
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAxx3FShL0LN9ah5o0I0DuxOoqDq7B00-A',
-    appId: '1:801846557581:ios:edbce994d0f6c1e9725bc4',
+    appId: '1:801846557581:ios:ea191d14bab7cd90725bc4',
     messagingSenderId: '801846557581',
     projectId: 'orderapp-bcea2',
     storageBucket: 'orderapp-bcea2.firebasestorage.app',
-    iosBundleId: 'com.example.orderApp',
+    iosBundleId: 'com.esworkspace.orderapp',
   );
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyAxx3FShL0LN9ah5o0I0DuxOoqDq7B00-A',

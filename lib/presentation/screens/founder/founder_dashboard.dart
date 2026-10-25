@@ -13,8 +13,11 @@ import 'package:order_app/presentation/widgets/dashboard/this_week_events_strip.
 import 'package:order_app/presentation/screens/common/events/calendar_screen.dart';
 import 'package:order_app/presentation/screens/common/finance/event_financial_report_screen.dart';
 import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
+import 'package:order_app/presentation/screens/admin/admin_attendance_dashboard.dart';
+import 'package:order_app/presentation/screens/admin/live_locations_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/vendor_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/client_screen.dart';
+import 'package:order_app/presentation/screens/staff/staff_attendance_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:order_app/presentation/providers/dashboard_strip_notifier.dart';
 import 'package:order_app/presentation/screens/common/utility/notifications_screen.dart';
@@ -762,7 +765,7 @@ class _FounderDashboardState extends ConsumerState<FounderDashboard> {
 
                       SizedBox(height: isMobile ? 12 : 16),
 
-                      // Responsive Action Modules Grid (Exactly 5 Modules requested: Calendar, Event Reports, HR & Employees, Vendors, Clients)
+                      // Responsive Action Modules Grid
                       GridView.count(
                         crossAxisCount: crossAxisCount,
                         crossAxisSpacing: gridSpacing,
@@ -771,7 +774,25 @@ class _FounderDashboardState extends ConsumerState<FounderDashboard> {
                         physics: const NeverScrollableScrollPhysics(),
                         childAspectRatio: childAspectRatio,
                         children: [
-                          // 1. Calendar & Schedule
+                          // 1. Attendance & Check-In
+                          _buildModuleCard(
+                            title: 'Attendance & Check-In',
+                            subtitle: 'Selfie log & check-in/out',
+                            icon: Icons.access_time_filled_rounded,
+                            accentColor: const Color(0xFF0d9488), // Teal
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: const StaffAttendanceScreen(),
+                              ),
+                            ),
+                          ),
+
+                          // 2. Calendar & Schedule
                           _buildModuleCard(
                             title: 'Calendar & Schedule',
                             subtitle: 'Event timelines & bookings',
@@ -818,6 +839,42 @@ class _FounderDashboardState extends ConsumerState<FounderDashboard> {
                             onTap: () => Navigator.push(
                               context,
                               SlidePageRoute(page: const HrManagementScreen()),
+                            ),
+                          ),
+
+                          // Live Staff Locations
+                          _buildModuleCard(
+                            title: 'Live Locations',
+                            subtitle: 'Real-time staff map',
+                            icon: Icons.my_location_rounded,
+                            accentColor: const Color(0xFF16a34a), // Green
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const LiveLocationsScreen()),
+                            ),
+                          ),
+
+                          // Login & Location Logs
+                          _buildModuleCard(
+                            title: 'Login & Locations',
+                            subtitle: 'Login history with location',
+                            icon: Icons.location_history_rounded,
+                            accentColor: const Color(0xFF0d9488), // Teal
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(
+                                page: const AdminAttendanceDashboard(
+                                  initialTab: AdminDashboardTab.loginLogs,
+                                ),
+                              ),
                             ),
                           ),
 

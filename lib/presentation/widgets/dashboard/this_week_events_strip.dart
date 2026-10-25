@@ -85,8 +85,7 @@ class _ThisWeekEventsStripState extends ConsumerState<ThisWeekEventsStrip> {
 
     final stripState = ref.watch(dashboardStripNotifierProvider);
     final authState = ref.watch(authNotifierProvider);
-    final isAdminOrFounder = authState.user?.role == UserRole.admin ||
-        authState.user?.role == UserRole.founder;
+    final isAdminOrFounder = authState.user?.role?.canEditOrder ?? false;
 
     final ordersAsync = ref.watch(ordersStreamProvider);
     final ordersState = ref.watch(orderNotifierProvider);
