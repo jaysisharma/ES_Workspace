@@ -21,6 +21,7 @@ import 'package:order_app/presentation/providers/user_providers.dart';
 import 'package:order_app/core/services/admin_auth_service.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
 import 'package:order_app/presentation/screens/admin/add_employee_screen.dart';
+import 'package:order_app/presentation/widgets/common/document_action_buttons.dart';
 
 class EmployeeDetailScreen extends ConsumerStatefulWidget {
   final UserEntity user;
@@ -809,8 +810,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     final borderColor = colorScheme.outline.withValues(alpha: 0.2);
 
     final loggedInUser = ref.watch(authNotifierProvider).user;
-    final isAdmin = loggedInUser?.role == UserRole.admin ||
-        loggedInUser?.role == UserRole.superAdmin;
+    final isSuperAdmin = loggedInUser?.role == UserRole.superAdmin;
+    final isAdmin = loggedInUser?.role == UserRole.admin || isSuperAdmin;
 
     final usersStream = ref.watch(usersStreamProvider);
     final currentUser = usersStream.maybeWhen(
@@ -902,23 +903,24 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     ],
                   ),
                 ),
-                const PopupMenuItem(
-                  value: 'change_password',
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.lock_reset_rounded,
-                        size: 18,
-                        color: Color(0xFF0075db),
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        'Change Password & Role',
-                        style: TextStyle(fontSize: 13.5),
-                      ),
-                    ],
+                if (isSuperAdmin)
+                  const PopupMenuItem(
+                    value: 'change_password',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.lock_reset_rounded,
+                          size: 18,
+                          color: Color(0xFF0075db),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Change Password & Role',
+                          style: TextStyle(fontSize: 13.5),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
                 const PopupMenuDivider(),
               ],
               const PopupMenuItem(
@@ -1756,6 +1758,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             photoUrl1Title: 'Citizenship Front',
             photoUrl2: profile.citizenshipPhotoBackUrl,
             photoUrl2Title: 'Citizenship Back',
+            ownerName: profile.name,
             borderColor: borderColor,
             labelColor: labelColor,
             textColor: textColor,
@@ -1767,6 +1770,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             cardNumber: profile.ninNumber,
             photoUrl1: profile.ninPhotoUrl,
             photoUrl1Title: 'NIN Card Photo',
+            ownerName: profile.name,
             borderColor: borderColor,
             labelColor: labelColor,
             textColor: textColor,
@@ -1778,6 +1782,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
             cardNumber: profile.panNumber,
             photoUrl1: profile.panPhotoUrl,
             photoUrl1Title: 'PAN Card Photo',
+            ownerName: profile.name,
             borderColor: borderColor,
             labelColor: labelColor,
             textColor: textColor,
@@ -1805,6 +1810,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     String? photoUrl1Title,
     String? photoUrl2,
     String? photoUrl2Title,
+    String ownerName = '',
     required Color borderColor,
     required Color labelColor,
     required Color textColor,
@@ -1871,6 +1877,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       context,
                       photoUrl1,
                       photoUrl1Title ?? 'Front',
+                      ownerName,
                     ),
                   ),
                 if (photoUrl1 != null && photoUrl2 != null)
@@ -1881,6 +1888,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       context,
                       photoUrl2,
                       photoUrl2Title ?? 'Back',
+                      ownerName,
                     ),
                   ),
               ],
@@ -1895,17 +1903,31 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
     BuildContext context,
     String photoUrl,
     String title,
+    String ownerName,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            DocumentActionButtons(
+              source: photoUrl,
+              baseName: '$ownerName $title'.trim(),
+            ),
+          ],
         ),
-        const SizedBox(height: 4),
         GestureDetector(
           onTap: () => _showFullScreenImage(context, photoUrl, title),
           child: Container(

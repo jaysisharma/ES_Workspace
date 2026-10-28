@@ -410,7 +410,23 @@ class BsCalendarService {
     Language language = Language.english,
   }) {
     final bs = parseToBs(canonicalDate);
-    final nepaliDt = NepaliDateTime(bs.year, bs.month, bs.day);
+    // Carry the Asia/Kathmandu time-of-day so patterns like 'hh:mm a' render
+    // the real time instead of always 12:00 AM.
+    DateTime? instant;
+    if (canonicalDate is Timestamp) instant = canonicalDate.toDate();
+    if (canonicalDate is DateTime) instant = canonicalDate;
+    if (canonicalDate is int) {
+      instant = DateTime.fromMillisecondsSinceEpoch(canonicalDate);
+    }
+    final ktm = instant?.toUtc().add(kathmanduOffset);
+    final nepaliDt = NepaliDateTime(
+      bs.year,
+      bs.month,
+      bs.day,
+      ktm?.hour ?? 0,
+      ktm?.minute ?? 0,
+      ktm?.second ?? 0,
+    );
     return NepaliDateFormat(pattern, language).format(nepaliDt);
   }
 

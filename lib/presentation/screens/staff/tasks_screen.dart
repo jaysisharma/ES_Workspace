@@ -77,7 +77,7 @@ class TasksScreen extends ConsumerWidget {
 
           // ── Manual (admin-assigned) tasks for this staff member ──────────
           final manualTasks = allItems.where((item) {
-            if (!item.isManualTask) return false;
+            if (!item.isManualTask || item.isArchived) return false;
 
             if (isStaff) {
               // 1. Direct UID match

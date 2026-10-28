@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:order_app/core/utils/route_transitions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
+import 'package:order_app/presentation/providers/settings_provider.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/screens/auth/change_password_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/profile_screen.dart';
@@ -24,6 +25,9 @@ class SettingsScreen extends ConsumerWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final isSuperAdmin = user?.role == UserRole.superAdmin;
     final isAdmin = isSuperAdmin || user?.role == UserRole.admin;
+    final allowSelfPasswordChange =
+        ref.watch(settingsProvider).allowSelfPasswordChange;
+    final canChangePassword = isSuperAdmin || allowSelfPasswordChange;
 
     // Design Tokens
     final bgColor = isDarkMode ? const Color(0xFF0b1319) : const Color(0xFFf8fafc);
@@ -304,7 +308,17 @@ class SettingsScreen extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  if (user?.role != UserRole.staff) ...[
+                  if (isSuperAdmin) ...[
+                    _buildPasswordChangeFlagTile(
+                      context: context,
+                      ref: ref,
+                      enabled: allowSelfPasswordChange,
+                      textColor: textColor,
+                      labelColor: labelColor,
+                      dividerColor: dividerColor,
+                    ),
+                  ],
+                  if (canChangePassword) ...[
                     _buildNavTile(
                       icon: Icons.lock_reset_rounded,
                       iconColor: const Color(0xFF64748b),
@@ -380,6 +394,74 @@ class SettingsScreen extends ConsumerWidget {
           letterSpacing: 1.2,
           fontFamily: 'Manrope',
         ),
+      ),
+    );
+  }
+
+  Widget _buildPasswordChangeFlagTile({
+    required BuildContext context,
+    required WidgetRef ref,
+    required bool enabled,
+    required Color textColor,
+    required Color labelColor,
+    required Color dividerColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: dividerColor)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: const Color(0xFF7c3aed).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.key_rounded, color: Color(0xFF7c3aed), size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Allow Users to Change Password',
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  enabled
+                      ? 'All users can change their own password'
+                      : 'Only Super Admin can change passwords',
+                  style: TextStyle(color: labelColor, fontSize: 11.5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch(
+            value: enabled,
+            onChanged: (value) async {
+              try {
+                await ref
+                    .read(settingsProvider.notifier)
+                    .setAllowSelfPasswordChange(value);
+              } catch (_) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Failed to update setting. Please try again.')),
+                );
+              }
+            },
+          ),
+        ],
       ),
     );
   }

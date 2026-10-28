@@ -17,6 +17,7 @@ import 'package:order_app/presentation/widgets/hr_management/staff_leave_balance
 import 'package:order_app/presentation/screens/admin/add_employee_screen.dart';
 import 'package:order_app/presentation/screens/admin/synology_company_pdf_screen.dart';
 import 'package:order_app/presentation/screens/common/utility/pdf_preview_screen.dart';
+import 'package:order_app/presentation/screens/common/utility/my_documents_screen.dart';
 import 'package:order_app/presentation/screens/staff/staff_attendance_screen.dart';
 import 'package:order_app/presentation/widgets/common/role_based_router.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
@@ -1191,6 +1192,19 @@ class StaffDocumentsScreen extends ConsumerWidget {
                     subtitle: 'Generate, preview & export your verified staff biodata',
                     borderColor: borderColor,
                     onTap: () => _generateProfilePdf(context, ref),
+                  ),
+                  _SettingsTile(
+                    icon: Icons.badge_outlined,
+                    iconColor: const Color(0xFF10b981),
+                    title: 'My ID Documents',
+                    subtitle: 'Download & share your citizenship, NIN and PAN cards',
+                    borderColor: borderColor,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MyDocumentsScreen(),
+                      ),
+                    ),
                   ),
                   _SettingsTile(
                     icon: Icons.business_outlined,

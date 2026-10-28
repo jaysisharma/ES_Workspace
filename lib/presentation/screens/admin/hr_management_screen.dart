@@ -937,20 +937,22 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  // Prompt manual attendance dialog
-                  _showManualAttendanceDialog(context);
-                },
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Manual Entry'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
+              // Manual attendance entry is restricted to Admin & Super Admin.
+              if (_canManualEntry)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // Prompt manual attendance dialog
+                    _showManualAttendanceDialog(context);
+                  },
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Manual Entry'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -1664,7 +1666,13 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
     }
   }
 
+  bool get _canManualEntry {
+    final role = ref.read(authNotifierProvider).user?.role;
+    return role == UserRole.admin || role == UserRole.superAdmin;
+  }
+
   void _showManualAttendanceDialog(BuildContext context) {
+    if (!_canManualEntry) return;
     showDialog(
       context: context,
       builder: (context) => const AdminManualAttendanceDialog(),

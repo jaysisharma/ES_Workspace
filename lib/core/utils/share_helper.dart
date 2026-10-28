@@ -21,7 +21,29 @@ class ShareHelper {
     String subject = '',
     String message = '',
     ExportCategory? category,
+  }) {
+    return shareFile(
+      context: context,
+      bytes: pdfBytes,
+      fileName: fileName,
+      mimeType: 'application/pdf',
+      subject: subject,
+      message: message,
+      category: category,
+    );
+  }
+
+  /// Share any file (PDF, image, …) using the same mobile / desktop flow as [sharePdf].
+  static Future<void> shareFile({
+    required BuildContext context,
+    required Uint8List bytes,
+    required String fileName,
+    required String mimeType,
+    String subject = '',
+    String message = '',
+    ExportCategory? category,
   }) async {
+    final pdfBytes = bytes;
     Rect? origin;
     try {
       final box = context.findRenderObject() as RenderBox?;
@@ -87,7 +109,7 @@ class ShareHelper {
       try {
         // Mobile — system share sheet shows WhatsApp natively
         await Share.shareXFiles(
-          [XFile(file.path, mimeType: 'application/pdf')],
+          [XFile(file.path, mimeType: mimeType)],
           subject: subject.isNotEmpty ? subject : null,
           text: message.isNotEmpty ? message : null,
           sharePositionOrigin: origin,
@@ -199,14 +221,14 @@ class _DesktopPdfShareSheet extends StatelessWidget {
           icon: Icons.chat_rounded,
           iconColor: const Color(0xFF25D366),
           label: 'WhatsApp',
-          subtitle: 'Open WhatsApp and attach the PDF',
+          subtitle: 'Open WhatsApp and attach the file',
           onTap: () => _handleWhatsApp(context),
         ),
         _ShareTile(
           icon: Icons.folder_open_rounded,
           iconColor: Colors.blueAccent,
           label: 'Open File',
-          subtitle: 'Preview with your default PDF viewer',
+          subtitle: 'Preview with your default viewer',
           onTap: () async {
             Navigator.pop(context);
             if (Platform.isMacOS) {
@@ -232,7 +254,7 @@ class _DesktopPdfShareSheet extends StatelessWidget {
           icon: Icons.save_alt_rounded,
           iconColor: Colors.orangeAccent,
           label: 'Save As…',
-          subtitle: 'Choose custom location to save PDF',
+          subtitle: 'Choose custom location to save the file',
           onTap: () => _saveAs(context),
         ),
         _ShareTile(
@@ -263,7 +285,7 @@ class _DesktopPdfShareSheet extends StatelessWidget {
       if (context.mounted) {
         _snack(
           context,
-          '✅ WhatsApp opened!\nFile path copied — attach PDF from:\n${file.path}',
+          '✅ WhatsApp opened!\nFile path copied — attach file from:\n${file.path}',
           duration: const Duration(seconds: 6),
         );
       }
@@ -274,7 +296,7 @@ class _DesktopPdfShareSheet extends StatelessWidget {
       if (context.mounted) {
         _snack(
           context,
-          '🌐 WhatsApp Web opened!\nFile path copied — attach PDF from:\n${file.path}',
+          '🌐 WhatsApp Web opened!\nFile path copied — attach file from:\n${file.path}',
           duration: const Duration(seconds: 6),
         );
       }
@@ -283,11 +305,12 @@ class _DesktopPdfShareSheet extends StatelessWidget {
 
   Future<void> _saveAs(BuildContext context) async {
     Navigator.pop(context);
+    final ext = fileName.contains('.') ? fileName.split('.').last : 'pdf';
     final outputPath = await FilePicker.platform.saveFile(
-      dialogTitle: 'Save PDF',
+      dialogTitle: 'Save File',
       fileName: fileName,
       type: FileType.custom,
-      allowedExtensions: ['pdf'],
+      allowedExtensions: [ext],
     );
     if (outputPath != null) {
       final outFile = File(outputPath);

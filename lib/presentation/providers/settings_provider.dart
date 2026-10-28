@@ -11,6 +11,8 @@ class SettingsState {
   final bool autoArrangeExportFolders;
   final String leaveResetCycle; // 'nepali_fiscal', 'nepali_year', 'calendar_year', 'manual'
   final DateTime? customLeaveCycleStartDate;
+  // Company-wide flag (set by Super Admin) allowing other users to change their own password.
+  final bool allowSelfPasswordChange;
 
   const SettingsState({
     this.themeMode = ThemeMode.dark,
@@ -20,6 +22,7 @@ class SettingsState {
     this.autoArrangeExportFolders = true,
     this.leaveResetCycle = 'nepali_fiscal',
     this.customLeaveCycleStartDate,
+    this.allowSelfPasswordChange = false,
   });
 
   SettingsState copyWith({
@@ -30,6 +33,7 @@ class SettingsState {
     bool? autoArrangeExportFolders,
     String? leaveResetCycle,
     DateTime? customLeaveCycleStartDate,
+    bool? allowSelfPasswordChange,
     bool clearExportDir = false,
     bool clearCustomLeaveDate = false,
   }) {
@@ -46,6 +50,8 @@ class SettingsState {
       customLeaveCycleStartDate: clearCustomLeaveDate
           ? null
           : (customLeaveCycleStartDate ?? this.customLeaveCycleStartDate),
+      allowSelfPasswordChange:
+          allowSelfPasswordChange ?? this.allowSelfPasswordChange,
     );
   }
 }
@@ -63,6 +69,7 @@ class SettingsNotifier extends Notifier<SettingsState> {
   SettingsState build() {
     _loadSettings();
     _listenToRemoteSettings();
+    _listenToFeatureFlags();
     return const SettingsState();
   }
 
@@ -87,6 +94,7 @@ class SettingsNotifier extends Notifier<SettingsState> {
       autoArrangeExportFolders: autoArrange,
       leaveResetCycle: leaveCycle,
       customLeaveCycleStartDate: leaveCycleDate,
+      allowSelfPasswordChange: state.allowSelfPasswordChange,
     );
   }
 
@@ -109,6 +117,34 @@ class SettingsNotifier extends Notifier<SettingsState> {
         );
       }
     });
+  }
+
+  void _listenToFeatureFlags() {
+    FirebaseFirestore.instance
+        .collection('settings')
+        .doc('feature_flags')
+        .snapshots()
+        .listen((doc) {
+      final data = doc.data();
+      state = state.copyWith(
+        allowSelfPasswordChange:
+            data?['allowSelfPasswordChange'] as bool? ?? false,
+      );
+    }, onError: (_) {});
+  }
+
+  Future<void> setAllowSelfPasswordChange(bool enabled) async {
+    final previous = state.allowSelfPasswordChange;
+    state = state.copyWith(allowSelfPasswordChange: enabled);
+    try {
+      await FirebaseFirestore.instance
+          .collection('settings')
+          .doc('feature_flags')
+          .set({'allowSelfPasswordChange': enabled}, SetOptions(merge: true));
+    } catch (e) {
+      state = state.copyWith(allowSelfPasswordChange: previous);
+      rethrow;
+    }
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:order_app/core/services/firebase_storage_service.dart';
 import 'package:order_app/domain/entities/attendance_entity.dart';
 import 'package:order_app/domain/repositories/attendance_repository.dart';
 import '../datasources/remote/firestore_attendance_remote_data_source.dart';
@@ -14,6 +17,32 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   });
 
   FirebaseFunctions get _functions => functions ?? FirebaseFunctions.instance;
+
+  /// Uploads to Firebase Storage, falling back to the Synology Cloud Function.
+  Future<String?> _uploadSelfie({
+    required String selfieBase64,
+    required String attendanceId,
+    required String staffId,
+    required String eventId,
+    required String type,
+  }) async {
+    try {
+      final url = await FirebaseStorageService.uploadSelfie(
+        bytes: base64Decode(selfieBase64),
+        attendanceId: attendanceId,
+        type: type,
+      );
+      if (url != null) return url;
+    } catch (e) {
+      print('Failed to decode selfie for Firebase Storage upload: $e');
+    }
+    return _uploadSelfieToSynology(
+      selfieBase64: selfieBase64,
+      staffId: staffId,
+      eventId: eventId,
+      type: type,
+    );
+  }
 
   Future<String?> _uploadSelfieToSynology({
     required String selfieBase64,
@@ -47,8 +76,9 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   }) async {
     String? synologyUrl;
     if (selfieBase64 != null && selfieBase64.isNotEmpty) {
-      synologyUrl = await _uploadSelfieToSynology(
+      synologyUrl = await _uploadSelfie(
         selfieBase64: selfieBase64,
+        attendanceId: attendance.id,
         staffId: attendance.staffId,
         eventId: attendance.eventId,
         type: 'check_in',
@@ -75,8 +105,9 @@ class AttendanceRepositoryImpl implements AttendanceRepository {
   }) async {
     String? synologyUrl;
     if (selfieBase64 != null && selfieBase64.isNotEmpty) {
-      synologyUrl = await _uploadSelfieToSynology(
+      synologyUrl = await _uploadSelfie(
         selfieBase64: selfieBase64,
+        attendanceId: attendanceId,
         staffId: attendanceId,
         eventId: 'checkout',
         type: 'check_out',

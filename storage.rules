@@ -1,0 +1,45 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Role from users/{uid}.role in Firestore, normalised like the app's _parseRole
+    // ("superAdmin", "super_admin", "Super Admin" -> "superadmin").
+    function role() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid))
+        .data.get('role', '').lower().replace('[ _-]', '');
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Super Admin, Admin and Director/Founder manage HR records.
+    function isManager() {
+      return isSignedIn() && role() in ['superadmin', 'admin', 'director', 'founder'];
+    }
+
+    // Images only, max 5 MB (the app compresses to well under 1 MB).
+    function isValidImage() {
+      return request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Attendance selfies: staff upload their own; managers can view and clean up.
+    match /attendance_selfies/{uid}/{fileName} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isManager());
+      allow create: if isSignedIn() && request.auth.uid == uid && isValidImage();
+      allow delete: if isManager();
+    }
+
+    // Employee ID documents (citizenship, NIN, PAN): owner and managers only.
+    match /employee_docs/{owner}/{fileName} {
+      allow read: if isSignedIn() && (request.auth.uid == owner || isManager());
+      allow create, update: if isSignedIn()
+        && (request.auth.uid == owner || isManager())
+        && isValidImage();
+      allow delete: if isManager();
+    }
+
+    // Everything else is denied by default.
+  }
+}

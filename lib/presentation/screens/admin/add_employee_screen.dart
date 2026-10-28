@@ -10,8 +10,10 @@ import 'package:order_app/core/utils/nepali_date_formatter.dart';
 import 'package:order_app/domain/entities/employee_profile_entity.dart';
 import 'package:order_app/presentation/providers/employee_profile_providers.dart';
 import 'package:order_app/presentation/providers/hr_providers.dart';
+import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/core/services/admin_auth_service.dart';
 import 'package:order_app/core/services/synology_storage_service.dart';
+import 'package:order_app/core/services/firebase_storage_service.dart';
 import 'package:order_app/domain/entities/user_entity.dart';
 import 'package:order_app/presentation/screens/admin/employee_detail_screen.dart';
 import 'package:order_app/presentation/widgets/calendar/nepali_date_picker_dialog.dart';
@@ -347,6 +349,9 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     );
   }
 
+  bool get _isSuperAdmin =>
+      ref.read(authNotifierProvider).user?.role == UserRole.superAdmin;
+
   Widget _buildPersonalTab(Color labelColor, ColorScheme colorScheme) {
     return SingleChildScrollView(
       child: Column(
@@ -413,12 +418,14 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
               _emailController,
               keyboardType: TextInputType.emailAddress,
             ),
-            const SizedBox(height: 12),
-            _buildTextField(
-              'Change Password (Optional / Leave blank to keep current)',
-              _passwordController,
-              isPassword: true,
-            ),
+            if (_isSuperAdmin) ...[
+              const SizedBox(height: 12),
+              _buildTextField(
+                'Change Password (Optional / Leave blank to keep current)',
+                _passwordController,
+                isPassword: true,
+              ),
+            ],
             const SizedBox(height: 12),
             _buildRoleSelector(labelColor),
             const Divider(height: 32),
@@ -1056,11 +1063,18 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
         final bytes = await pickedFile.readAsBytes();
         final filename = 'emp_doc_${DateTime.now().millisecondsSinceEpoch}';
 
-        // Upload to Synology NAS (falls back to local data URI if disabled/offline)
-        final uploadedUrl = await SynologyStorageService.uploadImageBytes(
-          bytes: bytes,
-          filename: filename,
-        );
+        // Upload to Firebase Storage; fall back to Synology NAS (or a local
+        // data URI when the NAS is disabled/offline) if that fails.
+        final uploadedUrl =
+            await FirebaseStorageService.uploadEmployeeDocument(
+              bytes: bytes,
+              employeeUserId: widget.userId,
+              fileName: filename,
+            ) ??
+            await SynologyStorageService.uploadImageBytes(
+              bytes: bytes,
+              filename: filename,
+            );
 
         setState(() {
           controller.text = uploadedUrl;
@@ -1284,7 +1298,9 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
 
       if (!widget.isNewUser && !widget.isStaffSelfEdit) {
         final email = _emailController.text.trim();
-        final password = _passwordController.text.trim();
+        // Only Super Admin may change another user's password.
+        final password =
+            _isSuperAdmin ? _passwordController.text.trim() : '';
 
         if (password.isNotEmpty && password.length < 6) {
           throw 'Password must be at least 6 characters.';

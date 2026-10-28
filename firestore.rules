@@ -1,10 +1,28 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // True when the signed-in user's profile (users/{uid}.role) is Super Admin.
+    // Normalised the same way as the app's _parseRole ("superAdmin", "super_admin", "Super Admin").
+    function isSuperAdmin() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+             .data.get('role', '').lower().replace('[ _-]', '') == 'superadmin';
+    }
+
+    // Company-wide feature flags (e.g. allowSelfPasswordChange): anyone can read, only Super Admin can write.
+    match /settings/feature_flags {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
     // Match any document in the database
     match /{document=**} {
-      // Allow read and write access for development & authenticated sessions
-      allow read, write: if true;
+      // Allow read and write access for development & authenticated sessions.
+      // Writes to settings/feature_flags are excluded here; rules are OR'd, so
+      // allowing them here would bypass the Super Admin check above.
+      allow read: if true;
+      allow write: if request.path != /databases/$(database)/documents/settings/feature_flags;
     }
   }
 }

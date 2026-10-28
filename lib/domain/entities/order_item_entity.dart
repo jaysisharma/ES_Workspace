@@ -22,6 +22,11 @@ class OrderItemEntity {
   final DateTime? dueDate;
   /// UID of the admin who created this manual task.
   final String? createdBy;
+  /// Set when the task is marked done; cleared when it is reopened.
+  final DateTime? completedAt;
+
+  /// Completed manual tasks move to the archive after this long.
+  static const archiveAfter = Duration(days: 2);
 
   const OrderItemEntity({
     required this.id,
@@ -45,10 +50,21 @@ class OrderItemEntity {
     this.vendorBillName,
     this.dueDate,
     this.createdBy,
+    this.completedAt,
   });
 
   /// True when this item is a standalone admin-created task (not tied to any order).
   bool get isManualTask => orderId == 'manual';
+
+  /// True when a completed manual task has been done for more than [archiveAfter].
+  /// Tasks completed before completion times were recorded have no [completedAt]
+  /// and are treated as archived.
+  bool get isArchived {
+    if (!isManualTask || !isCompleted) return false;
+    final doneAt = completedAt;
+    if (doneAt == null) return true;
+    return DateTime.now().difference(doneAt) > archiveAfter;
+  }
 
   bool get hasVendorBill => vendorBillUrl != null && vendorBillUrl!.isNotEmpty;
 
@@ -77,6 +93,8 @@ class OrderItemEntity {
     DateTime? dueDate,
     bool clearDueDate = false,
     String? createdBy,
+    DateTime? completedAt,
+    bool clearCompletedAt = false,
   }) {
     return OrderItemEntity(
       id: id ?? this.id,
@@ -106,6 +124,7 @@ class OrderItemEntity {
           clearVendorBill ? null : (vendorBillName ?? this.vendorBillName),
       dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
       createdBy: createdBy ?? this.createdBy,
+      completedAt: clearCompletedAt ? null : (completedAt ?? this.completedAt),
     );
   }
 
@@ -133,7 +152,8 @@ class OrderItemEntity {
         other.vendorBillPath == vendorBillPath &&
         other.vendorBillName == vendorBillName &&
         other.dueDate == dueDate &&
-        other.createdBy == createdBy;
+        other.createdBy == createdBy &&
+        other.completedAt == completedAt;
   }
 
   @override
@@ -158,6 +178,7 @@ class OrderItemEntity {
         vendorBillPath.hashCode ^
         vendorBillName.hashCode ^
         dueDate.hashCode ^
-        createdBy.hashCode;
+        createdBy.hashCode ^
+        completedAt.hashCode;
   }
 }

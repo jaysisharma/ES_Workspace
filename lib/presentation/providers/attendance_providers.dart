@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
-import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:order_app/core/services/fcm_sender.dart';
 import 'package:order_app/core/utils/nepali_date_formatter.dart';
@@ -118,7 +117,6 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
         isCheckIn: true,
         staffName: attendance.staffName,
         time: attendance.checkInTime,
-        location: attendance.checkInAddress ?? attendance.eventTitle,
         attendanceId: attendance.id,
       );
 
@@ -165,7 +163,6 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
         isCheckIn: false,
         staffName: staffName,
         time: checkOutTime,
-        location: address,
         attendanceId: attendanceId,
       );
 
@@ -184,7 +181,6 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
     required bool isCheckIn,
     String? staffName,
     required DateTime time,
-    String? location,
     required String attendanceId,
   }) async {
     try {
@@ -220,20 +216,16 @@ class AttendanceNotifier extends Notifier<AttendanceState> {
         resolvedName = 'A team member';
       }
 
-      final formattedTime = DateFormat('hh:mm a').format(time);
+      final formattedTime = formatNepaliDate(time, 'hh:mm a');
       final nepaliDate = formatNepaliDate(time, 'MMM dd');
 
       final title = isCheckIn
           ? '$resolvedName Checked In'
           : '$resolvedName Checked Out';
 
-      final locText = (location != null && location.trim().isNotEmpty)
-          ? ' • ${location.trim()}'
-          : '';
-
       final description = isCheckIn
-          ? '$resolvedName clocked in at $formattedTime ($nepaliDate)$locText'
-          : '$resolvedName clocked out at $formattedTime ($nepaliDate)$locText';
+          ? '$resolvedName clocked in at $formattedTime ($nepaliDate)'
+          : '$resolvedName clocked out at $formattedTime ($nepaliDate)';
 
       final notificationId = const Uuid().v4();
 

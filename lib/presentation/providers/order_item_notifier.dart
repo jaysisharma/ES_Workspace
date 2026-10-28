@@ -96,7 +96,11 @@ class OrderItemNotifier extends Notifier<OrderItemState> {
 
   Future<void> toggleCompletion(OrderItemEntity item) async {
     final newStatus = !item.isCompleted;
-    final updatedItem = item.copyWith(isCompleted: newStatus);
+    final updatedItem = item.copyWith(
+      isCompleted: newStatus,
+      completedAt: newStatus ? DateTime.now() : null,
+      clearCompletedAt: !newStatus,
+    );
     await updateItem(updatedItem);
 
     // If a staff member completed a manual task, alert admin and founder

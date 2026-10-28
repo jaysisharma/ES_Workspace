@@ -24,6 +24,7 @@ class OrderItemModel extends OrderItemEntity {
     super.vendorBillName,
     super.dueDate,
     super.createdBy,
+    super.completedAt,
   });
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json, {String? docId}) {
@@ -33,6 +34,14 @@ class OrderItemModel extends OrderItemEntity {
       dueDate = rawDue.toDate();
     } else if (rawDue is String && rawDue.isNotEmpty) {
       dueDate = DateTime.tryParse(rawDue);
+    }
+
+    DateTime? completedAt;
+    final rawCompletedAt = json['completedAt'];
+    if (rawCompletedAt is Timestamp) {
+      completedAt = rawCompletedAt.toDate();
+    } else if (rawCompletedAt is String && rawCompletedAt.isNotEmpty) {
+      completedAt = DateTime.tryParse(rawCompletedAt);
     }
 
     bool isCompleted = false;
@@ -69,6 +78,7 @@ class OrderItemModel extends OrderItemEntity {
       vendorBillName: json['vendorBillName'] as String?,
       dueDate: dueDate,
       createdBy: json['createdBy'] as String?,
+      completedAt: completedAt,
     );
   }
 
@@ -95,6 +105,7 @@ class OrderItemModel extends OrderItemEntity {
       'vendorBillName': vendorBillName,
       'dueDate': dueDate?.toIso8601String(),
       'createdBy': createdBy,
+      'completedAt': completedAt?.toIso8601String(),
     };
   }
 
@@ -121,6 +132,7 @@ class OrderItemModel extends OrderItemEntity {
       vendorBillName: entity.vendorBillName,
       dueDate: entity.dueDate,
       createdBy: entity.createdBy,
+      completedAt: entity.completedAt,
     );
   }
 }

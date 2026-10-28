@@ -14,7 +14,10 @@ import 'package:order_app/presentation/providers/notification_notifier.dart';
 import 'package:order_app/presentation/widgets/common/bottom_right_back_button.dart';
 
 class ManualTasksScreen extends ConsumerWidget {
-  const ManualTasksScreen({super.key});
+  /// When true, lists only tasks completed more than 2 days ago.
+  final bool showArchived;
+
+  const ManualTasksScreen({super.key, this.showArchived = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -38,44 +41,68 @@ class ManualTasksScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: bgColor,
         surfaceTintColor: Colors.transparent,
-        title: const Text(
-          'Assign Tasks',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        title: Text(
+          showArchived ? 'Archived Tasks' : 'Assign Tasks',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: FilledButton.icon(
-              icon: const Icon(Icons.add_rounded, size: 18),
-              label: const Text('Assign Task'),
-              style: FilledButton.styleFrom(
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+          if (!showArchived) ...[
+            IconButton(
+              icon: const Icon(Icons.archive_outlined),
+              tooltip: 'Archived Tasks',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ManualTasksScreen(showArchived: true),
                 ),
               ),
-              onPressed: () => _showAssignTaskSheet(context, ref),
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: FilledButton.icon(
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Assign Task'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => _showAssignTaskSheet(context, ref),
+              ),
+            ),
+          ],
         ],
       ),
       body: itemsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (allItems) {
-          final manualTasks = allItems.where((i) => i.isManualTask).toList()
+          final manualTasks = allItems
+              .where((i) => i.isManualTask && i.isArchived == showArchived)
+              .toList()
             ..sort((a, b) {
               if (a.isCompleted != b.isCompleted) {
                 return a.isCompleted ? 1 : -1;
               }
               return 0;
             });
+
+          if (manualTasks.isEmpty && showArchived) {
+            return Center(
+              child: Text(
+                'No archived tasks.\nCompleted tasks move here after 2 days.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: labelColor),
+              ),
+            );
+          }
 
           if (manualTasks.isEmpty) {
             return _EmptyState(

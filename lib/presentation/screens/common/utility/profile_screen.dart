@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:order_app/presentation/providers/auth_provider.dart';
 import 'package:order_app/presentation/widgets/common/role_based_router.dart';
+import 'package:order_app/presentation/screens/common/utility/my_documents_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -141,6 +142,22 @@ class ProfileScreen extends ConsumerWidget {
                       Icons.check_circle,
                       color: Color(0xFF22c55e),
                       size: 20,
+                    ),
+                  ),
+                  Divider(height: 1, color: colorScheme.outline),
+                  InkWell(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const MyDocumentsScreen(),
+                      ),
+                    ),
+                    child: _buildDetailItem(
+                      context: context,
+                      icon: Icons.badge_outlined,
+                      label: 'My ID Documents',
+                      value: 'Download & share citizenship / ID cards',
+                      trailing: const Icon(Icons.chevron_right_rounded),
                     ),
                   ),
                 ],

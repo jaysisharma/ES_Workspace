@@ -15,6 +15,7 @@ import 'package:order_app/presentation/screens/common/finance/event_financial_re
 import 'package:order_app/presentation/screens/admin/hr_management_screen.dart';
 import 'package:order_app/presentation/screens/admin/admin_attendance_dashboard.dart';
 import 'package:order_app/presentation/screens/admin/live_locations_screen.dart';
+import 'package:order_app/presentation/screens/admin/manual_tasks_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/vendor_screen.dart';
 import 'package:order_app/presentation/screens/common/contacts/client_screen.dart';
 import 'package:order_app/presentation/screens/staff/staff_attendance_screen.dart';
@@ -855,6 +856,22 @@ class _FounderDashboardState extends ConsumerState<FounderDashboard> {
                             onTap: () => Navigator.push(
                               context,
                               SlidePageRoute(page: const LiveLocationsScreen()),
+                            ),
+                          ),
+
+                          // Assign Tasks
+                          _buildModuleCard(
+                            title: 'Assign Tasks',
+                            subtitle: 'Create, edit & assign staff tasks',
+                            icon: Icons.assignment_ind_rounded,
+                            accentColor: const Color(0xFFf97316), // Orange
+                            cardBgColor: cardBgColor,
+                            borderColor: borderColor,
+                            textMuted: textMuted,
+                            isMobile: isMobile,
+                            onTap: () => Navigator.push(
+                              context,
+                              SlidePageRoute(page: const ManualTasksScreen()),
                             ),
                           ),
 
