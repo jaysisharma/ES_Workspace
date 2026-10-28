@@ -497,6 +497,32 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
       text: profile.tds > 0 ? profile.tds.toStringAsFixed(0) : '',
     );
 
+    // SSF (11% of basic) and TDS (1%) are calculated automatically from the
+    // entered amounts; the net is recalculated rather than taken from a
+    // previously saved manual value.
+    EmployeeProfileEntity payrollDraft() {
+      double val(TextEditingController c) =>
+          double.tryParse(c.text.trim()) ?? 0.0;
+      return profile.copyWith(
+        basicSalary: val(basicController),
+        fuelAllowance: val(fuelController),
+        communicationAllowance: val(commController),
+        dearnessAllowance: val(dearController),
+        bonus: val(bonusController),
+        cit: val(citController),
+        healthInsurance: val(insController),
+        netPayableSalary: 0.0,
+      );
+    }
+
+    void syncAutoFields() {
+      final draft = payrollDraft();
+      ssfController.text = draft.ssfEmployee.toStringAsFixed(0);
+      tdsController.text = draft.tdsAmount.toStringAsFixed(0);
+    }
+
+    syncAutoFields();
+
     bool isSaving = false;
 
     await showDialog(
@@ -508,27 +534,31 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
           final comm = double.tryParse(commController.text.trim()) ?? 0.0;
           final dear = double.tryParse(dearController.text.trim()) ?? 0.0;
           final bonus = double.tryParse(bonusController.text.trim()) ?? 0.0;
-          final ssf = double.tryParse(ssfController.text.trim()) ?? 0.0;
           final cit = double.tryParse(citController.text.trim()) ?? 0.0;
           final ins = double.tryParse(insController.text.trim()) ?? 0.0;
-          final tds = double.tryParse(tdsController.text.trim()) ?? 0.0;
 
-          final gross = basic + fuel + comm + dear + bonus;
-          final deductions = ssf + cit + ins + tds;
-          final net = gross - deductions;
+          final draft = payrollDraft();
+          final ssf = draft.ssfEmployee;
+          final tds = draft.tdsAmount;
+
+          final gross = draft.grossSalary;
+          final deductions = draft.totalDeductions;
+          final net = draft.netSalary;
 
           Widget buildField(
             String label,
             TextEditingController ctrl, {
             String prefix = 'Rs. ',
             Color? accentColor,
+            bool readOnly = false,
           }) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: TextField(
                 controller: ctrl,
+                readOnly: readOnly,
                 keyboardType: TextInputType.number,
-                onChanged: (_) => setDialogState(() {}),
+                onChanged: (_) => setDialogState(syncAutoFields),
                 decoration: InputDecoration(
                   labelText: label,
                   prefixText: prefix,
@@ -612,8 +642,8 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       basicController,
                       accentColor: Colors.green,
                     ),
-                    buildField('Fuel Allowance', fuelController),
-                    buildField('Communication Allowance', commController),
+                    buildField('Conveyance Allowance', fuelController),
+                    buildField('Telephone Expenses', commController),
                     buildField('Dearness Allowance', dearController),
                     buildField('Bonus / Incentive', bonusController),
 
@@ -631,12 +661,17 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                     ),
                     const SizedBox(height: 8),
                     buildField(
-                      'TDS / Tax Deduction',
+                      'TDS (1%) - Auto',
                       tdsController,
                       accentColor: Colors.redAccent,
+                      readOnly: true,
                     ),
-                    buildField('Social Security Fund (SSF)', ssfController),
-                    buildField('Citizen Investment Trust (CIT)', citController),
+                    buildField(
+                      'Social Security Fund (11%) - Employee - Auto',
+                      ssfController,
+                      readOnly: true,
+                    ),
+                    buildField('Citizen Investment Fund (CIT)', citController),
                     buildField('Health / Medical Insurance', insController),
 
                     const SizedBox(height: 10),
@@ -751,6 +786,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                             cit: cit,
                             healthInsurance: ins,
                             tds: tds,
+                            netPayableSalary: net,
                           );
 
                           await ref
@@ -1548,10 +1584,10 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Monthly Compensation & Salary Structure',
-                      style: TextStyle(
+                      'Salary ${nepaliFiscalYearLabel()}',
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -1577,54 +1613,12 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
               ),
               const Divider(height: 20),
               () {
-                final gross = profile.grossSalary;
-                final tdsPct = gross > 0 ? (profile.tds / gross * 100) : 0.0;
-
                 return Column(
                   children: [
-                    _buildDetailRow(
-                      'Basic Salary',
-                      CurrencyFormatter.formatWithLabel(
-                        profile.basicSalary,
-                        'NPR',
-                      ),
-                      labelColor,
-                      textColor,
-                    ),
-                    if (profile.fuelAllowance > 0)
+                    for (final (label, amount) in profile.salaryEarnings)
                       _buildDetailRow(
-                        'Fuel Allowance',
-                        CurrencyFormatter.formatWithLabel(
-                          profile.fuelAllowance,
-                          'NPR',
-                        ),
-                        labelColor,
-                        textColor,
-                      ),
-                    if (profile.communicationAllowance > 0)
-                      _buildDetailRow(
-                        'Communication Allowance',
-                        CurrencyFormatter.formatWithLabel(
-                          profile.communicationAllowance,
-                          'NPR',
-                        ),
-                        labelColor,
-                        textColor,
-                      ),
-                    if (profile.dearnessAllowance > 0)
-                      _buildDetailRow(
-                        'Dearness Allowance (DA)',
-                        CurrencyFormatter.formatWithLabel(
-                          profile.dearnessAllowance,
-                          'NPR',
-                        ),
-                        labelColor,
-                        textColor,
-                      ),
-                    if (profile.bonus > 0)
-                      _buildDetailRow(
-                        'Bonus / Allowances',
-                        CurrencyFormatter.formatWithLabel(profile.bonus, 'NPR'),
+                        label,
+                        CurrencyFormatter.formatWithLabel(amount, 'NPR'),
                         labelColor,
                         textColor,
                       ),
@@ -1641,7 +1635,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
-                            'Gross Salary',
+                            'Gross Salary Per Month',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -1662,45 +1656,13 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    _buildDetailRow(
-                      'SSF Contribution',
-                      CurrencyFormatter.formatWithLabel(profile.ssf, 'NPR'),
-                      labelColor,
-                      textColor,
-                    ),
-                    if (profile.effectiveLifeInsurance > 0)
+                    for (final (label, amount) in profile.salaryDeductions)
                       _buildDetailRow(
-                        'Life Insurance',
-                        CurrencyFormatter.formatWithLabel(
-                          profile.effectiveLifeInsurance,
-                          'NPR',
-                        ),
+                        label,
+                        CurrencyFormatter.formatWithLabel(amount, 'NPR'),
                         labelColor,
                         textColor,
                       ),
-                    if (profile.effectiveHealthInsurance > 0)
-                      _buildDetailRow(
-                        'Health Insurance',
-                        CurrencyFormatter.formatWithLabel(
-                          profile.effectiveHealthInsurance,
-                          'NPR',
-                        ),
-                        labelColor,
-                        textColor,
-                      ),
-                    if (profile.cit > 0)
-                      _buildDetailRow(
-                        'CIT Contribution',
-                        CurrencyFormatter.formatWithLabel(profile.cit, 'NPR'),
-                        labelColor,
-                        textColor,
-                      ),
-                    _buildDetailRow(
-                      'TDS (Tax Deducted at Source)',
-                      '${CurrencyFormatter.formatWithLabel(profile.tds, 'NPR')}${tdsPct > 0 ? ' (${tdsPct.toStringAsFixed(1)}%)' : ''}',
-                      labelColor,
-                      textColor,
-                    ),
                   ],
                 );
               }(),
@@ -1710,7 +1672,7 @@ class _EmployeeDetailScreenState extends ConsumerState<EmployeeDetailScreen> {
                 children: [
                   const Expanded(
                     child: Text(
-                      'Net Payable Monthly Salary (In Hand)',
+                      'Net Receivable Per Month',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,

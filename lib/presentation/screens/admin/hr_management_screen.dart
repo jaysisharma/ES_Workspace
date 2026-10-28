@@ -1491,7 +1491,7 @@ class _HrManagementScreenState extends ConsumerState<HrManagementScreen>
                 final da = profile?.dearnessAllowance ?? 0.0;
                 final bonus = profile?.bonus ?? 0.0;
                 final gross = profile?.grossSalary ?? (basic + da + bonus);
-                final tds = profile?.tds ?? 0.0;
+                final tds = profile?.tdsAmount ?? 0.0;
                 final net =
                     profile?.netSalary ??
                     (gross - (profile?.totalDeductions ?? 0.0));

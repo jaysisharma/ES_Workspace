@@ -193,6 +193,8 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     _panPhotoController = TextEditingController(text: p?.panPhotoUrl ?? '');
     _citNumberController = TextEditingController(text: p?.citNumber ?? '');
 
+    _syncAutoPayroll();
+
     final initialLeaves = p?.allowedLeaves ?? {};
     _leaveAllocationsControllers = {};
     for (final type in EmployeeProfileEntity.defaultAllowedLeaves.keys) {
@@ -206,23 +208,43 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
     }
   }
 
+  /// Payroll values currently in the form, calculated with the salary sheet
+  /// rules (SSF 20% / 11% of basic, TDS 1%).
+  EmployeeProfileEntity _payrollDraft() {
+    double val(TextEditingController c) => double.tryParse(c.text) ?? 0.0;
+    final base = widget.initialProfile ??
+        EmployeeProfileEntity(
+          id: '',
+          userId: widget.userId,
+          name: '',
+          officeJoinDate: _officeJoinDate,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+    return base.copyWith(
+      basicSalary: val(_basicSalaryController),
+      fuelAllowance: val(_fuelAllowanceController),
+      communicationAllowance: val(_communicationAllowanceController),
+      dearnessAllowance: val(_dearnessAllowanceController),
+      bonus: val(_bonusController),
+      cit: val(_citController),
+      lifeInsurance: val(_lifeInsuranceController),
+      insurance: val(_lifeInsuranceController),
+      healthInsurance: val(_healthInsuranceController),
+      netPayableSalary: 0.0,
+    );
+  }
+
+  /// Fills the read-only SSF (11% employee) and TDS (1%) fields.
+  void _syncAutoPayroll() {
+    final draft = _payrollDraft();
+    _ssfController.text = draft.ssfEmployee.toStringAsFixed(0);
+    _tdsController.text = draft.tdsAmount.toStringAsFixed(0);
+  }
+
   void _calculateSuggestedNet() {
-    final basic = double.tryParse(_basicSalaryController.text) ?? 0.0;
-    final fuel = double.tryParse(_fuelAllowanceController.text) ?? 0.0;
-    final comm = double.tryParse(_communicationAllowanceController.text) ?? 0.0;
-    final da = double.tryParse(_dearnessAllowanceController.text) ?? 0.0;
-    final bonus = double.tryParse(_bonusController.text) ?? 0.0;
-    final gross = basic + fuel + comm + da + bonus;
-
-    final ssf = double.tryParse(_ssfController.text) ?? 0.0;
-    final cit = double.tryParse(_citController.text) ?? 0.0;
-    final life = double.tryParse(_lifeInsuranceController.text) ?? 0.0;
-    final health = double.tryParse(_healthInsuranceController.text) ?? 0.0;
-    final tds = double.tryParse(_tdsController.text) ?? 0.0;
-    final deductions = ssf + cit + life + health + tds;
-
-    final net = (gross - deductions).clamp(0.0, double.infinity);
-    _netPayableSalaryController.text = net.toStringAsFixed(0);
+    _syncAutoPayroll();
+    _netPayableSalaryController.text = _payrollDraft().netSalary.toStringAsFixed(0);
     setState(() {});
   }
 
@@ -667,46 +689,41 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
             'Basic Salary (NPR)',
             _basicSalaryController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(_syncAutoPayroll),
           ),
           const SizedBox(height: 12),
           _buildTextField(
-            'Fuel Allowance (NPR)',
+            'Conveyance Allowance (NPR)',
             _fuelAllowanceController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(_syncAutoPayroll),
           ),
           const SizedBox(height: 12),
           _buildTextField(
-            'Communication Allowance (NPR)',
+            'Telephone Expenses (NPR)',
             _communicationAllowanceController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(_syncAutoPayroll),
           ),
           const SizedBox(height: 12),
           _buildTextField(
             'Dearness Allowance (DA)',
             _dearnessAllowanceController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(_syncAutoPayroll),
           ),
           const SizedBox(height: 12),
           _buildTextField(
             'Bonus / Performance Allowance',
             _bonusController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(_syncAutoPayroll),
           ),
           const SizedBox(height: 12),
           // Computed Gross Salary Box
           Builder(
             builder: (context) {
-              final basic = double.tryParse(_basicSalaryController.text) ?? 0.0;
-              final fuel = double.tryParse(_fuelAllowanceController.text) ?? 0.0;
-              final comm = double.tryParse(_communicationAllowanceController.text) ?? 0.0;
-              final da = double.tryParse(_dearnessAllowanceController.text) ?? 0.0;
-              final bonus = double.tryParse(_bonusController.text) ?? 0.0;
-              final gross = basic + fuel + comm + da + bonus;
+              final gross = _payrollDraft().grossSalary;
               return Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -718,7 +735,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Gross Salary (Basic + Fuel + Comm + DA + Bonus):',
+                      'Gross Salary Per Month (incl. SSF 20% Company):',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: labelColor),
                     ),
                     Text(
@@ -741,38 +758,38 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
           ),
           const SizedBox(height: 12),
           _buildTextField(
-            'SSF Contribution (Social Security)',
+            'Social Security Fund (11%) - Employee - Auto',
             _ssfController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            readOnly: true,
           ),
           const SizedBox(height: 12),
           _buildTextField(
             'Life Insurance Premium',
             _lifeInsuranceController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(_syncAutoPayroll),
           ),
           const SizedBox(height: 12),
           _buildTextField(
             'Health Insurance Premium',
             _healthInsuranceController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(_syncAutoPayroll),
           ),
           const SizedBox(height: 12),
           _buildTextField(
-            'CIT Contribution (Citizen Investment Trust)',
+            'Citizen Investment Fund (CIT)',
             _citController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(_syncAutoPayroll),
           ),
           const SizedBox(height: 12),
           _buildTextField(
-            'TDS (Tax Deducted at Source)',
+            'TDS (1%) - Auto',
             _tdsController,
             keyboardType: TextInputType.number,
-            onChanged: (_) => setState(() {}),
+            readOnly: true,
           ),
           const SizedBox(height: 20),
           // Net Payable Monthly Salary (In Hand)
@@ -790,7 +807,7 @@ class _AddEmployeeScreenState extends ConsumerState<AddEmployeeScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Net Payable Monthly Salary (In Hand)',
+                      'Net Receivable Per Month',
                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
                     ),
                     TextButton.icon(

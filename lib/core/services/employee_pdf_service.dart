@@ -303,38 +303,19 @@ class EmployeePdfService {
             pw.SizedBox(height: 14),
 
             // ── Section 4: Compensation & Payroll Breakdown ────────────────────
-            _buildSectionTitle('4. COMPENSATION & PAYROLL BREAKDOWN'),
+            _buildSectionTitle('4. SALARY ${nepaliFiscalYearLabel()}'),
             pw.SizedBox(height: 6),
-            () {
-              final gross = profile.grossSalary;
-              final tdsPct = gross > 0 ? (profile.tds / gross * 100) : 0.0;
-
-              return pw.Table(
-                border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
-                children: [
-                  _buildTableRow('Basic Monthly Salary', 'NPR ${profile.basicSalary.toStringAsFixed(0)}'),
-                  if (profile.fuelAllowance > 0)
-                    _buildTableRow('Fuel Allowance', 'NPR ${profile.fuelAllowance.toStringAsFixed(0)}'),
-                  if (profile.communicationAllowance > 0)
-                    _buildTableRow('Communication Allowance', 'NPR ${profile.communicationAllowance.toStringAsFixed(0)}'),
-                  if (profile.dearnessAllowance > 0)
-                    _buildTableRow('Dearness / Travel Allowance', 'NPR ${profile.dearnessAllowance.toStringAsFixed(0)}'),
-                  if (profile.bonus > 0)
-                    _buildTableRow('Performance Bonus / Incentives', 'NPR ${profile.bonus.toStringAsFixed(0)}'),
-                  _buildTableRow('Gross Salary', 'NPR ${profile.grossSalary.toStringAsFixed(0)}', isBold: true),
-                  _buildTableRow('SSF Contribution (Social Security)', 'NPR ${profile.ssf.toStringAsFixed(0)}', isDeduction: true),
-                  if (profile.effectiveLifeInsurance > 0)
-                    _buildTableRow('Life Insurance Premium', 'NPR ${profile.effectiveLifeInsurance.toStringAsFixed(0)}', isDeduction: true),
-                  if (profile.effectiveHealthInsurance > 0)
-                    _buildTableRow('Health Insurance Premium', 'NPR ${profile.effectiveHealthInsurance.toStringAsFixed(0)}', isDeduction: true),
-                  if (profile.cit > 0)
-                    _buildTableRow('Citizen Investment Trust (CIT)', 'NPR ${profile.cit.toStringAsFixed(0)}', isDeduction: true),
-                  if (profile.tds > 0)
-                    _buildTableRow('Tax Deducted at Source (TDS)', 'NPR ${profile.tds.toStringAsFixed(0)}${tdsPct > 0 ? ' (${tdsPct.toStringAsFixed(1)}%)' : ''}', isDeduction: true),
-                  _buildTableRow('NET PAYABLE MONTHLY SALARY (IN HAND)', 'NPR ${profile.netSalary.toStringAsFixed(0)}', isHeader: true),
-                ],
-              );
-            }(),
+            pw.Table(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              children: [
+                for (final (label, amount) in profile.salaryEarnings)
+                  _buildTableRow(label, 'NPR ${amount.toStringAsFixed(0)}'),
+                _buildTableRow('Gross Salary Per Month', 'NPR ${profile.grossSalary.toStringAsFixed(0)}', isBold: true),
+                for (final (label, amount) in profile.salaryDeductions)
+                  _buildTableRow(label, 'NPR ${amount.toStringAsFixed(0)}', isDeduction: true),
+                _buildTableRow('NET RECEIVABLE PER MONTH', 'NPR ${profile.netSalary.toStringAsFixed(0)}', isHeader: true),
+              ],
+            ),
             pw.SizedBox(height: 14),
 
             // ── Section 5: Leave Allocations ─────────────────────────────────

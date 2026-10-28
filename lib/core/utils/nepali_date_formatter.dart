@@ -25,3 +25,10 @@ NepaliDateTime safeDateTimeToNepali(DateTime dt) {
 String formatNepaliDate(DateTime date, String pattern, {Language language = Language.english}) {
   return BsCalendarService.formatBs(date, pattern: pattern, language: language);
 }
+
+/// Nepal fiscal year label (e.g. '2083/84'). The fiscal year starts on 1 Shrawan (month 4).
+String nepaliFiscalYearLabel([DateTime? date]) {
+  final bs = date != null ? BsCalendarService.adToBs(date) : BsCalendarService.todayBs();
+  final startYear = bs.month >= 4 ? bs.year : bs.year - 1;
+  return '$startYear/${((startYear + 1) % 100).toString().padLeft(2, '0')}';
+}

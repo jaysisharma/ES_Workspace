@@ -122,14 +122,60 @@ class EmployeeProfileEntity {
   double get effectiveHealthInsurance => healthInsurance;
   double get totalInsurance => effectiveLifeInsurance + effectiveHealthInsurance;
 
+  // ── Salary sheet (company format) ─────────────────────────────────────────
+  // Earnings:   Basic + Dearness Allowance + SSF 20% (company) + Conveyance + Telephone
+  // Deductions: CIT + SSF 11% (employee) + Telephone + SSF 20% (company) + TDS 1%
+  // SSF is calculated on Basic Salary. TDS is 1% of the cash salary
+  // (Basic + DA + Conveyance + Bonus).
+  static const double ssfCompanyRate = 0.20;
+  static const double ssfEmployeeRate = 0.11;
+  static const double tdsRate = 0.01;
+
+  /// Stored as `fuelAllowance`; shown as Conveyance Allowance on the salary sheet.
+  double get conveyanceAllowance => fuelAllowance;
+
+  /// Stored as `communicationAllowance`; shown as Telephone Expenses.
+  double get telephoneExpenses => communicationAllowance;
+
+  double get ssfCompany => basicSalary * ssfCompanyRate;
+  double get ssfEmployee => basicSalary * ssfEmployeeRate;
+  double get tdsAmount =>
+      (basicSalary + dearnessAllowance + conveyanceAllowance + bonus) * tdsRate;
+
+  /// Earnings rows of the salary sheet, in display order.
+  List<(String, double)> get salaryEarnings => [
+        ('Basic Salary', basicSalary),
+        ('Dearness Allowance', dearnessAllowance),
+        ('Social Security Fund (20%) - Company', ssfCompany),
+        ('Conveyance Allowance', conveyanceAllowance),
+        ('Telephone Expenses', telephoneExpenses),
+        if (bonus > 0) ('Bonus / Performance Allowance', bonus),
+      ];
+
+  /// Deduction rows of the salary sheet, in display order.
+  List<(String, double)> get salaryDeductions => [
+        ('Citizen Investment Fund', cit),
+        ('Social Security Fund (11%) - Employee', ssfEmployee),
+        ('Telephone Expenses', telephoneExpenses),
+        ('Social Security Fund (20%) - Company', ssfCompany),
+        ('TDS (1%)', tdsAmount),
+        if (effectiveLifeInsurance > 0) ('Life Insurance', effectiveLifeInsurance),
+        if (effectiveHealthInsurance > 0) ('Health Insurance', effectiveHealthInsurance),
+      ];
+
   double get grossSalary =>
-      basicSalary + fuelAllowance + communicationAllowance + dearnessAllowance + bonus;
+      salaryEarnings.fold(0.0, (sum, row) => sum + row.$2);
   double get totalDeductions =>
-      ssf + cit + totalInsurance + tds;
+      salaryDeductions.fold(0.0, (sum, row) => sum + row.$2);
+
+  /// Net receivable per month. A manually entered net (netPayableSalary)
+  /// takes priority, otherwise it is calculated from the salary sheet.
   double get netSalary => netPayableSalary > 0
       ? netPayableSalary
       : (grossSalary - totalDeductions).clamp(0.0, double.infinity);
-  double get totalPackage => grossSalary + ssf + cit + totalInsurance;
+
+  /// Total monthly cost to the company (gross already includes SSF 20%).
+  double get totalPackage => grossSalary;
 
   EmployeeProfileEntity copyWith({
     String? id,
